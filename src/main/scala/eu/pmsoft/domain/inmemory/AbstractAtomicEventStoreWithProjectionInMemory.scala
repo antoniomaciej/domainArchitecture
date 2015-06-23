@@ -20,42 +20,73 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ *
  */
 
 package eu.pmsoft.domain.inmemory
 
-import java.util.concurrent.atomic.AtomicReference
-
-import eu.pmsoft.domain.model.EventSourceEngine._
+import eu.pmsoft.domain.model.EventSourceDataModel.CommandResult
 import eu.pmsoft.domain.model._
+import eu.pmsoft.domain.util.atom.Atomic
 
 import scala.concurrent.Future
-import scalaz.\/-
+import scalaz.{-\/, \/, \/-}
 
-abstract class AbstractAtomicEventStoreWithProjectionInMemory[E, S] extends AsyncEventStore[E] with AtomicEventStoreProjection[S] {
 
-  protected[this] val inMemoryStore = new AtomicReference(AtomicEventStoreState[E, S](List[E](), buildInitialState()))
+abstract class AbstractAtomicEventStoreWithProjectionInMemory[E, A, S] extends AsyncEventStore[E, A] with VersionedEventStoreProjection[A, S] {
+
+  protected[this] val inMemoryStore = Atomic(AtomicEventStoreState[E, A, S](buildInitialState()))
 
   def buildInitialState(): S
 
   def projectSingleEvent(state: S, event: E): S
 
-  override def persistEvents(events: List[E]): Future[CommandResult] = {
-    val currAtomicState = inMemoryStore.get
-
-    val updatedEventHistory = currAtomicState.eventHistory ++ events
-    val updatedStateProjection = (currAtomicState.state /: events)(projectSingleEvent)
-
-    val updatedAtomicState = AtomicEventStoreState(updatedEventHistory, updatedStateProjection)
-    if (!inMemoryStore.compareAndSet(currAtomicState, updatedAtomicState)) {
-      throw new IllegalStateException("atomic update failed, there are some parallel operations on state")
+  override def persistEvents(events: List[E], transactionScopeVersion: Map[A, Long]): Future[CommandResult] = {
+    def checkIfStateMatchTransactionScopeVersion(state: AtomicEventStoreState[E, A, S]):
+    EventSourceCommandFailure \/ AtomicEventStoreState[E, A, S] = transactionScopeVersion.find({
+      case (aggregate, version) => state.aggregatesVersion.getOrElse(aggregate, 0L).compareTo(version) != 0
+    }) match {
+      case Some(notMatchingAggregateVersion) => -\/(EventSourceCommandRollback())
+      case None => \/-(state)
     }
-    val version = EventStoreVersion(updatedAtomicState.eventHistory.length)
-    Future.successful(\/-(EventSourceCommandConfirmation(version)))
+
+    def updateState(state: AtomicEventStoreState[E, A, S]): AtomicEventStoreState[E, A, S] = {
+      val updatedEventHistory = state.eventHistory ++ events
+      val updatedStateProjection = (state.state /: events)(projectSingleEvent)
+      val updatedAggregatesVersion = state.aggregatesVersion ++ (transactionScopeVersion mapValues (_ + 1))
+      AtomicEventStoreState(updatedStateProjection, updatedEventHistory, updatedAggregatesVersion)
+    }
+    Future.successful(
+      inMemoryStore.updateAndGetWithCondition(updateState, checkIfStateMatchTransactionScopeVersion).map { state =>
+        EventSourceCommandConfirmation(EventStoreVersion(state.eventHistory.length))
+      }
+    )
   }
 
-  override def projection(): S = inMemoryStore.get().state
+  override def lastSnapshot(): S = inMemoryStore().state
+
+
+  override def atLeastOn(storeVersion: EventStoreVersion): Future[S] = {
+    val currState = inMemoryStore()
+    if (currState.eventHistory.size >= storeVersion.storeVersion) {
+      Future.successful(currState.state)
+    } else {
+      // TODO promise and trigger after state update
+      ???
+    }
+  }
+
+  override def projection(transactionScope: Set[A]): VersionedProjection[A, S] = {
+    val atomicState = inMemoryStore()
+    val transactionScopeVersion: Map[A, Long] = transactionScope.map { aggregate =>
+      aggregate -> atomicState.aggregatesVersion.getOrElse(aggregate, 0L)
+    }(collection.breakOut)
+    VersionedProjection[A, S](transactionScopeVersion, atomicState.state)
+  }
 }
 
-case class AtomicEventStoreState[E, S](eventHistory: List[E], state: S)
+case class AtomicEventStoreState[E, A, S](state: S,
+                                          eventHistory: List[E] = List[E](),
+                                          aggregatesVersion: Map[A, Long] = Map[A, Long]())
 

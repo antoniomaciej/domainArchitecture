@@ -20,10 +20,13 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ *
  */
 
 package eu.pmsoft.domain.model.security
 
+import eu.pmsoft.domain.model.security.roles._
 import eu.pmsoft.domain.model.{AtomicEventStoreProjection, BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 
 abstract class RoleBasedAuthorizationModuleTest[M] extends BaseEventSourceSpec with
@@ -55,8 +58,8 @@ GeneratedCommandSpecification[RoleBasedAuthorizationModelCommand, RoleBasedAutho
     whenReady(warmUpResult) { initResults =>
       val firstFailure = initResults.find(_.isLeft)
       firstFailure shouldBe empty withClue ": Failure on warm up commands"
-      val permissionId = stateProjection(module).projection().allPermissionID.head
-      val roleId = stateProjection(module).projection().allRoleId.head
+      val permissionId = stateProjection(module).lastSnapshot().allPermissionID.head
+      val roleId = stateProjection(module).lastSnapshot().allRoleId.head
       whenReady(asyncCommandHandler(module).execute(DeletePermissionFromRole(permissionId, roleId))) { result =>
         result should be(\/-)
       }

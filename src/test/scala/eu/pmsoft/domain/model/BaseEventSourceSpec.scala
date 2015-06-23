@@ -20,6 +20,8 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ *
  */
 
 package eu.pmsoft.domain.model
@@ -76,7 +78,7 @@ trait GeneratedCommandSpecification[C, E, S, M] {
             val firstFailure = results.find(_.isLeft)
             firstFailure shouldBe empty withClue ": Failure on warm up commands"
 
-            validateState(stateProjection(module).projection())
+            validateState(stateProjection(module).lastSnapshot())
 
             forAll(generator.generateSingleCommands) {
               command: C =>
@@ -88,9 +90,9 @@ trait GeneratedCommandSpecification[C, E, S, M] {
                   whenReady(resultsFuture) { results =>
                     withClue(s"last command result:$results \n") {
 
-                      results.isRight shouldBe true
-                      validateState(stateProjection(module).projection())
-                      postCommandValidation(stateProjection(module).projection(), command)
+                      results shouldBe \/-
+                      validateState(stateProjection(module).lastSnapshot())
+                      postCommandValidation(stateProjection(module).lastSnapshot(), command)
                     }
                   }
                 }
@@ -111,7 +113,7 @@ trait GeneratedCommandSpecification[C, E, S, M] {
           val firstFailure = results.find(_.isLeft)
           firstFailure shouldBe empty withClue ": Failure on warm up commands"
 
-          validateState(stateProjection(module).projection())
+          validateState(stateProjection(module).lastSnapshot())
 
           forAll(generator.generateSingleCommands) {
             command: C =>
@@ -119,8 +121,8 @@ trait GeneratedCommandSpecification[C, E, S, M] {
                 val resultsFuture = asyncCommandHandler(module).execute(command)
                 whenReady(resultsFuture) { results =>
                   withClue(s"last command result:$results \n") {
-                    validateState(stateProjection(module).projection())
-                    postCommandValidation(stateProjection(module).projection(), command)
+                    validateState(stateProjection(module).lastSnapshot())
+                    postCommandValidation(stateProjection(module).lastSnapshot(), command)
                   }
                 }
               }

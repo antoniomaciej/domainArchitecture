@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015 Pawe? Cesar Sanjuan Szklarz
+ * Copyright (c) 2015 Paweł Cesar Sanjuan Szklarz
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,11 +20,13 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ *
  */
 
 package eu.pmsoft.domain.model.security.password.reset
 
-import eu.pmsoft.domain.model.userRegistry.{UserID, UserPassword}
+import eu.pmsoft.domain.model.user.registry.{UserID, UserPassword}
 import eu.pmsoft.domain.model.{AtomicEventStoreProjection, BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 
 abstract class PasswordResetModuleTest[M] extends BaseEventSourceSpec with
@@ -37,19 +39,18 @@ GeneratedCommandSpecification[PasswordResetModelCommand, PasswordResetModelEvent
     }
   }
 
-  it should "ignore second confirmation even if password is different" in {
+  it should "reject second password reset confirmation" in {
     val module = createEmptyModule()
     whenReady(asyncCommandHandler(module)
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = stateProjection(module).projection().findFlowByUserID(UserID(0)).get
+      val process = stateProjection(module).lastSnapshot().findFlowByUserID(UserID(0)).get
       whenReady(asyncCommandHandler(module)
         .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("newPassword")))) { confirmationResult =>
         confirmationResult should be(\/-)
         whenReady(asyncCommandHandler(module)
           .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("newPassword2")))) { confirmationResultTwo =>
-          confirmationResultTwo should be(\/-)
-
+          confirmationResultTwo should be(-\/)
         }
       }
     }
@@ -60,7 +61,7 @@ GeneratedCommandSpecification[PasswordResetModelCommand, PasswordResetModelEvent
     whenReady(asyncCommandHandler(module)
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = stateProjection(module).projection().findFlowByUserID(UserID(0)).get
+      val process = stateProjection(module).lastSnapshot().findFlowByUserID(UserID(0)).get
       whenReady(asyncCommandHandler(module)
         .execute(
           ConfirmPasswordResetFlow(
@@ -78,7 +79,7 @@ GeneratedCommandSpecification[PasswordResetModelCommand, PasswordResetModelEvent
     whenReady(asyncCommandHandler(module)
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = stateProjection(module).projection().findFlowByUserID(UserID(0)).get
+      val process = stateProjection(module).lastSnapshot().findFlowByUserID(UserID(0)).get
       whenReady(asyncCommandHandler(module)
         .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("")))) { confirmationResult =>
         confirmationResult should be(-\/)

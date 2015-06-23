@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015 Pawe? Cesar Sanjuan Szklarz
+ * Copyright (c) 2015 Paweł Cesar Sanjuan Szklarz
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,11 +20,13 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ *
  */
 
 package eu.pmsoft.domain.model.security.password.reset
 
-import eu.pmsoft.domain.model.userRegistry.{UserID, UserPassword}
+import eu.pmsoft.domain.model.user.registry.{UserID, UserPassword}
 import eu.pmsoft.domain.model.{AtomicEventStoreProjection, CommandGenerator}
 import org.scalacheck.Gen
 import org.scalacheck.Gen._
@@ -46,16 +48,16 @@ class PasswordResetModelGenerator(val state: AtomicEventStoreProjection[Password
   val maxUserId = 100L
 
   private def genNewUserId = for {
-    active <- Gen.wrap(Gen.const(state.projection().getExistingProcessUserId.map(_.id).toSet))
+    active <- Gen.wrap(Gen.const(state.lastSnapshot().getExistingProcessUserId.map(_.id).toSet))
     userId <- Gen.oneOf(((minUserId to maxUserId).toSet[Long] -- active).toSeq)
   } yield UserID(userId)
 
   private def genExistingUserId = Gen.wrap(
-    Gen.oneOf(state.projection().getExistingProcessUserId.toSeq)
+    Gen.oneOf(state.lastSnapshot().getExistingProcessUserId.toSeq)
   )
 
   private def genExistingProcess = Gen.wrap(
-    Gen.oneOf(state.projection().getExistingProcessUserId.map(state.projection().findFlowByUserID(_).get).toSeq)
+    Gen.oneOf(state.lastSnapshot().getExistingProcessUserId.map(state.lastSnapshot().findFlowByUserID(_).get).toSeq)
   )
 
 

@@ -20,52 +20,100 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ *
  */
 
 package eu.pmsoft.domain.inmemory
 
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.{CountDownLatch, Executor, Executors, TimeUnit}
+
+import eu.pmsoft.domain.model.{EventSourceCommandFailed, EventSourceCommandRollback}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.prop.PropertyChecks
-import org.scalatest.{AppendedClues, FlatSpec, Matchers}
+import org.scalatest.{FlatSpec, Matchers}
+import org.typelevel.scalatest.DisjunctionMatchers
 
-import scala.concurrent.Future
+import scala.language.postfixOps
+import scalaz.{-\/, \/-}
 
-class AbstractAtomicEventStoreWithProjectionInMemoryTest extends FlatSpec with Matchers with PropertyChecks with ScalaFutures with AppendedClues {
+class AbstractAtomicEventStoreWithProjectionInMemoryTest extends FlatSpec with Matchers with PropertyChecks with ScalaFutures with DisjunctionMatchers {
 
-  it should "detect concurrent execution of updates" in {
-
-    //given a multi thread execution context
-    import scala.concurrent.ExecutionContext.Implicits.global
-    //and a
+  it should "detect concurrent execution of updates in the same transaction scope" in {
+    //given
     val testEventStoreInMemory = new NoOpEventStoreInMemory()
+    val nrOfThreads = 4
+    val barriers = new CountDownLatch(nrOfThreads)
+    val rollbackError = new AtomicBoolean(false)
 
-    //when 50 updates in parallel are executed
-    val allParallel = Future.traverse(0 to 50) { projectionNr =>
-      //The internal implementation execute in the local thread,
-      // so a future executed in the executionContext is necessary
-      // to make the execution really parallel
-      Future {
-        projectionNr
-      } map { nr =>
-        testEventStoreInMemory.persistEvents(List(TestEvent(nr)))
-      }
+    //when 4 thread are executed in parallel to store on the same transaction context Map(TestAggregate(1) -> 0L)
+    val service: Executor = Executors.newFixedThreadPool(nrOfThreads)
+    (1 to 4) foreach { thread =>
+      service.execute(new Runnable {
+        override def run(): Unit = {
+          while (!rollbackError.get()) {
+            val transactionScope = testEventStoreInMemory.projection(Set(TestAggregate(1)))
+            testEventStoreInMemory.persistEvents(List(TestEvent(0)), transactionScope.transactionScopeVersion).futureValue match {
+              case -\/(error) => error match {
+                case EventSourceCommandRollback() => rollbackError.set(true)
+                case EventSourceCommandFailed(_) =>
+              }
+              case \/-(b) =>
+            }
+          }
+          barriers.countDown()
+        }
+      })
     }
 
-    //then a exception is throw
-    allParallel.failed.futureValue shouldBe a[IllegalStateException]
-
+    barriers.await(1, TimeUnit.SECONDS)
+    //then a error related to concurrency transaction scopes must be found
+    rollbackError.get() shouldBe true
   }
 
-  class NoOpEventStoreInMemory extends AbstractAtomicEventStoreWithProjectionInMemory[TestEvent, TestState] {
+  it should "run concurrently in different transaction scope" in {
+    //given
+    val testEventStoreInMemory = new NoOpEventStoreInMemory()
+    val nrOfThreads = 4
+    val barriers = new CountDownLatch(nrOfThreads)
+    val rollbackError = new AtomicBoolean(false)
+
+    //when 4 thread are executed in parallel to store on the same execution context
+    val service: Executor = Executors.newFixedThreadPool(nrOfThreads)
+    (1 to 4) foreach { thread =>
+      service.execute(new Runnable {
+        override def run(): Unit = {
+          while (!rollbackError.get()) {
+            val transactionScope = testEventStoreInMemory.projection(Set(TestAggregate(thread)))
+            testEventStoreInMemory.persistEvents(List(TestEvent(0)), transactionScope.transactionScopeVersion) futureValue match {
+              case -\/(error) => error match {
+                case EventSourceCommandRollback() => rollbackError.set(true)
+                case EventSourceCommandFailed(_) =>
+              }
+              case \/-(b) =>
+            }
+          }
+          barriers.countDown()
+        }
+      })
+    }
+
+    barriers.await(1, TimeUnit.SECONDS)
+    //then a error related to concurrency transaction scopes must be found
+    rollbackError.get() shouldBe false
+  }
+
+
+  class NoOpEventStoreInMemory extends AbstractAtomicEventStoreWithProjectionInMemory[TestEvent, TestAggregate, TestState] {
     override def buildInitialState(): TestState = TestState()
 
     override def projectSingleEvent(state: TestState, event: TestEvent): TestState = {
-      //delay is introduced to make the race condition more probable
-      val projectionEventDelay = 10
-      Thread.sleep(projectionEventDelay)
       state.copy(events = event :: state.events)
     }
   }
+
+  case class TestAggregate(scope: Int)
 
   case class TestEvent(anyData: Int)
 

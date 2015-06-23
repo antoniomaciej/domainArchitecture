@@ -20,56 +20,57 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ *
  */
 
 package eu.pmsoft.domain.model
 
-import eu.pmsoft.domain.model.EventSourceEngine._
+import eu.pmsoft.domain.model.EventSourceDataModel._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scalaz._
 import scalaz.std.scalaFuture._
 
 
 object EventSourceEngine {
 
-  type CommandResult = EventSourceCommandError \/ EventSourceCommandConfirmation
-
-  type CommandToEventsResult[E] = EventSourceCommandError \/ List[E]
-
-  type CommandPartialValidation[E] = EventSourceCommandError \/ E
-
 }
 
-case class EventStoreVersion(val storeVersion: Long) extends AnyVal
 
-case class EventSourceCommandError(val errorCode: Long) extends AnyVal
-
-case class EventSourceCommandConfirmation(storeVersion: EventStoreVersion)
-
-case class EventSourceModelError(description:String, code: EventSourceCommandError)
-
-trait DomainLogic[C, E, S] {
-  def executeCommand(command: C)(implicit state: S): CommandToEventsResult[E]
+trait DomainLogic[C, E, A, S] {
+  def executeCommand(command: C, transactionScope: Map[A, Long])(implicit state: S): CommandToEventsResult[E]
 }
 
+trait EventSourceProjection[E] {
+
+  def projectEvent(event: E, storeVersion: EventStoreVersion): Unit
+
+  def lastSnapshotVersion(): EventStoreVersion
+}
 
 trait AtomicEventStoreProjection[+P] {
-
-  def projection(): P
-
+  def lastSnapshot(): P
 }
+
+trait VersionedEventStoreProjection[A, +P] extends AtomicEventStoreProjection[P] with OrderedEventStoreProjector[P] {
+  def projection(transactionScope: Set[A]): VersionedProjection[A, P]
+}
+
+case class VersionedProjection[A, +P](transactionScopeVersion: Map[A, Long], projection: P)
 
 trait OrderedEventStoreProjector[+P] {
-
-  def atLeastOn(storeVersion: EventStoreVersion): P
+  def atLeastOn(storeVersion: EventStoreVersion): Future[P]
 }
 
+trait CommandToTransactionScope[C, A, S] {
+  def calculateTransactionScope(command: C, state: S): CommandToAggregateResult[A]
+}
 
 //Async domain handler
-trait AsyncEventStore[E] {
+trait AsyncEventStore[E, A] {
 
-  def persistEvents(events: List[E]): Future[CommandResult]
+  def persistEvents(events: List[E], transactionScopeVersion: Map[A, Long]): Future[CommandResult]
 
 }
 
@@ -85,24 +86,53 @@ trait AsyncEventHandlingModule[C, E, S] {
 
 trait AsyncEventCommandHandler[C] {
 
-  def execute(command: C): Future[CommandResult]
+  def execute(command: C): Future[CommandResultConfirmed]
 
 }
 
-trait DomainLogicAsyncEventCommandHandler[C, E, S] extends AsyncEventCommandHandler[C] {
+trait DomainLogicAsyncEventCommandHandler[C, E, A, S] extends AsyncEventCommandHandler[C] {
 
-  protected def logic: DomainLogic[C, E, S]
+  protected def logic: DomainLogic[C, E, A, S]
 
-  protected def store: AsyncEventStore[E]
+  protected def store: AsyncEventStore[E, A]
 
-  protected def atomicProjection: AtomicEventStoreProjection[S]
+  protected def atomicProjection: VersionedEventStoreProjection[A, S]
+
+  protected def transactionScopeCalculator: CommandToTransactionScope[C, A, S]
 
   implicit def executionContext: ExecutionContext
 
-  private def applyCommand(command: C) = Future.successful(logic.executeCommand(command)(atomicProjection.projection()))
+  private def applyCommand(command: C, transactionState: VersionedProjection[A, S]) =
+    Future.successful(logic.executeCommand(command, transactionState.transactionScopeVersion)(transactionState.projection))
 
-  final def execute(command: C): Future[CommandResult] = (for {
-    events <- EitherT(applyCommand(command))
-    confirmation <- EitherT(store.persistEvents(events))
-  } yield confirmation).run
+  private def calculateTransactionScopeVersion(transactionScope: Set[A]): EventSourceCommandFailure \/ VersionedProjection[A, S] =
+    \/-(atomicProjection.projection(transactionScope))
+
+  final def execute(command: C): Future[CommandResultConfirmed] = {
+    def singleTry(): Future[CommandResult] = {
+      (for {
+        transactionScope <- EitherT(Future.successful(transactionScopeCalculator.calculateTransactionScope(command, atomicProjection.lastSnapshot())))
+        versionedProjection <- EitherT(Future.successful(calculateTransactionScopeVersion(transactionScope)))
+        events <- EitherT(applyCommand(command, versionedProjection))
+        confirmation <- EitherT(store.persistEvents(events, versionedProjection.transactionScopeVersion))
+      } yield confirmation).run
+    }
+    val p = Promise[CommandResultConfirmed]()
+
+    //TODO change to Task and use trampoline
+    def executionLoop() {
+      singleTry() onComplete {
+        case util.Failure(exception) => p.failure(exception)
+        case util.Success(value) => value match {
+          case r@ \/-(b) => p.complete(util.Success(r))
+          case -\/(a) => a match {
+            case EventSourceCommandFailed(error) => p.complete(util.Success(-\/(EventSourceCommandFailed(error))))
+            case EventSourceCommandRollback() => executionLoop()
+          }
+        }
+      }
+    }
+    executionLoop()
+    p.future
+  }
 }

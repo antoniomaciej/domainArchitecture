@@ -20,10 +20,13 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ *
  */
 
 package eu.pmsoft.domain.model.security
 
+import eu.pmsoft.domain.model.security.roles._
 import eu.pmsoft.domain.model.{AtomicEventStoreProjection, CommandGenerator}
 import org.scalacheck.Gen
 import org.scalacheck.Gen._
@@ -57,14 +60,14 @@ CommandGenerator[RoleBasedAuthorizationModelCommand] {
 
   //Generators that depend on the model state as provided by the query api
   lazy val genExistingRoleId = Gen.wrap(
-    Gen.oneOf(state.projection().allRoleId)
+    Gen.oneOf(state.lastSnapshot().allRoleId)
   )
   lazy val genExistingPermissionId = Gen.wrap(
-    Gen.oneOf(state.projection().allPermissionID)
+    Gen.oneOf(state.lastSnapshot().allPermissionID)
   )
 
   def genExistingPermissionFromRole(roleID: RoleID): Gen[PermissionID] = Gen.wrap(
-    Gen.oneOf(state.projection().getPermissionsForRole(roleID).toSeq)
+    Gen.oneOf(state.lastSnapshot().getPermissionsForRole(roleID).toSeq)
   )
 
   private val minimumTextLen = 5

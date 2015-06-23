@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015 Pawe? Cesar Sanjuan Szklarz
+ * Copyright (c) 2015 Paweł Cesar Sanjuan Szklarz
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,21 +20,49 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ *
  */
 
 package eu.pmsoft.domain.model.security.password.reset
 
+import eu.pmsoft.domain.model.user.registry.{UserPassword, UserID}
 import eu.pmsoft.domain.model.{EventSourceCommandError, EventSourceModelError}
-import eu.pmsoft.domain.model.userRegistry.{UserID, UserPassword}
 
 object PasswordResetModel {
 
-  val invalidSessionToken = EventSourceModelError("invalid session token", EventSourceCommandError(100L))
-  val invalidTokenPair = EventSourceModelError("invalid tokens pair", EventSourceCommandError(101L))
-  val invalidPassword = EventSourceModelError("invalid password", EventSourceCommandError(102L))
+  val invalidSessionTokenErrorCode = 100L
+  val invalidSessionToken = EventSourceModelError("invalid session token",
+    EventSourceCommandError(invalidSessionTokenErrorCode))
+
+  val invalidTokenPairErrorCode = 101L
+  val invalidTokenPair = EventSourceModelError("invalid tokens pair",
+    EventSourceCommandError(invalidTokenPairErrorCode))
+
+  val invalidPasswordErrorCode = 102L
+  val invalidPassword = EventSourceModelError("invalid password",
+    EventSourceCommandError(invalidPasswordErrorCode))
+
+  val invalidPasswordResetTokenErrorCode = 103L
+  val invalidPasswordResetToken = EventSourceModelError("invalid password reset token",
+    EventSourceCommandError(invalidPasswordResetTokenErrorCode))
+
+  val notFoundPasswordResetTokenErrorCode = 104L
+  val notFoundPasswordResetToken = EventSourceModelError("password token for usedId not found during process cancellation",
+    EventSourceCommandError(notFoundPasswordResetTokenErrorCode))
+
+
+  val criticalUserIdNotFoundInTransactionScopeErrorCode = 110L
+  val criticalUserIdNotFoundInTransactionScope = EventSourceModelError("Critical: UserID can not by found in transaction scope",
+    EventSourceCommandError(criticalUserIdNotFoundInTransactionScopeErrorCode))
+
+  val criticalTwoUserIdInTransactionScopeErrorCode = 111L
+  val criticalTwoUserIdInTransactionScope = EventSourceModelError("Critical: UserID can not by found in transaction scope",
+    EventSourceCommandError(criticalTwoUserIdInTransactionScopeErrorCode))
+
 
 }
-
+//model
 case class PasswordResetFlowStatus(userId: UserID,
                                    sessionToken: SessionToken,
                                    passwordResetToken: PasswordResetToken)
@@ -44,7 +72,10 @@ case class SessionToken(val token: String) extends AnyVal
 
 case class PasswordResetToken(val token: String) extends AnyVal
 
-
+//aggregates
+sealed trait PasswordResetAggregate
+case class UserIdFlowAggregate(userID: UserID) extends PasswordResetAggregate
+//commands
 sealed trait PasswordResetModelCommand
 
 case class InitializePasswordResetFlow(userId: UserID,
@@ -59,7 +90,7 @@ case class ConfirmPasswordResetFlow(sessionToken: SessionToken,
                                     newPassword: UserPassword
                                      ) extends PasswordResetModelCommand
 
-
+//events
 sealed trait PasswordResetModelEvent
 
 case class PasswordResetFlowCreated(userId: UserID,
