@@ -30,7 +30,8 @@ import eu.pmsoft.domain.model.EventSourceDataModel.CommandResult
 import eu.pmsoft.domain.model._
 import eu.pmsoft.domain.util.atom.Atomic
 
-import scala.concurrent.Future
+import scala.collection.concurrent.TrieMap
+import scala.concurrent.{Future, Promise}
 import scalaz.{-\/, \/, \/-}
 
 
@@ -41,6 +42,7 @@ abstract class AbstractAtomicEventStoreWithProjectionInMemory[E, A, S] extends A
   def buildInitialState(): S
 
   def projectSingleEvent(state: S, event: E): S
+
 
   override def persistEvents(events: List[E], transactionScopeVersion: Map[A, Long]): Future[CommandResult] = {
     def checkIfStateMatchTransactionScopeVersion(state: AtomicEventStoreState[E, A, S]):
@@ -57,8 +59,10 @@ abstract class AbstractAtomicEventStoreWithProjectionInMemory[E, A, S] extends A
       val updatedAggregatesVersion = state.aggregatesVersion ++ (transactionScopeVersion mapValues (_ + 1))
       AtomicEventStoreState(updatedStateProjection, updatedEventHistory, updatedAggregatesVersion)
     }
+    val afterUpdate = inMemoryStore.updateAndGetWithCondition(updateState, checkIfStateMatchTransactionScopeVersion)
+    afterUpdate.map(triggerDelayedProjections _)
     Future.successful(
-      inMemoryStore.updateAndGetWithCondition(updateState, checkIfStateMatchTransactionScopeVersion).map { state =>
+      afterUpdate.map { state =>
         EventSourceCommandConfirmation(EventStoreVersion(state.eventHistory.length))
       }
     )
@@ -66,14 +70,38 @@ abstract class AbstractAtomicEventStoreWithProjectionInMemory[E, A, S] extends A
 
   override def lastSnapshot(): S = inMemoryStore().state
 
+  private val futureProjections = TrieMap[EventStoreVersion, Promise[S]]()
+
+  private def triggerDelayedProjections(state: AtomicEventStoreState[E, A, S]) = {
+    futureProjections.filterKeys {
+      _.storeVersion <= state.eventHistory.size
+    } foreach { pair =>
+      pair._2.trySuccess(state.state)
+    }
+    val toRemove = futureProjections.filter( _._2.isCompleted)
+    toRemove.foreach {
+      case (key,promise) => futureProjections.remove(key,promise)
+    }
+  }
+
+  private def waitAsyncForFutureProjection(storeVersion: EventStoreVersion): Future[S] = {
+    val promise = Promise[S]()
+    val futureProjection = futureProjections.putIfAbsent(storeVersion, promise) match {
+      case Some(oldPromise) => oldPromise.future
+      case None => promise.future
+    }
+    // it may be the case, that between the check on atLeastOn and insertion of the promise the value of the state changed
+    // to a correct storeVersion, so trigger a additional check here
+    triggerDelayedProjections(inMemoryStore())
+    futureProjection
+  }
 
   override def atLeastOn(storeVersion: EventStoreVersion): Future[S] = {
     val currState = inMemoryStore()
     if (currState.eventHistory.size >= storeVersion.storeVersion) {
       Future.successful(currState.state)
     } else {
-      // TODO promise and trigger after state update
-      ???
+      waitAsyncForFutureProjection(storeVersion)
     }
   }
 

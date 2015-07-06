@@ -29,7 +29,7 @@ package eu.pmsoft.domain.inmemory
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{CountDownLatch, Executor, Executors, TimeUnit}
 
-import eu.pmsoft.domain.model.{EventSourceCommandFailed, EventSourceCommandRollback}
+import eu.pmsoft.domain.model.{EventSourceCommandFailed, EventSourceCommandRollback, EventStoreVersion}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
@@ -39,6 +39,41 @@ import scala.language.postfixOps
 import scalaz.{-\/, \/-}
 
 class AbstractAtomicEventStoreWithProjectionInMemoryTest extends FlatSpec with Matchers with PropertyChecks with ScalaFutures with DisjunctionMatchers {
+
+  it should "provide projections on the future" in {
+
+    //given a event store that is a OrderedEventStoreProjector
+    val testEventStoreInMemory = new NoOpEventStoreInMemory()
+    //and a version number to extract
+    val versionNumber = 4L
+    val versionToExtract = EventStoreVersion(versionNumber)
+    //and two projections extracted with atLeastOn
+    val futureStateOne = testEventStoreInMemory.atLeastOn(versionToExtract)
+    val futureStateTwo = testEventStoreInMemory.atLeastOn(versionToExtract)
+
+    //when events are added
+    def addOneEvent(eventNr: Int): Unit = {
+      val transactionScope = testEventStoreInMemory.projection(Set(TestAggregate(1)))
+      testEventStoreInMemory.persistEvents(List(TestEvent(eventNr)), transactionScope.transactionScopeVersion).futureValue shouldBe \/-
+    }
+    addOneEvent(0)
+    addOneEvent(1)
+    addOneEvent(2)
+
+    //then the projections are not retrieved before the event store version is match
+    futureStateOne.isCompleted shouldBe false
+    futureStateTwo.isCompleted shouldBe false
+    //and they complete when the version is match
+    addOneEvent(3)
+    futureStateOne.futureValue.events shouldBe List(TestEvent(3), TestEvent(2), TestEvent(1), TestEvent(0))
+    //and future events do not change the projections retrieved
+    addOneEvent(4)
+    futureStateTwo.futureValue.events shouldBe List(TestEvent(3), TestEvent(2), TestEvent(1), TestEvent(0))
+    //but if in the future the atLeastOn operations is used with a version number that is in the pass
+    val afterAll = testEventStoreInMemory.atLeastOn(versionToExtract)
+    //then the last version is returned
+    afterAll.futureValue.events shouldBe List(TestEvent(4), TestEvent(3), TestEvent(2), TestEvent(1), TestEvent(0))
+  }
 
   it should "detect concurrent execution of updates in the same transaction scope" in {
     //given

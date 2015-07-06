@@ -42,6 +42,7 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
     //given a mocked domain logic that returns rollback the first 3 times
     val eventStore = new AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] {
       val counter = new AtomicInteger(0)
+
       override def persistEvents(events: List[RollbackTestEvent], transactionScopeVersion: Map[RollbackTestAggregateId, Long]): Future[CommandResult] = {
         if (counter.getAndAdd(1) > 3) {
           Future.successful(scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion(0L))))
@@ -61,6 +62,7 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
     //given a mocked domain logic that returns rollback the first 3 times
     val eventStore = new AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] {
       val counter = new AtomicInteger(0)
+
       override def persistEvents(events: List[RollbackTestEvent], transactionScopeVersion: Map[RollbackTestAggregateId, Long]): Future[CommandResult] =
         Future.failed(new IllegalStateException("test error"))
     }
@@ -71,34 +73,36 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
     result shouldBe a[IllegalStateException]
   }
 
-  private def createMockedDomainLogicForRollback(eventStore : AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId]) = new DomainLogicAsyncEventCommandHandler[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] {
-    override protected def logic: DomainLogic[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] =
-      new DomainLogic[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] {
-        override def executeCommand(command: RollbackTestCommand, transactionScope: Map[RollbackTestAggregateId, Long])(implicit state: RollbackTestState): CommandToEventsResult[RollbackTestEvent] =
-          scalaz.\/-(List(RollbackTestEvent()))
-      }
+  private def createMockedDomainLogicForRollback(eventStore: AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId]) =
+    new DomainLogicAsyncEventCommandHandler[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] {
+      override protected def logic: DomainLogic[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] =
+        new DomainLogic[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] {
+          override def executeCommand(command: RollbackTestCommand, transactionScope: Map[RollbackTestAggregateId, Long])
+                                     (implicit state: RollbackTestState): CommandToEventsResult[RollbackTestEvent] =
+            scalaz.\/-(List(RollbackTestEvent()))
+        }
 
-    override protected def atomicProjection: VersionedEventStoreProjection[RollbackTestAggregateId, RollbackTestState] =
-      new VersionedEventStoreProjection[RollbackTestAggregateId, RollbackTestState] {
-        override def projection(transactionScope: Set[RollbackTestAggregateId]): VersionedProjection[RollbackTestAggregateId, RollbackTestState] =
-          VersionedProjection(Map(), RollbackTestState())
+      override protected def atomicProjection: VersionedEventStoreProjection[RollbackTestAggregateId, RollbackTestState] =
+        new VersionedEventStoreProjection[RollbackTestAggregateId, RollbackTestState] {
+          override def projection(transactionScope: Set[RollbackTestAggregateId]): VersionedProjection[RollbackTestAggregateId, RollbackTestState] =
+            VersionedProjection(Map(), RollbackTestState())
 
-        override def lastSnapshot(): RollbackTestState = RollbackTestState()
+          override def lastSnapshot(): RollbackTestState = RollbackTestState()
 
-        override def atLeastOn(storeVersion: EventStoreVersion): Future[RollbackTestState] = ???
-      }
+          override def atLeastOn(storeVersion: EventStoreVersion): Future[RollbackTestState] = ???
+        }
 
-    override implicit def executionContext: ExecutionContext = ExecutionContext.global
+      override implicit def executionContext: ExecutionContext = ExecutionContext.global
 
-    override protected lazy val store: AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] = eventStore
+      override protected lazy val store: AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] = eventStore
 
 
-    override protected def transactionScopeCalculator: CommandToTransactionScope[RollbackTestCommand, RollbackTestAggregateId, RollbackTestState] =
-      new CommandToTransactionScope[RollbackTestCommand, RollbackTestAggregateId, RollbackTestState] {
-        override def calculateTransactionScope(command: RollbackTestCommand, state: RollbackTestState): CommandToAggregateResult[RollbackTestAggregateId] =
-          scalaz.\/-(Set(RollbackTestAggregateId()))
-      }
-  }
+      override protected def transactionScopeCalculator: CommandToTransactionScope[RollbackTestCommand, RollbackTestAggregateId, RollbackTestState] =
+        new CommandToTransactionScope[RollbackTestCommand, RollbackTestAggregateId, RollbackTestState] {
+          override def calculateTransactionScope(command: RollbackTestCommand, state: RollbackTestState): CommandToAggregateResult[RollbackTestAggregateId] =
+            scalaz.\/-(Set(RollbackTestAggregateId()))
+        }
+    }
 
 
 }
