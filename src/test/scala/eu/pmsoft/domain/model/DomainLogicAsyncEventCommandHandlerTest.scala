@@ -31,7 +31,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import eu.pmsoft.domain.model.EventSourceDataModel.{CommandResult, CommandToAggregateResult, CommandToEventsResult}
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{Seconds, Span}
 import org.typelevel.scalatest.DisjunctionMatchers
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -40,18 +39,39 @@ class DomainLogicAsyncEventCommandHandlerTest extends FlatSpec with Matchers
 with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
 
   it should "retry to execute commands when result is rollback" in {
-
     //given a mocked domain logic that returns rollback the first 3 times
-    val mockedDomainLogic = createMockedDomainLogicForRollback()
+    val eventStore = new AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] {
+      val counter = new AtomicInteger(0)
+      override def persistEvents(events: List[RollbackTestEvent], transactionScopeVersion: Map[RollbackTestAggregateId, Long]): Future[CommandResult] = {
+        if (counter.getAndAdd(1) > 3) {
+          Future.successful(scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion(0L))))
+        } else {
+          Future.successful(scalaz.-\/(EventSourceCommandRollback()))
+        }
+      }
+    }
+    val mockedDomainLogic = createMockedDomainLogicForRollback(eventStore)
     //when a command is executed
     val result = mockedDomainLogic.execute(RollbackTestCommand()).futureValue
     //then the command success because of the re-try implementation
     result shouldBe \/-
-
-
   }
 
-  private def createMockedDomainLogicForRollback() = new DomainLogicAsyncEventCommandHandler[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] {
+  it should "Propogate errors from event store to the commands" in {
+    //given a mocked domain logic that returns rollback the first 3 times
+    val eventStore = new AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] {
+      val counter = new AtomicInteger(0)
+      override def persistEvents(events: List[RollbackTestEvent], transactionScopeVersion: Map[RollbackTestAggregateId, Long]): Future[CommandResult] =
+        Future.failed(new IllegalStateException("test error"))
+    }
+    val mockedDomainLogic = createMockedDomainLogicForRollback(eventStore)
+    //when a command is executed
+    val result = mockedDomainLogic.execute(RollbackTestCommand()).failed.futureValue
+    //then the command success because of the re-try implementation
+    result shouldBe a[IllegalStateException]
+  }
+
+  private def createMockedDomainLogicForRollback(eventStore : AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId]) = new DomainLogicAsyncEventCommandHandler[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] {
     override protected def logic: DomainLogic[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] =
       new DomainLogic[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] {
         override def executeCommand(command: RollbackTestCommand, transactionScope: Map[RollbackTestAggregateId, Long])(implicit state: RollbackTestState): CommandToEventsResult[RollbackTestEvent] =
@@ -70,19 +90,8 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
 
     override implicit def executionContext: ExecutionContext = ExecutionContext.global
 
-    override protected lazy val store: AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] =
-      new AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] {
+    override protected lazy val store: AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] = eventStore
 
-        val counter = new AtomicInteger(0)
-
-        override def persistEvents(events: List[RollbackTestEvent], transactionScopeVersion: Map[RollbackTestAggregateId, Long]): Future[CommandResult] = {
-          if (counter.getAndAdd(1) > 3) {
-            Future.successful(scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion(0L))))
-          } else {
-            Future.successful(scalaz.-\/(EventSourceCommandRollback()))
-          }
-        }
-      }
 
     override protected def transactionScopeCalculator: CommandToTransactionScope[RollbackTestCommand, RollbackTestAggregateId, RollbackTestState] =
       new CommandToTransactionScope[RollbackTestCommand, RollbackTestAggregateId, RollbackTestState] {

@@ -119,7 +119,6 @@ trait DomainLogicAsyncEventCommandHandler[C, E, A, S] extends AsyncEventCommandH
     }
     val p = Promise[CommandResultConfirmed]()
 
-    //TODO change to Task and use trampoline
     def executionLoop() {
       singleTry() onComplete {
         case util.Failure(exception) => p.failure(exception)
