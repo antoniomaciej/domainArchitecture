@@ -31,6 +31,8 @@ import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.typelevel.scalatest.DisjunctionMatchers
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 class MicroComponentRegistryTest extends FlatSpec with Matchers
 with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
 

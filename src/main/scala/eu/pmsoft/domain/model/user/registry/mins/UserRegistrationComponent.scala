@@ -27,12 +27,11 @@
 package eu.pmsoft.domain.model.user.registry.mins
 
 import com.softwaremill.macwire._
-import eu.pmsoft.domain.minstance.{ApiVersion, MicroComponent, MicroComponentContract, MicroComponentModel}
+import eu.pmsoft.domain.minstance._
 import eu.pmsoft.domain.model.EventSourceDataModel._
 import eu.pmsoft.domain.model.user.registry.UserRegistrationApplication
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 trait UserRegistrationComponent extends MicroComponent[UserRegistrationApi] {
   override def providedContact: MicroComponentContract[UserRegistrationApi] =
@@ -41,6 +40,7 @@ trait UserRegistrationComponent extends MicroComponent[UserRegistrationApi] {
   def applicationModule: UserRegistrationApplication
 
   override lazy val app: Future[UserRegistrationApi] = Future.successful(new UserRegistrationInternalInjector {
+
     override lazy val module: UserRegistrationApplication = applicationModule
   }.app)
 }
@@ -48,30 +48,19 @@ trait UserRegistrationComponent extends MicroComponent[UserRegistrationApi] {
 trait UserRegistrationInternalInjector {
   def module: UserRegistrationApplication
 
+  private implicit def executionContextInternal: ExecutionContext = module.executionContext
+
   lazy val commandHandler = module.commandHandler
 
   lazy val projection = module.applicationContextProvider.contextStateAtomicProjection
   lazy val searchUserHandler = wire[SearchForUserIdHandler]
   lazy val userRegistrationHandler = wire[UserRegistrationHandler]
-  lazy val app = wire[UserRegistrationApiForState]
+  lazy val app = wire[UserRegistrationRequestDispatcher]
 
 }
 
-object UserRegistrationApi {
-  val version = ApiVersion(0, 0, 1)
-}
-
-trait UserRegistrationApi {
-
-  def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]]
-
-  def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]]
-
-}
-
-
-class UserRegistrationApiForState(val searchForUserIdHandler: SearchForUserIdHandler,
-                                  val userRegistrationHandler: UserRegistrationHandler) extends UserRegistrationApi {
+class UserRegistrationRequestDispatcher(val searchForUserIdHandler: SearchForUserIdHandler,
+                                        val userRegistrationHandler: UserRegistrationHandler) extends UserRegistrationApi {
 
   override def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]] =
     searchForUserIdHandler.handle(searchForUser)

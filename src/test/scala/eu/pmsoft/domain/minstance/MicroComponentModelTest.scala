@@ -32,6 +32,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.typelevel.scalatest.DisjunctionMatchers
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * Test to try to find a dsl definition for components with dependencies.

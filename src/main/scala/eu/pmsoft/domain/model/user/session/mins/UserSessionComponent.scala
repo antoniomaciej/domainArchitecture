@@ -33,8 +33,7 @@ import eu.pmsoft.domain.model.OrderedEventStoreProjector
 import eu.pmsoft.domain.model.user.registry.mins.UserRegistrationApi
 import eu.pmsoft.domain.model.user.session.{UserSessionApplication, UserSessionSSOState}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 trait UserSessionComponent extends MicroComponent[UserSessionApi] {
   override def providedContact: MicroComponentContract[UserSessionApi] =
@@ -44,9 +43,12 @@ trait UserSessionComponent extends MicroComponent[UserSessionApi] {
 
   def applicationModule: UserSessionApplication
 
+  private implicit lazy val executionContext = applicationModule.executionContext
+
   override lazy val app: Future[UserSessionApi] = for {
     userRegistrationRef <- userRegistrationService
   } yield new UserSessionInternalInjector {
+
       override lazy val userRegistration: UserRegistrationApi = userRegistrationRef
 
       override lazy val module: UserSessionApplication = applicationModule
@@ -58,6 +60,7 @@ trait UserSessionInternalInjector {
   def userRegistration: UserRegistrationApi
 
   def module: UserSessionApplication
+  private implicit def internalExecutionContext : ExecutionContext = module.executionContext
 
   lazy val commandHandler = module.commandHandler
   lazy val projection: OrderedEventStoreProjector[UserSessionSSOState] = module.applicationContextProvider.contextStateAtomicProjection
@@ -66,15 +69,6 @@ trait UserSessionInternalInjector {
 
 }
 
-trait UserSessionApi {
-
-  def loginUser(loginRequest: UserLoginRequest): Future[RequestResult[UserLoginResponse]]
-
-}
-
-object UserSessionApi {
-  val version = ApiVersion(0, 0, 1)
-}
 
 class UserServiceComponentInstance(val loginRequestHandler: LoginRequestHandler) extends UserSessionApi {
   override def loginUser(loginRequest: UserLoginRequest): Future[RequestResult[UserLoginResponse]] =

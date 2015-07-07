@@ -83,6 +83,7 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
     }
 
     val userRegistration = new UserRegistrationComponent {
+
       override lazy val applicationModule: UserRegistrationApplication = new UserRegistrationInMemoryApplication()
     }
 

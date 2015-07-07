@@ -28,13 +28,12 @@ package eu.pmsoft.domain.minstance
 
 import eu.pmsoft.domain.util.atom.Atomic
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scalaz.{-\/, \/, \/-}
 
 object MicroComponentRegistry {
 
-  def create(): MicroComponentRegistry = new LocalMicroComponentRegistry()
+  def create()(implicit executionContext: ExecutionContext): MicroComponentRegistry = new LocalMicroComponentRegistry()
 
 }
 
@@ -61,7 +60,7 @@ trait MicroComponentRegistry {
   def initializeInstances(): Future[RegistrationError \/ InMemoryComponentRegistry]
 }
 
-class LocalMicroComponentRegistry extends MicroComponentRegistry {
+class LocalMicroComponentRegistry(implicit val executionContext: ExecutionContext) extends MicroComponentRegistry {
 
   private val stateRef = Atomic(InMemoryComponentRegistry())
 
