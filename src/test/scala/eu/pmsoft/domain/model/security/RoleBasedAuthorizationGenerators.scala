@@ -39,7 +39,6 @@ CommandGenerator[RoleBasedAuthorizationModelCommand] {
     (2, genCreateRole),
     (3, genCreatePermission),
     (2, genDeletePermission),
-    (2, genUpdatePermissionName),
     (2, genUpdatePermissionDescription),
     (2, genUpdateRoleName),
     (10, genAddPermissionToRole),
@@ -65,9 +64,12 @@ CommandGenerator[RoleBasedAuthorizationModelCommand] {
   lazy val genExistingPermissionId = Gen.wrap(
     Gen.oneOf(state.lastSnapshot().allPermissionID)
   )
+  lazy val genExistingPermissionSetId = Gen.wrap(
+    Gen.someOf(state.lastSnapshot().allPermissionID).map(_.toSet)
+  )
 
-  def genExistingPermissionFromRole(roleID: RoleID): Gen[PermissionID] = Gen.wrap(
-    Gen.oneOf(state.lastSnapshot().getPermissionsForRole(roleID).toSeq)
+  def genExistingPermissionSetFromRole(roleID: RoleID): Gen[Set[PermissionID]] = Gen.wrap(
+    Gen.someOf(state.lastSnapshot().getPermissionsForRole(roleID)).map( _.toSet)
   )
 
   private val minimumTextLen = 5
@@ -97,13 +99,13 @@ CommandGenerator[RoleBasedAuthorizationModelCommand] {
 
   lazy val genAddPermissionToRole = for {
     roleID <- genExistingRoleId
-    permissionId <- genExistingPermissionId
-  } yield AddPermissionToRole(permissionId, roleID)
+    permissionSetId <- genExistingPermissionSetId
+  } yield AddPermissionsToRole(permissionSetId, roleID)
 
   lazy val genDeletePermissionToRole = for {
     roleID <- genExistingRoleId
-    permissionId <- genExistingPermissionFromRole(roleID)
-  } yield DeletePermissionFromRole(permissionId, roleID)
+    permissionSetId <- genExistingPermissionSetFromRole(roleID)
+  } yield DeletePermissionsFromRole(permissionSetId, roleID)
 
 
   lazy val genUpdateRoleName = for {
@@ -115,10 +117,5 @@ CommandGenerator[RoleBasedAuthorizationModelCommand] {
     permissionId <- genExistingPermissionId
     description <- noEmptyTextString
   } yield UpdatePermissionDescription(permissionId, description)
-
-  lazy val genUpdatePermissionName = for {
-    permissionId <- genExistingPermissionId
-    name <- noEmptyTextString
-  } yield UpdatePermissionName(permissionId, name)
 
 }

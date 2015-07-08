@@ -49,11 +49,13 @@ trait EventSourceProjection[E] {
   def lastSnapshotVersion(): EventStoreVersion
 }
 
-trait AtomicEventStoreProjection[+P] {
+trait AtomicEventStoreProjection[+P] extends OrderedEventStoreProjector[P]{
+  //TODO: change to future
   def lastSnapshot(): P
 }
 
-trait VersionedEventStoreProjection[A, +P] extends AtomicEventStoreProjection[P] with OrderedEventStoreProjector[P] {
+trait VersionedEventStoreProjection[A, +P] extends AtomicEventStoreProjection[P] {
+  //TODO: change to future
   def projection(transactionScope: Set[A]): VersionedProjection[A, P]
 }
 

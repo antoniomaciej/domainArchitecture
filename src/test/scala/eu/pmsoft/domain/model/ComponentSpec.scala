@@ -24,22 +24,18 @@
  *
  */
 
-package eu.pmsoft.domain.model.user.registry.mins
+package eu.pmsoft.domain.model
 
-import eu.pmsoft.domain.minstance.ApiVersion
-import eu.pmsoft.domain.model.EventSourceDataModel._
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.time.{Millis, Seconds, Span}
+import org.scalatest.{AppendedClues, FlatSpec, Matchers, ParallelTestExecution}
+import org.typelevel.scalatest.DisjunctionMatchers
 
-import scala.concurrent.Future
+abstract class ComponentSpec extends FlatSpec with Matchers
+with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
 
-
-object UserRegistrationApi {
-  val version = ApiVersion(0, 0, 1)
-}
-
-trait UserRegistrationApi {
-
-  def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]]
-
-  def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]]
-
+  val longInterval = 150
+  val longTimeout = 4
+  implicit val defaultPatience =
+    PatienceConfig(timeout = Span(longTimeout, Seconds), interval = Span(longInterval, Millis))
 }

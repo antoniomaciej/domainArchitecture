@@ -46,6 +46,12 @@ object RoleBasedAuthorizationModel {
   val notExistingPermissionIDErrorCode = 2004L
   val notExistingPermissionID = EventSourceModelError("permissionID do not exist",
     EventSourceCommandError(notExistingPermissionIDErrorCode))
+
+  val invalidNameErrorCode = 2005L
+  val invalidName = EventSourceModelError("invalid name",
+    EventSourceCommandError(invalidNameErrorCode))
+
+
 }
 
 case class RoleID(val id: Long) extends AnyVal
@@ -78,16 +84,14 @@ case class UpdateRoleName(roleID: RoleID, roleName: String) extends RoleBasedAut
 //Permission
 case class CreatePermission(code: String, description: String) extends RoleBasedAuthorizationModelCommand
 
-case class UpdatePermissionName(permissionId: PermissionID, code: String) extends RoleBasedAuthorizationModelCommand
-
 case class UpdatePermissionDescription(permissionId: PermissionID, description: String) extends RoleBasedAuthorizationModelCommand
 
 case class DeletePermission(permissionId: PermissionID) extends RoleBasedAuthorizationModelCommand
 
 //Permission x Roles
-case class AddPermissionToRole(permissionId: PermissionID, roleID: RoleID) extends RoleBasedAuthorizationModelCommand
+case class AddPermissionsToRole(permissionIdSet: Set[PermissionID], roleID: RoleID) extends RoleBasedAuthorizationModelCommand
 
-case class DeletePermissionFromRole(permissionId: PermissionID, roleID: RoleID) extends RoleBasedAuthorizationModelCommand
+case class DeletePermissionsFromRole(permissionIdSet: Set[PermissionID], roleID: RoleID) extends RoleBasedAuthorizationModelCommand
 
 // RoleBasedAuthorizationModel events
 
@@ -102,8 +106,6 @@ case class AccessRoleDeleted(roleID: RoleID) extends RoleBasedAuthorizationEvent
 
 //Permission
 case class AccessPermissionCreated(permissionId: PermissionID, name: String, description: String) extends RoleBasedAuthorizationEvent
-
-case class AccessPermissionNameUpdated(permissionId: PermissionID, name: String) extends RoleBasedAuthorizationEvent
 
 case class AccessPermissionDescriptionUpdated(permissionId: PermissionID, description: String) extends RoleBasedAuthorizationEvent
 

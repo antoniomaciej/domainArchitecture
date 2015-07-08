@@ -29,14 +29,11 @@ package eu.pmsoft.domain.model
 import java.util.concurrent.atomic.AtomicInteger
 
 import eu.pmsoft.domain.model.EventSourceDataModel.{CommandResult, CommandToAggregateResult, CommandToEventsResult}
-import org.scalatest._
-import org.scalatest.concurrent.ScalaFutures
-import org.typelevel.scalatest.DisjunctionMatchers
+import eu.pmsoft.domain.test.util.Mocked
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class DomainLogicAsyncEventCommandHandlerTest extends FlatSpec with Matchers
-with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
+class DomainLogicAsyncEventCommandHandlerTest extends ComponentSpec {
 
   it should "retry to execute commands when result is rollback" in {
     //given a mocked domain logic that returns rollback the first 3 times
@@ -58,7 +55,7 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
     result shouldBe \/-
   }
 
-  it should "Propogate errors from event store to the commands" in {
+  it should "Propagate errors from event store to the commands" in {
     //given a mocked domain logic that returns rollback the first 3 times
     val eventStore = new AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] {
       val counter = new AtomicInteger(0)
@@ -89,7 +86,7 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
 
           override def lastSnapshot(): RollbackTestState = RollbackTestState()
 
-          override def atLeastOn(storeVersion: EventStoreVersion): Future[RollbackTestState] = ???
+          override def atLeastOn(storeVersion: EventStoreVersion): Future[RollbackTestState] = Mocked.shouldNotBeCalled
         }
 
       override implicit def executionContext: ExecutionContext = ExecutionContext.global

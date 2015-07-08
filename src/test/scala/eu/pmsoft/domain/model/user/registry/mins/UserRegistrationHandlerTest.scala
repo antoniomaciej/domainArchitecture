@@ -30,6 +30,7 @@ import eu.pmsoft.domain.model.EventSourceDataModel._
 import eu.pmsoft.domain.model._
 import eu.pmsoft.domain.model.user.registry.UserRegistrationApplicationDefinitions._
 import eu.pmsoft.domain.model.user.registry._
+import eu.pmsoft.domain.test.util.Mocked
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.typelevel.scalatest.DisjunctionMatchers
@@ -43,15 +44,15 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
     val registrationStateMock = new OrderedEventStoreProjector[UserRegistrationState] {
       override def atLeastOn(storeVersion: EventStoreVersion): Future[UserRegistrationState] =
         Future.successful(new UserRegistrationState {
-          override def uidExists(uid: UserID): Boolean = ???
+          override def uidExists(uid: UserID): Boolean = Mocked.shouldNotBeCalled
 
           override def getUserByLogin(login: UserLogin): Option[User] = None
 
-          override def getAllUid: Stream[UserID] = ???
+          override def getAllUid: Stream[UserID] = Mocked.shouldNotBeCalled
 
-          override def getUserByID(uid: UserID): Option[User] = ???
+          override def getUserByID(uid: UserID): Option[User] = Mocked.shouldNotBeCalled
 
-          override def loginExists(login: UserLogin): Boolean = ???
+          override def loginExists(login: UserLogin): Boolean = Mocked.shouldNotBeCalled
         })
     }
 

@@ -29,24 +29,15 @@ package eu.pmsoft.domain.model.user.session.mins
 import eu.pmsoft.domain.inmemory.user.registry.UserRegistrationInMemoryApplication
 import eu.pmsoft.domain.inmemory.user.session.UserSessionInMemoryApplication
 import eu.pmsoft.domain.minstance.{ApiContract, MicroComponentRegistry}
+import eu.pmsoft.domain.model.ComponentSpec
 import eu.pmsoft.domain.model.user.registry._
 import eu.pmsoft.domain.model.user.registry.mins.{RegisterUserRequest, UserRegistrationApi, UserRegistrationComponent}
 import eu.pmsoft.domain.model.user.session._
-import org.scalatest._
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{Millis, Seconds, Span}
-import org.typelevel.scalatest.DisjunctionMatchers
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class UserSessionComponentTest extends FlatSpec with Matchers
-with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
-
-  val longInterval = 150
-  val longTimeout = 4
-  implicit val defaultPatience =
-    PatienceConfig(timeout = Span(longTimeout, Seconds), interval = Span(longInterval, Millis))
+class UserSessionComponentTest extends ComponentSpec {
 
   it should "create sessions for a registered user" in {
 

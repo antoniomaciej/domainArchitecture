@@ -24,22 +24,20 @@
  *
  */
 
-package eu.pmsoft.domain.model.user.registry.mins
+package eu.pmsoft.domain.model.security.roles.mins
 
-import eu.pmsoft.domain.minstance.ApiVersion
-import eu.pmsoft.domain.model.EventSourceDataModel._
+import eu.pmsoft.domain.model.{EventSourceCommandError, EventSourceModelError}
 
-import scala.concurrent.Future
+object RoleBasedAuthorizationRequestModel {
 
+  val permissionNotFoundAfterInsertErrorCode = 6001L
+  val permissionNotFoundAfterInsert = EventSourceModelError("After a successful insert the permission is not accessible.",
+    EventSourceCommandError(permissionNotFoundAfterInsertErrorCode))
 
-object UserRegistrationApi {
-  val version = ApiVersion(0, 0, 1)
-}
+  val roleNotFoundAfterInsertErrorCode = 6002L
+  val roleNotFoundAfterInsert = EventSourceModelError("After a successful insert the permission is not accessible.",
+    EventSourceCommandError(roleNotFoundAfterInsertErrorCode))
 
-trait UserRegistrationApi {
-
-  def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]]
-
-  def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]]
 
 }
+

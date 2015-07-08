@@ -24,22 +24,11 @@
  *
  */
 
-package eu.pmsoft.domain.model.user.registry.mins
+package eu.pmsoft.domain.model.security.roles.mins
 
-import eu.pmsoft.domain.minstance.ApiVersion
-import eu.pmsoft.domain.model.EventSourceDataModel._
+import eu.pmsoft.domain.model.RequestErrorDomain
 
-import scala.concurrent.Future
+object RoleBasedAuthorizationDefinitions {
 
-
-object UserRegistrationApi {
-  val version = ApiVersion(0, 0, 1)
-}
-
-trait UserRegistrationApi {
-
-  def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]]
-
-  def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]]
-
+  implicit val requestErrorDomain = RequestErrorDomain("RoleBasedAuthorization")
 }

@@ -60,7 +60,7 @@ abstract class AbstractAtomicEventStoreWithProjectionInMemory[E, A, S] extends A
       AtomicEventStoreState(updatedStateProjection, updatedEventHistory, updatedAggregatesVersion)
     }
     val afterUpdate = inMemoryStore.updateAndGetWithCondition(updateState, checkIfStateMatchTransactionScopeVersion)
-    afterUpdate.map(triggerDelayedProjections _)
+    afterUpdate.map(triggerDelayedProjections)
     Future.successful(
       afterUpdate.map { state =>
         EventSourceCommandConfirmation(EventStoreVersion(state.eventHistory.length))

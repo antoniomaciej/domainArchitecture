@@ -38,6 +38,13 @@ GeneratedCommandSpecification[RoleBasedAuthorizationModelCommand, RoleBasedAutho
       result should be(-\/)
     }
   }
+  it should "fail when adding not existing permissions to role" in {
+    val module = createEmptyModule()
+    asyncCommandHandler(module).execute(CreateRole("test")).futureValue shouldBe \/-
+    val roleId = stateProjection(module).lastSnapshot().allRoleId.head
+    asyncCommandHandler(module).execute(AddPermissionsToRole(Set(PermissionID(0L)),roleId)).futureValue shouldBe -\/
+
+  }
   it should "not allow empty permission descriptions" in {
     val module = createEmptyModule()
     whenReady(asyncCommandHandler(module).execute(CreatePermission("name", ""))) { result =>
@@ -60,7 +67,7 @@ GeneratedCommandSpecification[RoleBasedAuthorizationModelCommand, RoleBasedAutho
       firstFailure shouldBe empty withClue ": Failure on warm up commands"
       val permissionId = stateProjection(module).lastSnapshot().allPermissionID.head
       val roleId = stateProjection(module).lastSnapshot().allRoleId.head
-      whenReady(asyncCommandHandler(module).execute(DeletePermissionFromRole(permissionId, roleId))) { result =>
+      whenReady(asyncCommandHandler(module).execute(DeletePermissionsFromRole(Set(permissionId), roleId))) { result =>
         result should be(\/-)
       }
     }
@@ -88,18 +95,25 @@ GeneratedCommandSpecification[RoleBasedAuthorizationModelCommand, RoleBasedAutho
       state.allRoleId
         .map(state.getPermissionsForRole)
         .filter(_.contains(permissionId)) shouldBe empty withClue ": Permission found as part of a role"
-    case AddPermissionToRole(permissionId, roleID) =>
+    case AddPermissionsToRole(permissionSetId, roleID) =>
       withClue(": after add permission to role, the relation do not contains the role") {
-        state.getPermissionsForRole(roleID) should contain(permissionId)
-        assert(state.isPermissionInRole(roleID, permissionId))
+        permissionSetId.foreach( permissionId =>
+          state.getPermissionsForRole(roleID) should contain (permissionId)
+        )
+        permissionSetId.foreach( permissionId =>
+          assert(state.isPermissionInRole(roleID, permissionId))
+        )
       }
-    case DeletePermissionFromRole(permissionId, roleID) =>
+    case DeletePermissionsFromRole(permissionSetId, roleID) =>
       withClue(": after delete of permission to role, the relation is not updated") {
-        state.getPermissionsForRole(roleID) should not contain permissionId
-        assert(!state.isPermissionInRole(roleID, permissionId))
+        permissionSetId.foreach( permissionId =>
+          state.getPermissionsForRole(roleID) should not contain (permissionId)
+        )
+        permissionSetId.foreach( permissionId =>
+          assert(!state.isPermissionInRole(roleID, permissionId))
+        )
+
       }
-    case UpdatePermissionName(permissionId, name) =>
-      state.permissionById(permissionId).get.code should be(name)
     case UpdatePermissionDescription(permissionId, description) =>
       state.permissionById(permissionId).get.description should be(description)
   }

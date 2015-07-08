@@ -28,17 +28,12 @@ package eu.pmsoft.domain.model.user.registry.mins
 
 import eu.pmsoft.domain.inmemory.user.registry.UserRegistrationInMemoryApplication
 import eu.pmsoft.domain.minstance.{ApiContract, MicroComponentRegistry}
+import eu.pmsoft.domain.model.ComponentSpec
 import eu.pmsoft.domain.model.user.registry.{UserLogin, UserPassword, UserRegistrationApplication}
-import org.scalatest._
-import org.scalatest.concurrent.ScalaFutures
-import org.typelevel.scalatest.DisjunctionMatchers
-
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class UserRegistrationComponentTest extends FlatSpec with Matchers
-with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
-
+class UserRegistrationComponentTest extends ComponentSpec {
 
   it should "fail to register a nor valid email login" in {
 

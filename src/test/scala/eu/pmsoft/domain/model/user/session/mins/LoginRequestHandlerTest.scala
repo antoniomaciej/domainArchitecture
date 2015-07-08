@@ -27,30 +27,27 @@
 package eu.pmsoft.domain.model.user.session.mins
 
 import eu.pmsoft.domain.model.EventSourceDataModel._
+import eu.pmsoft.domain.model._
 import eu.pmsoft.domain.model.security.password.reset.SessionToken
 import eu.pmsoft.domain.model.user.registry._
 import eu.pmsoft.domain.model.user.registry.mins._
 import eu.pmsoft.domain.model.user.session.mins.UserSessionApplicationDefinitions._
 import eu.pmsoft.domain.model.user.session.{UserSession, UserSessionCommand, UserSessionModel, UserSessionSSOState}
-import eu.pmsoft.domain.model.{AsyncEventCommandHandler, EventSourceCommandConfirmation, EventStoreVersion, OrderedEventStoreProjector}
-import org.scalatest._
-import org.scalatest.concurrent.ScalaFutures
-import org.typelevel.scalatest.DisjunctionMatchers
+import eu.pmsoft.domain.test.util.Mocked
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class LoginRequestHandlerTest extends FlatSpec with Matchers
-with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
+class LoginRequestHandlerTest extends ComponentSpec {
 
   it should "return a critical error if user is not found after successful registration command" in {
     val userSessionStateMock = new OrderedEventStoreProjector[UserSessionSSOState] {
       override def atLeastOn(storeVersion: EventStoreVersion): Future[UserSessionSSOState] =
         Future.successful(new UserSessionSSOState {
-          override def findAllUserSessions(): Stream[UserSession] = ???
+          override def findAllUserSessions(): Stream[UserSession] = Mocked.shouldNotBeCalled
 
           override def findUserSession(userId: UserID): Option[UserSession] = None
 
-          override def findUserSession(sessionToken: SessionToken): Option[UserSession] = ???
+          override def findUserSession(sessionToken: SessionToken): Option[UserSession] = Mocked.shouldNotBeCalled
         })
     }
 
@@ -64,7 +61,7 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
       override def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]] =
         Future.successful(scalaz.\/-(SearchForUserIdResponse(UserID(0L))))
 
-      override def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]] = ???
+      override def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]] = Mocked.shouldNotBeCalled
     }
 
     val handler = new LoginRequestHandler(userRegistrationMock, commandHandler, userSessionStateMock)(ExecutionContext.global)

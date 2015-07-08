@@ -42,6 +42,8 @@ trait RoleBasedAuthorizationState {
 
   def roleById(roleId: RoleID): Option[AccessRole]
 
+  def roleByName(roleName: String): Option[AccessRole]
+
   def roleIdExists(roleId: RoleID): Boolean
 
   //Permissions
@@ -50,6 +52,8 @@ trait RoleBasedAuthorizationState {
   def permissionIdExists(permissionID: PermissionID): Boolean
 
   def permissionById(permissionID: PermissionID): Option[Permission]
+
+  def permissionByCode(code: String): Option[Permission]
 
   // Permission X Role relation
   def isPermissionInRole(roleId: RoleID, permissionID: PermissionID): Boolean
@@ -72,11 +76,10 @@ final class RoleBaseAuthorizationCommandToTransactionScope
     case DeleteRole(roleID) => \/-(Set(RoleIdAggregate(roleID)))
     case UpdateRoleName(roleID, roleName) => \/-(Set(RoleIdAggregate(roleID), RoleNameAggregate(roleName)))
     case CreatePermission(code, description) => \/-(Set(PermissionCodeAggregate(code)))
-    case UpdatePermissionName(permissionId, code) => \/-(Set(PermissionIdAggregate(permissionId)))
     case UpdatePermissionDescription(permissionId, description) => \/-(Set(PermissionIdAggregate(permissionId)))
     case DeletePermission(permissionId) => \/-(Set(PermissionIdAggregate(permissionId)))
-    case AddPermissionToRole(permissionId, roleID) => \/-(Set(PermissionIdAggregate(permissionId), RoleIdAggregate(roleID)))
-    case DeletePermissionFromRole(permissionId, roleID) => \/-(Set(PermissionIdAggregate(permissionId), RoleIdAggregate(roleID)))
+    case AddPermissionsToRole(permissionIdSet, roleID) => \/-(permissionIdSet.map(PermissionIdAggregate) ++ Set(RoleIdAggregate(roleID)))
+    case DeletePermissionsFromRole(permissionIdSet, roleID) => \/-(permissionIdSet.map(PermissionIdAggregate) ++ Set(RoleIdAggregate(roleID)))
   }
 }
 
@@ -90,8 +93,8 @@ final class RoleBasedAuthorizationHandlerLogic(val sideEffects: RoleBasedAuthori
   CommandToEventsResult[RoleBasedAuthorizationEvent] = command match {
 
     case CreateRole(roleName) => for {
-      name <- validName(roleName)
-    } yield List(AccessRoleCreated(sideEffects.generateUniqueRoleId(), name))
+      roleNameValid <- validName(roleName)
+    } yield List(AccessRoleCreated(sideEffects.generateUniqueRoleId(), roleNameValid))
 
     case UpdateRoleName(roleID, roleName) => for {
       roleNameValid <- validName(roleName)
@@ -106,20 +109,17 @@ final class RoleBasedAuthorizationHandlerLogic(val sideEffects: RoleBasedAuthori
       roleID <- existingRoleId(roleID)
     } yield List(AccessRoleDeleted(roleID))
 
-    case CreatePermission(name, description) => for {
-      nameValid <- validName(name)
+    case CreatePermission(code, description) => for {
+      codeValid <- validCode(code)
       descriptionValid <- validDescription(description)
-    } yield List(AccessPermissionCreated(sideEffects.generateUniquePermissionId(), nameValid, descriptionValid))
-
-    case UpdatePermissionName(permissionId, name) => for {
-      nameValid <- validName(name)
-      permission <- existingPermissionByID(permissionId)
-    } yield List(AccessPermissionNameUpdated(permission.permissionId, nameValid))
+    } yield List(AccessPermissionCreated(sideEffects.generateUniquePermissionId(), codeValid, descriptionValid))
 
     case UpdatePermissionDescription(permissionId, description) => for {
       descriptionValid <- validDescription(description)
       permission <- existingPermissionByID(permissionId)
-    } yield if (permission.description == descriptionValid) { List() } else {
+    } yield if (permission.description == descriptionValid) {
+        List()
+      } else {
         List(AccessPermissionDescriptionUpdated(permission.permissionId, descriptionValid))
       }
 
@@ -127,18 +127,18 @@ final class RoleBasedAuthorizationHandlerLogic(val sideEffects: RoleBasedAuthori
       permission <- existingPermissionByID(permissionId)
     } yield List(AccessPermissionDeleted(permission.permissionId))
 
-    case AddPermissionToRole(permissionId, roleID) => for {
-      permissionId <- existingPermissionID(permissionId)
+    case AddPermissionsToRole(permissionId, roleID) => for {
+      permissionSetId <- existingPermissionSetID(permissionId)
       roleID <- existingRoleId(roleID)
-    } yield List(PermissionInRoleAdded(permissionId, roleID))
+    } yield permissionSetId.map( PermissionInRoleAdded(_, roleID)).toList
 
-    case DeletePermissionFromRole(permissionId, roleID) => for {
-      permissionId <- existingPermissionID(permissionId)
+    case DeletePermissionsFromRole(permissionId, roleID) => for {
+      permissionSetId <- existingPermissionSetID(permissionId)
       roleID <- existingRoleId(roleID)
-    } yield if (state.isPermissionInRole(roleID, permissionId)) {
-          List(PermissionInRoleDeleted(permissionId, roleID))
-        } else { List() }
-
+    } yield permissionSetId
+        .filter(state.isPermissionInRole(roleID, _))
+        .map(PermissionInRoleDeleted(_, roleID))
+        .toList
   }
 }
 
@@ -146,11 +146,18 @@ import eu.pmsoft.domain.model.security.roles.RoleBasedAuthorizationModel._
 
 trait RoleBasedAuthorizationValidations {
 
-  def validName(roleName: String)(implicit state: RoleBasedAuthorizationState): CommandPartialValidation[String] =
-    if (!roleName.isEmpty) {
-      \/-(roleName)
+  def validCode(roleCode: String)(implicit state: RoleBasedAuthorizationState): CommandPartialValidation[String] =
+    if (!roleCode.isEmpty) {
+      \/-(roleCode)
     } else {
       -\/(EventSourceCommandFailed(invalidRoleName.code))
+    }
+
+  def validName(name: String)(implicit state: RoleBasedAuthorizationState): CommandPartialValidation[String] =
+    if (!name.isEmpty) {
+      \/-(name)
+    } else {
+      -\/(EventSourceCommandFailed(invalidName.code))
     }
 
   def validDescription(description: String)(implicit state: RoleBasedAuthorizationState): CommandPartialValidation[String] =
@@ -171,12 +178,16 @@ trait RoleBasedAuthorizationValidations {
     }
 
   def existingPermissionByID(permissionID: PermissionID)(implicit state: RoleBasedAuthorizationState): CommandPartialValidation[Permission] =
-    existingPermissionID(permissionID).map(state.permissionById(_).get)
+    state.permissionById(permissionID) match {
+      case Some(permission) => \/-(permission)
+      case None => -\/(EventSourceCommandFailed(notExistingPermissionID.code))
+    }
 
-  def existingPermissionID(permissionID: PermissionID)(implicit state: RoleBasedAuthorizationState): CommandPartialValidation[PermissionID] =
-    if (state.permissionIdExists(permissionID)) {
-      \/-(permissionID)
+  def existingPermissionSetID(permissionSetID: Set[PermissionID])(implicit state: RoleBasedAuthorizationState): CommandPartialValidation[Set[PermissionID]] =
+    if (permissionSetID.forall(state.permissionIdExists)) {
+      \/-(permissionSetID)
     } else {
       -\/(EventSourceCommandFailed(notExistingPermissionID.code))
     }
 }
+

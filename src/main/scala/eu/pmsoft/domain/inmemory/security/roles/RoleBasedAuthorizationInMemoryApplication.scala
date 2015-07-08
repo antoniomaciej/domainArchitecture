@@ -58,7 +58,6 @@ class InMemoryRoleBasedAuthorizationProjection
       case AccessRoleNameUpdated(roleId, roleName) => state.updateRoleName(roleId, roleName)
       case AccessRoleDeleted(roleID) => state.deleteRole(roleID)
       case AccessPermissionCreated(permissionId, name, description) => state.addPermission(Permission(permissionId, name, description))
-      case AccessPermissionNameUpdated(permissionId, name) => state.updatePermissionCode(permissionId, name)
       case AccessPermissionDescriptionUpdated(permissionId, description) => state.updatePermissionDescription(permissionId, description)
       case AccessPermissionDeleted(permissionId) => state.deletePermission(permissionId)
       case PermissionInRoleAdded(permissionId, roleID) => state.addPermissionToRole(roleID, permissionId)
@@ -118,6 +117,9 @@ case class RoleBasedAuthorizationStateInMemory(
     (_roleByID ^|-? index(roleId))
       .getOption(this)
 
+  //TODO test that it is not possible to have name conflicts
+  override def roleByName(roleName: String): Option[AccessRole] = roleByID.values.find( _.roleName == roleName)
+
   def addRole(role: AccessRole): RoleBasedAuthorizationStateInMemory =
     (_roleByID ^|-> at(role.roleId))
       .set(Some(role))(this)
@@ -135,6 +137,7 @@ case class RoleBasedAuthorizationStateInMemory(
     (_permissionByID ^|-> at(permissionID))
       .get(this)
 
+  override def permissionByCode(code: String): Option[Permission] = permissionByID.values.find( _.code == code)
 
   def deletePermission(permissionId: PermissionID): RoleBasedAuthorizationStateInMemory = {
     val deletePermissionF = (_permissionByID ^|-> at(permissionId)).set(None)
@@ -153,11 +156,6 @@ case class RoleBasedAuthorizationStateInMemory(
   def updatePermissionDescription(permissionId: PermissionID, description: String): RoleBasedAuthorizationStateInMemory =
     (_permissionByID ^|-? index(permissionId) ^|-> _description)
       .set(description)(this)
-
-  def updatePermissionCode(permissionId: PermissionID, code: String): RoleBasedAuthorizationStateInMemory =
-    (_permissionByID ^|-? index(permissionId) ^|-> _code)
-      .set(code)(this)
-
 
   // Permission X Role relation
 

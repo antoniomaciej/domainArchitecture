@@ -24,22 +24,14 @@
  *
  */
 
-package eu.pmsoft.domain.model.user.registry.mins
+package eu.pmsoft.domain.test.util
 
-import eu.pmsoft.domain.minstance.ApiVersion
-import eu.pmsoft.domain.model.EventSourceDataModel._
+object Mocked {
 
-import scala.concurrent.Future
-
-
-object UserRegistrationApi {
-  val version = ApiVersion(0, 0, 1)
-}
-
-trait UserRegistrationApi {
-
-  def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]]
-
-  def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]]
-
+  //TODO check if scalatest provide such feature
+  /**
+   * Mark a method that should not be called during test execution
+   * @return
+   */
+  def shouldNotBeCalled : Nothing = throw new NotImplementedError
 }
