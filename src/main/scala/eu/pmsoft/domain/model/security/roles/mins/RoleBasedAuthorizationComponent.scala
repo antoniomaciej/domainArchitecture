@@ -71,19 +71,20 @@ class RoleBasedAuthorizationRequestDispatcher(val commandHandler: AsyncEventComm
   } yield response).run
 
 
-  override def getRoles(req: GetRolesRequest): Future[RequestResult[GetRolesResponse]] = {
-    val state = projection.lastSnapshot()
-    Future.successful(\/-(
-      GetRolesResponse(state.allRoleId.map(state.roleById(_).get).toSet)
-    ))
-  }
+  override def getRoles(req: GetRolesRequest): Future[RequestResult[GetRolesResponse]] =
+    projection.lastSnapshot().map { state =>
+      \/-(
+        GetRolesResponse(state.allRoleId.map(state.roleById(_).get).toSet)
+      )
+    }
 
-  override def getPermissions(req: GetPermissionsRequest): Future[RequestResult[GetPermissionsResponse]] = {
-    val state = projection.lastSnapshot()
-    Future.successful(\/-(
-      GetPermissionsResponse(state.allPermissionID.map(state.permissionById(_).get).toSet)
-    ))
-  }
+  override def getPermissions(req: GetPermissionsRequest): Future[RequestResult[GetPermissionsResponse]] =
+    projection.lastSnapshot().map { state =>
+      \/-(
+        GetPermissionsResponse(state.allPermissionID.map(state.permissionById(_).get).toSet)
+      )
+    }
+
 
   override def deleteRole(req: DeleteRoleRequest): Future[RequestResult[DeleteRoleResponse]] = (for {
     cmdConfirmation <- EitherT(commandHandler.execute(DeleteRole(req.roleID)).map(_.asResponse))
@@ -98,9 +99,11 @@ class RoleBasedAuthorizationRequestDispatcher(val commandHandler: AsyncEventComm
   } yield UpdatePermissionDescriptionResponse()).run
 
   override def getRolesPermissions(req: GetRolesPermissionsRequest): Future[RequestResult[GetRolesPermissionsResponse]] =
-    Future.successful(\/-(
-      GetRolesPermissionsResponse(req.roleID.map { roleId => roleId -> projection.lastSnapshot().getPermissionsForRole(roleId) }.toMap)
-    ))
+    projection.lastSnapshot().map { state =>
+      \/-(
+        GetRolesPermissionsResponse(req.roleID.map { roleId => roleId -> state.getPermissionsForRole(roleId) }.toMap)
+      )
+    }
 
   override def createPermission(req: CreatePermissionRequest): Future[RequestResult[CreatePermissionResponse]] = (for {
     cmdConfirmation <- EitherT(commandHandler.execute(CreatePermission(req.code, req.description)).map(_.asResponse))

@@ -27,6 +27,7 @@
 package eu.pmsoft.domain.model.user.registry
 
 import java.util.concurrent.atomic.AtomicInteger
+
 import eu.pmsoft.domain.model.security.roles.RoleID
 import eu.pmsoft.domain.model.{AtomicEventStoreProjection, CommandGenerator}
 import org.scalacheck.Gen._
@@ -37,7 +38,7 @@ import scala.language.postfixOps
 class UserRegistrationGenerators(val state: AtomicEventStoreProjection[UserRegistrationState]) extends
 CommandGenerator[UserRegistrationCommand] {
 
-  def loadAllUID(): Seq[UserID] = state.lastSnapshot().getAllUid.toSeq
+  def loadAllUID(): Seq[UserID] = state.lastSnapshot().futureValue.getAllUid.toSeq
 
   override def generateSingleCommands: Gen[UserRegistrationCommand] = Gen.frequency(
     (1, genAddUser),

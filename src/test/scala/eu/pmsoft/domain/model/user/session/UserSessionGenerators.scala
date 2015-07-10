@@ -32,15 +32,15 @@ import org.scalacheck.Gen
 
 class UserSessionGenerators(val state: AtomicEventStoreProjection[UserSessionSSOState]) extends CommandGenerator[UserSessionCommand] {
   override def generateSingleCommands: Gen[UserSessionCommand] = Gen.frequency(
-    (3,genCreateUserSession ),
-    (1,genInvalidateSession ),
-    (1,genInvalidateUserSession )
+    (3, genCreateUserSession),
+    (1, genInvalidateSession),
+    (1, genInvalidateUserSession)
   )
 
   override def generateWarmUpCommands: Gen[List[UserSessionCommand]] = Gen.nonEmptyListOf(genCreateUserSession)
 
   def genExistingSession(): Gen[UserSession] = Gen.wrap(
-    Gen.oneOf(state.lastSnapshot().findAllUserSessions())
+    Gen.oneOf(state.lastSnapshot().futureValue.findAllUserSessions())
   )
 
   lazy val genCreateUserSession = for {

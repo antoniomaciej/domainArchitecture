@@ -37,12 +37,11 @@ import scalaz.{-\/, \/-}
 class SearchForUserIdHandler(val registrationState: AtomicEventStoreProjection[UserRegistrationState])
                             (implicit val executionContext: ExecutionContext)
   extends RequestHandler[SearchForUserIdRequest, SearchForUserIdResponse] {
-  override def handle(request: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]] = {
-    val result = registrationState.lastSnapshot().getUserByLogin(request.login).filter(_.passwordHash == request.passwordHash) match {
-      case Some(user) => \/-(SearchForUserIdResponse(user.uid))
-      case None => -\/(UserRegistrationRequestModel.userIdNotFound.toResponseError)
+  override def handle(request: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]] =
+    registrationState.lastSnapshot().map { state =>
+      state.getUserByLogin(request.login).filter(_.passwordHash == request.passwordHash) match {
+        case Some(user) => \/-(SearchForUserIdResponse(user.uid))
+        case None => -\/(UserRegistrationRequestModel.userIdNotFound.toResponseError)
+      }
     }
-    Future.successful(result)
-
-  }
 }

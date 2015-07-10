@@ -81,10 +81,11 @@ class DomainLogicAsyncEventCommandHandlerTest extends ComponentSpec {
 
       override protected def atomicProjection: VersionedEventStoreProjection[RollbackTestAggregateId, RollbackTestState] =
         new VersionedEventStoreProjection[RollbackTestAggregateId, RollbackTestState] {
-          override def projection(transactionScope: Set[RollbackTestAggregateId]): VersionedProjection[RollbackTestAggregateId, RollbackTestState] =
-            VersionedProjection(Map(), RollbackTestState())
+          override def projection(transactionScope: Set[RollbackTestAggregateId]):
+          Future[VersionedProjection[RollbackTestAggregateId, RollbackTestState]] =
+            Future.successful(VersionedProjection(Map(), RollbackTestState()))
 
-          override def lastSnapshot(): RollbackTestState = RollbackTestState()
+          override def lastSnapshot(): Future[RollbackTestState] = Future.successful(RollbackTestState())
 
           override def atLeastOn(storeVersion: EventStoreVersion): Future[RollbackTestState] = Mocked.shouldNotBeCalled
         }

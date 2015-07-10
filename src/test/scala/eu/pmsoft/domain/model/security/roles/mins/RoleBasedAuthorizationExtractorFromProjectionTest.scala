@@ -27,7 +27,7 @@
 package eu.pmsoft.domain.model.security.roles.mins
 
 import eu.pmsoft.domain.model.security.roles._
-import eu.pmsoft.domain.model.{EventSourceCommandConfirmation, EventStoreVersion, AtomicEventStoreProjection, ComponentSpec}
+import eu.pmsoft.domain.model.{AtomicEventStoreProjection, ComponentSpec, EventSourceCommandConfirmation, EventStoreVersion}
 import eu.pmsoft.domain.test.util.Mocked
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -40,7 +40,7 @@ class RoleBasedAuthorizationExtractorFromProjectionTest extends ComponentSpec {
   it should "failure with permissionNotFoundAfterInsert when permission not found after insert" in {
 
     val mocked = createMocked
-    val notFoundExpected = mocked.findPermissionByName(EventSourceCommandConfirmation(EventStoreVersion(0L)),"anyCode").futureValue
+    val notFoundExpected = mocked.findPermissionByName(EventSourceCommandConfirmation(EventStoreVersion(0L)), "anyCode").futureValue
     notFoundExpected shouldBe -\/
     notFoundExpected shouldBe scalaz.-\/(RoleBasedAuthorizationRequestModel.permissionNotFoundAfterInsert.toResponseError)
 
@@ -48,23 +48,23 @@ class RoleBasedAuthorizationExtractorFromProjectionTest extends ComponentSpec {
   it should "failure with roleNotFoundAfterInsert when role not found after insert" in {
 
     val mocked = createMocked
-    val notFoundExpected = mocked.findRoleByName(EventSourceCommandConfirmation(EventStoreVersion(0L)),"anyName").futureValue
+    val notFoundExpected = mocked.findRoleByName(EventSourceCommandConfirmation(EventStoreVersion(0L)), "anyName").futureValue
     notFoundExpected shouldBe -\/
     notFoundExpected shouldBe scalaz.-\/(RoleBasedAuthorizationRequestModel.roleNotFoundAfterInsert.toResponseError)
 
   }
 
-  private def createMocked = new RoleBasedAuthorizationExtractorFromProjection{
+  private def createMocked = new RoleBasedAuthorizationExtractorFromProjection {
 
     override implicit def executionContext: ExecutionContext = ExecutionContext.global
 
     override def projection: AtomicEventStoreProjection[RoleBasedAuthorizationState] =
       new AtomicEventStoreProjection[RoleBasedAuthorizationState] {
 
-        override def lastSnapshot(): RoleBasedAuthorizationState = Mocked.shouldNotBeCalled
+        override def lastSnapshot(): Future[RoleBasedAuthorizationState] = Mocked.shouldNotBeCalled
 
         override def atLeastOn(storeVersion: EventStoreVersion): Future[RoleBasedAuthorizationState] =
-          Future.successful(new RoleBasedAuthorizationState{
+          Future.successful(new RoleBasedAuthorizationState {
             //Roles
             override def allRoleId: Stream[RoleID] = Mocked.shouldNotBeCalled
 

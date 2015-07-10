@@ -59,17 +59,17 @@ CommandGenerator[RoleBasedAuthorizationModelCommand] {
 
   //Generators that depend on the model state as provided by the query api
   lazy val genExistingRoleId = Gen.wrap(
-    Gen.oneOf(state.lastSnapshot().allRoleId)
+    Gen.oneOf(state.lastSnapshot().futureValue.allRoleId)
   )
   lazy val genExistingPermissionId = Gen.wrap(
-    Gen.oneOf(state.lastSnapshot().allPermissionID)
+    Gen.oneOf(state.lastSnapshot().futureValue.allPermissionID)
   )
   lazy val genExistingPermissionSetId = Gen.wrap(
-    Gen.someOf(state.lastSnapshot().allPermissionID).map(_.toSet)
+    Gen.someOf(state.lastSnapshot().futureValue.allPermissionID).map(_.toSet)
   )
 
   def genExistingPermissionSetFromRole(roleID: RoleID): Gen[Set[PermissionID]] = Gen.wrap(
-    Gen.someOf(state.lastSnapshot().getPermissionsForRole(roleID)).map( _.toSet)
+    Gen.someOf(state.lastSnapshot().futureValue.getPermissionsForRole(roleID)).map(_.toSet)
   )
 
   private val minimumTextLen = 5

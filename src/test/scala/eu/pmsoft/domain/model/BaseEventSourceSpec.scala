@@ -78,7 +78,7 @@ trait GeneratedCommandSpecification[C, E, S, M] {
             val firstFailure = results.find(_.isLeft)
             firstFailure shouldBe empty withClue ": Failure on warm up commands"
 
-            validateState(stateProjection(module).lastSnapshot())
+            validateState(stateProjection(module).lastSnapshot().futureValue)
 
             forAll(generator.generateSingleCommands) {
               command: C =>
@@ -91,8 +91,8 @@ trait GeneratedCommandSpecification[C, E, S, M] {
                     withClue(s"last command result:$results \n") {
 
                       results shouldBe \/-
-                      validateState(stateProjection(module).lastSnapshot())
-                      postCommandValidation(stateProjection(module).lastSnapshot(), command)
+                      validateState(stateProjection(module).lastSnapshot().futureValue)
+                      postCommandValidation(stateProjection(module).lastSnapshot().futureValue, command)
                     }
                   }
                 }
@@ -113,7 +113,7 @@ trait GeneratedCommandSpecification[C, E, S, M] {
           val firstFailure = results.find(_.isLeft)
           firstFailure shouldBe empty withClue ": Failure on warm up commands"
 
-          validateState(stateProjection(module).lastSnapshot())
+          validateState(stateProjection(module).lastSnapshot().futureValue)
 
           forAll(generator.generateSingleCommands) {
             command: C =>
@@ -121,8 +121,8 @@ trait GeneratedCommandSpecification[C, E, S, M] {
                 val resultsFuture = asyncCommandHandler(module).execute(command)
                 whenReady(resultsFuture) { results =>
                   withClue(s"last command result:$results \n") {
-                    validateState(stateProjection(module).lastSnapshot())
-                    postCommandValidation(stateProjection(module).lastSnapshot(), command)
+                    validateState(stateProjection(module).lastSnapshot().futureValue)
+                    postCommandValidation(stateProjection(module).lastSnapshot().futureValue, command)
                   }
                 }
               }
@@ -142,7 +142,7 @@ trait GeneratedCommandSpecification[C, E, S, M] {
 
 }
 
-trait CommandGenerator[C] {
+trait CommandGenerator[C] extends ScalaFutures {
   def generateSingleCommands: Gen[C]
 
   def generateWarmUpCommands: Gen[List[C]]

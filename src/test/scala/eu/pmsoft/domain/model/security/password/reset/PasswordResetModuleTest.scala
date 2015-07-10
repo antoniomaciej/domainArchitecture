@@ -44,7 +44,7 @@ GeneratedCommandSpecification[PasswordResetModelCommand, PasswordResetModelEvent
     whenReady(asyncCommandHandler(module)
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = stateProjection(module).lastSnapshot().findFlowByUserID(UserID(0)).get
+      val process = stateProjection(module).lastSnapshot().futureValue.findFlowByUserID(UserID(0)).get
       whenReady(asyncCommandHandler(module)
         .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("newPassword")))) { confirmationResult =>
         confirmationResult should be(\/-)
@@ -61,7 +61,7 @@ GeneratedCommandSpecification[PasswordResetModelCommand, PasswordResetModelEvent
     whenReady(asyncCommandHandler(module)
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = stateProjection(module).lastSnapshot().findFlowByUserID(UserID(0)).get
+      val process = stateProjection(module).lastSnapshot().futureValue.findFlowByUserID(UserID(0)).get
       whenReady(asyncCommandHandler(module)
         .execute(
           ConfirmPasswordResetFlow(
@@ -79,7 +79,7 @@ GeneratedCommandSpecification[PasswordResetModelCommand, PasswordResetModelEvent
     whenReady(asyncCommandHandler(module)
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = stateProjection(module).lastSnapshot().findFlowByUserID(UserID(0)).get
+      val process = stateProjection(module).lastSnapshot().futureValue.findFlowByUserID(UserID(0)).get
       whenReady(asyncCommandHandler(module)
         .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("")))) { confirmationResult =>
         confirmationResult should be(-\/)

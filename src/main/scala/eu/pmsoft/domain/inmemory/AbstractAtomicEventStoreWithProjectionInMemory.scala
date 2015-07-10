@@ -68,7 +68,7 @@ abstract class AbstractAtomicEventStoreWithProjectionInMemory[E, A, S] extends A
     )
   }
 
-  override def lastSnapshot(): S = inMemoryStore().state
+  override def lastSnapshot(): Future[S] = Future.successful(inMemoryStore().state)
 
   private val futureProjections = TrieMap[EventStoreVersion, Promise[S]]()
 
@@ -78,9 +78,9 @@ abstract class AbstractAtomicEventStoreWithProjectionInMemory[E, A, S] extends A
     } foreach { pair =>
       pair._2.trySuccess(state.state)
     }
-    val toRemove = futureProjections.filter( _._2.isCompleted)
+    val toRemove = futureProjections.filter(_._2.isCompleted)
     toRemove.foreach {
-      case (key,promise) => futureProjections.remove(key,promise)
+      case (key, promise) => futureProjections.remove(key, promise)
     }
   }
 
@@ -105,12 +105,12 @@ abstract class AbstractAtomicEventStoreWithProjectionInMemory[E, A, S] extends A
     }
   }
 
-  override def projection(transactionScope: Set[A]): VersionedProjection[A, S] = {
+  override def projection(transactionScope: Set[A]): Future[VersionedProjection[A, S]] = {
     val atomicState = inMemoryStore()
     val transactionScopeVersion: Map[A, Long] = transactionScope.map { aggregate =>
       aggregate -> atomicState.aggregatesVersion.getOrElse(aggregate, 0L)
     }(collection.breakOut)
-    VersionedProjection[A, S](transactionScopeVersion, atomicState.state)
+    Future.successful(VersionedProjection[A, S](transactionScopeVersion, atomicState.state))
   }
 }
 

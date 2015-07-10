@@ -31,7 +31,8 @@ import eu.pmsoft.domain.model.{AtomicEventStoreProjection, CommandGenerator}
 import org.scalacheck.Gen
 import org.scalacheck.Gen._
 
-class PasswordResetModelGenerator(val state: AtomicEventStoreProjection[PasswordResetModelState]) extends CommandGenerator[PasswordResetModelCommand] {
+class PasswordResetModelGenerator(val state: AtomicEventStoreProjection[PasswordResetModelState])
+  extends CommandGenerator[PasswordResetModelCommand] {
 
   override def generateSingleCommands: Gen[PasswordResetModelCommand] = Gen.frequency(
     (4, genInitializePasswordResetFlow),
@@ -48,16 +49,20 @@ class PasswordResetModelGenerator(val state: AtomicEventStoreProjection[Password
   val maxUserId = 100L
 
   private def genNewUserId = for {
-    active <- Gen.wrap(Gen.const(state.lastSnapshot().getExistingProcessUserId.map(_.id).toSet))
+    active <- Gen.wrap(Gen.const(state.lastSnapshot().futureValue.getExistingProcessUserId.map(_.id).toSet))
     userId <- Gen.oneOf(((minUserId to maxUserId).toSet[Long] -- active).toSeq)
   } yield UserID(userId)
 
   private def genExistingUserId = Gen.wrap(
-    Gen.oneOf(state.lastSnapshot().getExistingProcessUserId.toSeq)
+    Gen.oneOf(state.lastSnapshot().futureValue.getExistingProcessUserId.toSeq)
   )
 
   private def genExistingProcess = Gen.wrap(
-    Gen.oneOf(state.lastSnapshot().getExistingProcessUserId.map(state.lastSnapshot().findFlowByUserID(_).get).toSeq)
+    Gen.oneOf(state.lastSnapshot().futureValue.getExistingProcessUserId
+      .map(
+        state.lastSnapshot().futureValue
+          .findFlowByUserID(_).get)
+      .toSeq)
   )
 
 

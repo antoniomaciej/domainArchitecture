@@ -53,7 +53,7 @@ class AbstractAtomicEventStoreWithProjectionInMemoryTest extends FlatSpec with M
 
     //when events are added
     def addOneEvent(eventNr: Int): Unit = {
-      val transactionScope = testEventStoreInMemory.projection(Set(TestAggregate(1)))
+      val transactionScope = testEventStoreInMemory.projection(Set(TestAggregate(1))).futureValue
       testEventStoreInMemory.persistEvents(List(TestEvent(eventNr)), transactionScope.transactionScopeVersion).futureValue shouldBe \/-
     }
     addOneEvent(0)
@@ -88,7 +88,7 @@ class AbstractAtomicEventStoreWithProjectionInMemoryTest extends FlatSpec with M
       service.execute(new Runnable {
         override def run(): Unit = {
           while (!rollbackError.get()) {
-            val transactionScope = testEventStoreInMemory.projection(Set(TestAggregate(1)))
+            val transactionScope = testEventStoreInMemory.projection(Set(TestAggregate(1))).futureValue
             testEventStoreInMemory.persistEvents(List(TestEvent(0)), transactionScope.transactionScopeVersion).futureValue match {
               case -\/(error) => error match {
                 case EventSourceCommandRollback() => rollbackError.set(true)
@@ -120,7 +120,7 @@ class AbstractAtomicEventStoreWithProjectionInMemoryTest extends FlatSpec with M
       service.execute(new Runnable {
         override def run(): Unit = {
           while (!rollbackError.get()) {
-            val transactionScope = testEventStoreInMemory.projection(Set(TestAggregate(thread)))
+            val transactionScope = testEventStoreInMemory.projection(Set(TestAggregate(thread))).futureValue
             testEventStoreInMemory.persistEvents(List(TestEvent(0)), transactionScope.transactionScopeVersion) futureValue match {
               case -\/(error) => error match {
                 case EventSourceCommandRollback() => rollbackError.set(true)

@@ -28,10 +28,9 @@ package eu.pmsoft.domain.test.util
 
 object Mocked {
 
-  //TODO check if scalatest provide such feature
   /**
    * Mark a method that should not be called during test execution
    * @return
    */
-  def shouldNotBeCalled : Nothing = throw new NotImplementedError
+  def shouldNotBeCalled: Nothing = throw new NotImplementedError
 }

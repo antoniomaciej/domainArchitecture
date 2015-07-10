@@ -49,14 +49,14 @@ trait EventSourceProjection[E] {
   def lastSnapshotVersion(): EventStoreVersion
 }
 
-trait AtomicEventStoreProjection[+P] extends OrderedEventStoreProjector[P]{
-  //TODO: change to future
-  def lastSnapshot(): P
+trait AtomicEventStoreProjection[+P] extends OrderedEventStoreProjector[P] {
+
+  def lastSnapshot(): Future[P]
 }
 
 trait VersionedEventStoreProjection[A, +P] extends AtomicEventStoreProjection[P] {
-  //TODO: change to future
-  def projection(transactionScope: Set[A]): VersionedProjection[A, P]
+
+  def projection(transactionScope: Set[A]): Future[VersionedProjection[A, P]]
 }
 
 case class VersionedProjection[A, +P](transactionScopeVersion: Map[A, Long], projection: P)
@@ -107,14 +107,20 @@ trait DomainLogicAsyncEventCommandHandler[C, E, A, S] extends AsyncEventCommandH
   private def applyCommand(command: C, transactionState: VersionedProjection[A, S]) =
     Future.successful(logic.executeCommand(command, transactionState.transactionScopeVersion)(transactionState.projection))
 
-  private def calculateTransactionScopeVersion(transactionScope: Set[A]): EventSourceCommandFailure \/ VersionedProjection[A, S] =
-    \/-(atomicProjection.projection(transactionScope))
+  private def calculateTransactionScopeVersion(transactionScope: Set[A]):
+  Future[EventSourceCommandFailure \/ VersionedProjection[A, S]] =
+    atomicProjection.projection(transactionScope).map(\/-(_))
+
+  private def extractLastSnapshot():
+  Future[EventSourceCommandFailure \/ S] =
+    atomicProjection.lastSnapshot().map(\/-(_))
 
   final def execute(command: C): Future[CommandResultConfirmed] = {
     def singleTry(): Future[CommandResult] = {
       (for {
-        transactionScope <- EitherT(Future.successful(transactionScopeCalculator.calculateTransactionScope(command, atomicProjection.lastSnapshot())))
-        versionedProjection <- EitherT(Future.successful(calculateTransactionScopeVersion(transactionScope)))
+        lastSnapshot <- EitherT(extractLastSnapshot())
+        transactionScope <- EitherT(Future.successful(transactionScopeCalculator.calculateTransactionScope(command, lastSnapshot)))
+        versionedProjection <- EitherT(calculateTransactionScopeVersion(transactionScope))
         events <- EitherT(applyCommand(command, versionedProjection))
         confirmation <- EitherT(store.persistEvents(events, versionedProjection.transactionScopeVersion))
       } yield confirmation).run
