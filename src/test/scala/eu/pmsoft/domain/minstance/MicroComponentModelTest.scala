@@ -27,6 +27,7 @@
 package eu.pmsoft.domain.minstance
 
 import eu.pmsoft.domain.minstance.components._
+import eu.pmsoft.domain.model.ComponentSpec
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.typelevel.scalatest.DisjunctionMatchers
@@ -48,9 +49,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * FrontendComponent <- BackendComponent
  * BackendComponent <- (ProcessOneComponent,ProcessTwoComponent)
  */
-class MicroComponentModelTest extends FlatSpec with Matchers
-with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
-
+class MicroComponentModelTest extends ComponentSpec {
 
   it should "create components and inject dependencies as futures" in {
 

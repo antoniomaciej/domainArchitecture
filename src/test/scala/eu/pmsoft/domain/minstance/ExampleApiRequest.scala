@@ -26,41 +26,9 @@
 
 package eu.pmsoft.domain.minstance
 
-import eu.pmsoft.domain.util.atom.Atomic
+case class ExampleApiRequest(name: String,
+                             option: Option[String],
+                             list: Seq[Integer],
+                             nested: NestedTest)
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import scalaz.{-\/, \/, \/-}
-
-object MicroComponentRegistry {
-
-  def create()(implicit executionContext: ExecutionContext): MicroComponentRegistry = new LocalMicroComponentRegistry()
-
-}
-
-sealed trait RegistrationError
-
-case class RegisterAlreadyInitialized() extends RegistrationError
-
-case class ComponentAlreadyRegistered() extends RegistrationError
-
-case class ComponentNotFound(msg: String) extends RegistrationError
-
-sealed trait RegistrationConfirmation
-
-case class ComponentRegistered() extends RegistrationConfirmation
-
-trait MicroComponentRegistry {
-
-  def registerComponent(component: MicroComponent[_]): RegistrationError \/ RegistrationConfirmation
-
-  def bindComponent[T](apiContract: ApiContract[T]): Future[T]
-
-  def lookupComponent[T](apiContract: ApiContract[T]): Future[RegistrationError \/ T]
-
-  /**
-   * Initialize all instance registered.
-   * @return the number of registered instances
-   */
-  def initializeInstances(): Future[RegistrationError \/ RegistrationConfirmation]
-}
-
+case class NestedTest(nr: Int)
