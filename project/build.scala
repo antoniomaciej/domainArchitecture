@@ -28,15 +28,10 @@ import sbt.Keys._
 import sbt._
 
 object domainArchitecture extends Build {
+
   lazy val Organization = "eu.pmsoft.scala"
   lazy val Name = "domainArchitecture"
   lazy val Version = "0.0.1-SNAPSHOT"
-
-
-  lazy val root = Project(id = Name,
-    base = file("."),
-    settings = commonSettings ++ dependencies
-  )
 
   lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
     organization := Organization,
@@ -49,7 +44,21 @@ object domainArchitecture extends Build {
     publishArtifact in(Test, packageSrc) := true
   )
 
+
+  lazy val eventSourcing = (project in file("eventSourcing")).
+    settings(commonSettings: _*).
+    settings(dependencies: _*)
+
+  lazy val aggregateOld = (project in file("aggregateOld")).
+    settings(commonSettings: _*).
+    settings(dependencies: _*).
+    dependsOn(eventSourcing % "test->test;compile->compile")
+
+  lazy val root = (project in file(".")).
+    aggregate(eventSourcing, aggregateOld)
+
   val monocleVersion = "1.1.1"
+
 
   lazy val dependencies = Seq(
     libraryDependencies ++= Seq(
