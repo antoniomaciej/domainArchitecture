@@ -35,9 +35,10 @@ import eu.pmsoft.domain.model.user.session.mins.UserSessionApplicationDefinition
 import eu.pmsoft.domain.model.user.session.{UserSession, UserSessionCommand, UserSessionModel, UserSessionSSOState}
 import eu.pmsoft.domain.test.util.Mocked
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
-class LoginRequestHandlerTest extends ComponentSpec {
+class UserServiceComponentInstanceTest extends ComponentSpec {
 
   it should "return a critical error if user is not found after successful registration command" in {
     val userSessionStateMock = new OrderedEventStoreProjector[UserSessionSSOState] {
@@ -64,10 +65,10 @@ class LoginRequestHandlerTest extends ComponentSpec {
       override def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]] = Mocked.shouldNotBeCalled
     }
 
-    val handler = new LoginRequestHandler(userRegistrationMock, commandHandler, userSessionStateMock)(ExecutionContext.global)
-
-    val result = handler.handle(UserLoginRequest(UserLogin("any"), UserPassword("any"))).futureValue
+    val dispatcher = new UserServiceComponentInstance(userRegistrationMock, commandHandler, userSessionStateMock)
+    val result = dispatcher.loginUser(UserLoginRequest(UserLogin("any"), UserPassword("any"))).futureValue
     result should be_-\/(UserSessionModel.criticalSessionNotFoundAfterSuccessCommand.toResponseError)
+
   }
 
 }

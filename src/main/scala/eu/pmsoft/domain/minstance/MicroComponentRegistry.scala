@@ -26,10 +26,8 @@
 
 package eu.pmsoft.domain.minstance
 
-import eu.pmsoft.domain.util.atom.Atomic
-
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import scalaz.{-\/, \/, \/-}
+import scala.concurrent.{ExecutionContext, Future}
+import scalaz.\/
 
 object MicroComponentRegistry {
 
@@ -37,7 +35,14 @@ object MicroComponentRegistry {
 
 }
 
+//TODO create a registry that will expose api components as REST services.
+//TODO chain of decorators for remote calls api
+//TODO explicit bind to remote or local components
+//TODO CD, CI, docker images
+
 sealed trait RegistrationError
+
+case class RegisterIsEmpty() extends RegistrationError
 
 case class RegisterAlreadyInitialized() extends RegistrationError
 

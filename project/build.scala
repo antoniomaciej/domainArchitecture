@@ -38,13 +38,15 @@ object domainArchitecture extends Build {
     settings = commonSettings ++ dependencies
   )
 
-
   lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
     organization := Organization,
     version := Version,
     concurrentRestrictions in Global += Tags.limit(Tags.Test, 8),
     scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature"),
-    resolvers += Classpaths.typesafeReleases
+    resolvers += Classpaths.typesafeReleases,
+    publishArtifact in(Test, packageBin) := true,
+    publishArtifact in(Test, packageDoc) := true,
+    publishArtifact in(Test, packageSrc) := true
   )
 
   val monocleVersion = "1.1.1"
@@ -62,6 +64,10 @@ object domainArchitecture extends Build {
       "com.github.julien-truffaut" %% "monocle-generic" % monocleVersion,
       "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion,
       "org.scala-lang.modules" %% "scala-pickling" % "0.10.1",
+      "org.json4s" %% "json4s-native" % "3.2.10",
+      "com.typesafe.akka" %% "akka-actor" % "2.3.12",
+      "io.spray" %% "spray-can" % "1.3.3",
+      "io.spray" %% "spray-routing-shapeless2" % "1.3.3",
       "io.spray" %% "spray-io" % "1.3.3",
       "io.spray" %% "spray-servlet" % "1.3.3",
       "org.scalaz" %% "scalaz-core" % "7.1.2",

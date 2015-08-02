@@ -27,22 +27,23 @@
 package eu.pmsoft.domain.minstance.components
 
 import eu.pmsoft.domain.minstance._
-import com.softwaremill.macwire._
-import scala.concurrent.Future
 
+//TODO make execution context implicit for components
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 trait BackendComponent extends MicroComponent[BackendComponentApi] {
   override def providedContact: MicroComponentContract[BackendComponentApi] =
     MicroComponentModel.contractFor(BackendComponentApi.version, classOf[BackendComponentApi])
 
-  def processOne : Future[ProcessOneComponentApi]
-  def processTwo : Future[ProcessTwoComponentApi]
+  def processOne: Future[ProcessOneComponentApi]
+
+  def processTwo: Future[ProcessTwoComponentApi]
 
   override lazy val app = for {
     one <- processOne
     two <- processTwo
-  } yield wire[BackendComponentImplementation]
+  } yield new BackendComponentImplementation(one, two)
 }
 
 object BackendComponentApi {
@@ -52,11 +53,12 @@ object BackendComponentApi {
 
 trait BackendComponentApi {
   def handleCallToProcessOne(): Future[String]
+
   def handleCallToProcessTwo(): Future[String]
 }
 
-class BackendComponentImplementation(val one: Future[ProcessOneComponentApi], val two: Future[ProcessTwoComponentApi]) extends BackendComponentApi {
-  override def handleCallToProcessOne(): Future[String] = one.flatMap( _.calculateOnOne())
+class BackendComponentImplementation(val one: ProcessOneComponentApi, val two: ProcessTwoComponentApi) extends BackendComponentApi {
+  override def handleCallToProcessOne(): Future[String] = one.calculateOnOne()
 
-  override def handleCallToProcessTwo(): Future[String] = two.flatMap( _.calculateOnTwo())
+  override def handleCallToProcessTwo(): Future[String] = two.calculateOnTwo()
 }

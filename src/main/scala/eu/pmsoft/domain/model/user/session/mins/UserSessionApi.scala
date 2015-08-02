@@ -28,9 +28,16 @@ package eu.pmsoft.domain.model.user.session.mins
 
 import eu.pmsoft.domain.minstance.ApiVersion
 import eu.pmsoft.domain.model.EventSourceDataModel._
+import eu.pmsoft.domain.model.RequestErrorDomain
+import eu.pmsoft.domain.model.security.password.reset.SessionToken
+import eu.pmsoft.domain.model.user.registry.{UserPassword, UserLogin}
 
 import scala.concurrent.Future
 
+
+object UserSessionApi {
+  val version = ApiVersion(0, 0, 1)
+}
 
 trait UserSessionApi {
 
@@ -38,7 +45,13 @@ trait UserSessionApi {
 
 }
 
-object UserSessionApi {
-  val version = ApiVersion(0, 0, 1)
+object UserSessionApplicationDefinitions {
+
+  implicit val requestErrorDomain = RequestErrorDomain("UserSession")
+
 }
+
+case class UserLoginRequest(login: UserLogin, passwordHash: UserPassword)
+
+case class UserLoginResponse(sessionToken: SessionToken)
 

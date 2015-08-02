@@ -26,9 +26,7 @@
 
 package eu.pmsoft.domain.minstance.components
 
-import com.softwaremill.macwire._
 import eu.pmsoft.domain.minstance.{ApiVersion, MicroComponent, MicroComponentContract, MicroComponentModel}
-
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -37,11 +35,11 @@ trait FrontendComponent extends MicroComponent[FrontendComponentApi] {
   override def providedContact: MicroComponentContract[FrontendComponentApi] =
     MicroComponentModel.contractFor(FrontendComponentApi.version, classOf[FrontendComponentApi])
 
-  def backendRef : Future[BackendComponentApi]
+  def backendRef: Future[BackendComponentApi]
 
   override lazy val app: Future[FrontendComponentApi] = for {
     backend <- backendRef
-  } yield wire[FrontendComponentImplementation]
+  } yield new FrontendComponentImplementation(backend)
 }
 
 object FrontendComponentApi {
@@ -53,11 +51,10 @@ trait FrontendComponentApi {
   def callBackend(): Future[List[String]]
 }
 
-class FrontendComponentImplementation(val backend: Future[BackendComponentApi]) extends FrontendComponentApi {
+class FrontendComponentImplementation(val service: BackendComponentApi) extends FrontendComponentApi {
   override def callBackend(): Future[List[String]] = for {
-    service <- backend
     oneCall <- service.handleCallToProcessOne()
     twoCall <- service.handleCallToProcessTwo()
-  } yield List(oneCall,twoCall)
+  } yield List(oneCall, twoCall)
 }
 

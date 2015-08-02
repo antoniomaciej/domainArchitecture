@@ -28,6 +28,7 @@ package eu.pmsoft.domain.model.user.registry
 
 import eu.pmsoft.domain.model.security.roles.RoleID
 import eu.pmsoft.domain.model.{EventSourceCommandError, EventSourceModelError}
+import eu.pmsoft.domain.util.validators.DomainValidator
 
 object UserRegistrationModel {
 
@@ -54,6 +55,7 @@ case class UserPassword(val passwordHash: String) extends AnyVal
 
 case class UserLogin(val login: String) extends AnyVal
 
+
 //Model entities
 
 case class User(uid: UserID,
@@ -62,6 +64,7 @@ case class User(uid: UserID,
                 activeStatus: Boolean = false,
                 roles: Set[RoleID] = Set())
 
+//Aggregate
 sealed trait UserRegistrationAggregate
 
 case class UserAggregateId(uid: UserID) extends UserRegistrationAggregate

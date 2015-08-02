@@ -28,9 +28,9 @@ package eu.pmsoft.domain.util.validators
 
 import eu.pmsoft.domain.model.user.registry.UserPassword
 
+
 object UserPasswordValidator extends DomainValidator[UserPassword]{
 
   override def validate(value: UserPassword): Boolean = !value.passwordHash.isEmpty
 
 }
-

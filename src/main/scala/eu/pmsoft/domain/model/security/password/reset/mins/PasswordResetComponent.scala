@@ -24,20 +24,10 @@
  *
  */
 
-package eu.pmsoft.domain.model.security.roles.mins
+package eu.pmsoft.domain.model.security.password.reset.mins
 
-import eu.pmsoft.domain.model.{EventSourceCommandError, EventSourceModelError}
-
-object RoleBasedAuthorizationRequestModel {
-
-  val permissionNotFoundAfterInsertErrorCode = 6001L
-  val permissionNotFoundAfterInsert = EventSourceModelError("After a successful insert the permission is not accessible.",
-    EventSourceCommandError(permissionNotFoundAfterInsertErrorCode))
-
-  val roleNotFoundAfterInsertErrorCode = 6002L
-  val roleNotFoundAfterInsert = EventSourceModelError("After a successful insert the permission is not accessible.",
-    EventSourceCommandError(roleNotFoundAfterInsertErrorCode))
-
+trait PasswordResetComponent {
 
 }
 
+//TODO

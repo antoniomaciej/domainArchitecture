@@ -29,11 +29,15 @@ package eu.pmsoft.domain.model.user.session.mins
 import com.softwaremill.macwire._
 import eu.pmsoft.domain.minstance._
 import eu.pmsoft.domain.model.EventSourceDataModel._
-import eu.pmsoft.domain.model.OrderedEventStoreProjector
-import eu.pmsoft.domain.model.user.registry.mins.UserRegistrationApi
-import eu.pmsoft.domain.model.user.session.{UserSessionApplication, UserSessionSSOState}
+import eu.pmsoft.domain.model.user.registry.UserID
+import eu.pmsoft.domain.model.user.registry.mins.{SearchForUserIdRequest, UserRegistrationApi}
+import eu.pmsoft.domain.model.user.session._
+import eu.pmsoft.domain.model.user.session.mins.UserSessionApplicationDefinitions._
+import eu.pmsoft.domain.model.{AsyncEventCommandHandler, EventSourceCommandConfirmation, OrderedEventStoreProjector}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scalaz._
+import scalaz.std.scalaFuture._
 
 trait UserSessionComponent extends MicroComponent[UserSessionApi] {
   override def providedContact: MicroComponentContract[UserSessionApi] =
@@ -60,17 +64,38 @@ trait UserSessionInternalInjector {
   def userRegistration: UserRegistrationApi
 
   def module: UserSessionApplication
-  private implicit def internalExecutionContext : ExecutionContext = module.executionContext
+
+  private implicit def internalExecutionContext: ExecutionContext = module.executionContext
 
   lazy val commandHandler = module.commandHandler
   lazy val projection: OrderedEventStoreProjector[UserSessionSSOState] = module.applicationContextProvider.contextStateAtomicProjection
-  lazy val loginHandler = wire[LoginRequestHandler]
   lazy val app = wire[UserServiceComponentInstance]
 
 }
 
 
-class UserServiceComponentInstance(val loginRequestHandler: LoginRequestHandler) extends UserSessionApi {
-  override def loginUser(loginRequest: UserLoginRequest): Future[RequestResult[UserLoginResponse]] =
-    loginRequestHandler.handle(loginRequest)
+class UserServiceComponentInstance(val userRegistration: UserRegistrationApi,
+                                   val commandHandler: AsyncEventCommandHandler[UserSessionCommand],
+                                   val userSessionProjection: OrderedEventStoreProjector[UserSessionSSOState])
+                                  (implicit val executionContext: ExecutionContext)
+  extends UserSessionApi {
+  override def loginUser(loginRequest: UserLoginRequest): Future[RequestResult[UserLoginResponse]] = (for {
+    userIdRes <- EitherT(userRegistration.findRegisteredUser(SearchForUserIdRequest(loginRequest.login, loginRequest.passwordHash)))
+    cmdResult <- EitherT(commandHandler.execute(CreateUserSession(userIdRes.userId)).map(_.asResponse))
+    userSession <- EitherT(findUserSession(cmdResult, userIdRes.userId))
+    res <- EitherT(createResponseFromSession(userSession))
+  } yield res).run
+
+  def findUserSession(cmdResult: EventSourceCommandConfirmation, userId: UserID):
+  Future[RequestResult[UserSession]] = userSessionProjection
+    .atLeastOn(cmdResult.storeVersion).map { state =>
+    state.findUserSession(userId) match {
+      case Some(session) => \/-(session)
+      case None => -\/(UserSessionModel.criticalSessionNotFoundAfterSuccessCommand.toResponseError)
+    }
+  }
+
+  def createResponseFromSession(userSession: UserSession):
+  Future[RequestResult[UserLoginResponse]] = Future.successful(\/-(UserLoginResponse(userSession.sessionToken)))
+
 }

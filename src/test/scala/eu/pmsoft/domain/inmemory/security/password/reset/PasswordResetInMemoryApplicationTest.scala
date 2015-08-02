@@ -35,6 +35,7 @@ import scala.concurrent.ExecutionContext
 
 class PasswordResetInMemoryApplicationTest extends PasswordResetModuleTest[PasswordResetInMemoryApplication] {
 
+  //TODO: extract to one common place
   val synchronousExecutionContext = ExecutionContext.fromExecutor(new Executor {
     def execute(task: Runnable) = task.run()
   })

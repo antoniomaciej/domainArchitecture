@@ -28,7 +28,7 @@ package eu.pmsoft.domain.model.user.registry.mins
 
 import eu.pmsoft.domain.model.EventSourceDataModel._
 import eu.pmsoft.domain.model._
-import eu.pmsoft.domain.model.user.registry.UserRegistrationApplicationDefinitions._
+import eu.pmsoft.domain.model.user.registry.mins.UserRegistrationApplicationDefinitions._
 import eu.pmsoft.domain.model.user.registry._
 import eu.pmsoft.domain.test.util.Mocked
 import org.scalatest._
@@ -37,11 +37,11 @@ import org.typelevel.scalatest.DisjunctionMatchers
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class UserRegistrationHandlerTest extends FlatSpec with Matchers
+class UserRegistrationRequestDispatcherTest extends FlatSpec with Matchers
 with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
 
   it should "return a critical error if user is not found after successful registration command" in {
-    val registrationStateMock = new OrderedEventStoreProjector[UserRegistrationState] {
+    val registrationStateMock = new AtomicEventStoreProjection[UserRegistrationState] {
       override def atLeastOn(storeVersion: EventStoreVersion): Future[UserRegistrationState] =
         Future.successful(new UserRegistrationState {
           override def uidExists(uid: UserID): Boolean = Mocked.shouldNotBeCalled
@@ -54,6 +54,8 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
 
           override def loginExists(login: UserLogin): Boolean = Mocked.shouldNotBeCalled
         })
+
+      override def lastSnapshot(): Future[UserRegistrationState] = Mocked.shouldNotBeCalled
     }
 
     val commandHandler = new AsyncEventCommandHandler[UserRegistrationCommand] {
@@ -63,8 +65,8 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
         )
     }
 
-    val handler = new UserRegistrationHandler(registrationStateMock, commandHandler)(ExecutionContext.global)
-    val result = handler.handle(RegisterUserRequest(UserLogin("any"), UserPassword("any"))).futureValue
+    val dispatcher = new UserRegistrationRequestDispatcher(registrationStateMock, commandHandler)(ExecutionContext.global)
+    val result = dispatcher.registerUser(RegisterUserRequest(UserLogin("any"), UserPassword("any"))).futureValue
     result should be_-\/(UserRegistrationRequestModel.criticalUserNotFoundAfterSuccessRegistration.toResponseError)
   }
 

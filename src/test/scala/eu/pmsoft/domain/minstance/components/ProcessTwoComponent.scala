@@ -26,7 +26,6 @@
 
 package eu.pmsoft.domain.minstance.components
 
-import com.softwaremill.macwire._
 import eu.pmsoft.domain.minstance.{ApiVersion, MicroComponent, MicroComponentContract, MicroComponentModel}
 
 import scala.concurrent.Future
@@ -36,7 +35,7 @@ trait ProcessTwoComponent extends MicroComponent[ProcessTwoComponentApi] {
   override def providedContact: MicroComponentContract[ProcessTwoComponentApi] =
     MicroComponentModel.contractFor(ProcessTwoComponentApi.version, classOf[ProcessTwoComponentApi])
 
-  override lazy val app = Future.successful(wire[ProcessTwoComponentImplementation])
+  override lazy val app = Future.successful(new ProcessTwoComponentImplementation)
 
 }
 

@@ -31,10 +31,6 @@ import eu.pmsoft.domain.util.atom.Atomic
 import scala.concurrent.{Promise, Future, ExecutionContext}
 import scalaz.{\/-, -\/, \/}
 
-class LocalRegistry {
-
-}
-
 class LocalMicroComponentRegistry(implicit val executionContext: ExecutionContext) extends MicroComponentRegistry {
 
   private val stateRef = Atomic(InMemoryComponentRegistry())
@@ -60,6 +56,8 @@ class LocalMicroComponentRegistry(implicit val executionContext: ExecutionContex
     def checkThatNotInitialized(state: InMemoryComponentRegistry): RegistrationError \/ InMemoryComponentRegistry =
       if (state.initialized) {
         -\/(RegisterAlreadyInitialized())
+      } else if( state.components.isEmpty ){
+        -\/(RegisterIsEmpty())
       } else {
         \/-(state)
       }

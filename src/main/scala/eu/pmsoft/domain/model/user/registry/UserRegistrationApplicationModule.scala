@@ -41,6 +41,3 @@ abstract class UserRegistrationApplication
 }
 
 
-object UserRegistrationApplicationDefinitions {
-  implicit val requestErrorDomain = RequestErrorDomain("UserRegistration")
-}

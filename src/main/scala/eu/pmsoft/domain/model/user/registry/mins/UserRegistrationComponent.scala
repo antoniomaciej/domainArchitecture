@@ -29,9 +29,14 @@ package eu.pmsoft.domain.model.user.registry.mins
 import com.softwaremill.macwire._
 import eu.pmsoft.domain.minstance._
 import eu.pmsoft.domain.model.EventSourceDataModel._
-import eu.pmsoft.domain.model.user.registry.UserRegistrationApplication
+import eu.pmsoft.domain.model.user.registry.mins.UserRegistrationApplicationDefinitions._
+import eu.pmsoft.domain.model.user.registry._
+import eu.pmsoft.domain.model.{AsyncEventCommandHandler, AtomicEventStoreProjection, EventSourceCommandConfirmation}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scalaz._
+import scalaz.std.scalaFuture._
+
 
 trait UserRegistrationComponent extends MicroComponent[UserRegistrationApi] {
   override def providedContact: MicroComponentContract[UserRegistrationApi] =
@@ -53,18 +58,35 @@ trait UserRegistrationInternalInjector {
   lazy val commandHandler = module.commandHandler
 
   lazy val projection = module.applicationContextProvider.contextStateAtomicProjection
-  lazy val searchUserHandler = wire[SearchForUserIdHandler]
-  lazy val userRegistrationHandler = wire[UserRegistrationHandler]
   lazy val app = wire[UserRegistrationRequestDispatcher]
 
 }
 
-class UserRegistrationRequestDispatcher(val searchForUserIdHandler: SearchForUserIdHandler,
-                                        val userRegistrationHandler: UserRegistrationHandler) extends UserRegistrationApi {
+class UserRegistrationRequestDispatcher(val registrationState: AtomicEventStoreProjection[UserRegistrationState],
+                                        val commandHandler: AsyncEventCommandHandler[UserRegistrationCommand])
+                                       (implicit val executionContext: ExecutionContext)
+  extends UserRegistrationApi {
 
   override def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]] =
-    searchForUserIdHandler.handle(searchForUser)
+    registrationState.lastSnapshot().map { state =>
+      state.getUserByLogin(searchForUser.login).filter(_.passwordHash == searchForUser.passwordHash) match {
+        case Some(user) => \/-(SearchForUserIdResponse(user.uid))
+        case None => -\/(UserRegistrationRequestModel.userIdNotFound.toResponseError)
+      }
+    }
 
   override def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]] =
-    userRegistrationHandler.handle(registrationRequest)
+    (for {
+      cmdResult <- EitherT(commandHandler.execute(AddUser(registrationRequest.login, registrationRequest.passwordHash)).map(_.asResponse))
+      response <- EitherT(findCreatedUser(cmdResult, registrationRequest.login))
+    } yield response).run
+
+  private def findCreatedUser(cmdResult: EventSourceCommandConfirmation, login: UserLogin): Future[RequestResult[RegisterUserResponse]] =
+    registrationState.atLeastOn(cmdResult.storeVersion).map { state =>
+      state.getUserByLogin(login) match {
+        case Some(user) => \/-(RegisterUserResponse(user.uid))
+        case None => -\/(UserRegistrationRequestModel.criticalUserNotFoundAfterSuccessRegistration.toResponseError)
+      }
+    }
+
 }

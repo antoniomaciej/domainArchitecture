@@ -24,27 +24,10 @@
  *
  */
 
-package eu.pmsoft.domain.model.user.registry.mins
+package eu.pmsoft.domain.model.security.password.reset.mins
 
-import eu.pmsoft.domain.model.user.registry.{UserID, UserLogin, UserPassword}
-import eu.pmsoft.domain.model.{EventSourceCommandError, EventSourceModelError}
+object PasswordResetApi {
 
-object UserRegistrationRequestModel {
-
-  val userIdNotFoundErrorCode = 5001L
-  val userIdNotFound = EventSourceModelError("UserId not found. Login and password do not match any user.",
-    EventSourceCommandError(userIdNotFoundErrorCode))
-
-  val criticalUserNotFoundAfterSuccessRegistrationErrorCode = 5101L
-  val criticalUserNotFoundAfterSuccessRegistration = EventSourceModelError("UserId not found after a success registration command.",
-    EventSourceCommandError(criticalUserNotFoundAfterSuccessRegistrationErrorCode))
 }
 
-
-case class SearchForUserIdRequest(login: UserLogin, passwordHash: UserPassword)
-
-case class SearchForUserIdResponse(userId: UserID)
-
-case class RegisterUserRequest(login:UserLogin, passwordHash: UserPassword )
-
-case class RegisterUserResponse(userID: UserID)
+//TODO

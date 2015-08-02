@@ -28,12 +28,18 @@ package eu.pmsoft.domain.model.user.registry.mins
 
 import eu.pmsoft.domain.minstance.ApiVersion
 import eu.pmsoft.domain.model.EventSourceDataModel._
+import eu.pmsoft.domain.model.user.registry.{UserID, UserLogin, UserPassword}
+import eu.pmsoft.domain.model.{RequestErrorDomain, EventSourceCommandError, EventSourceModelError}
 
 import scala.concurrent.Future
 
 
 object UserRegistrationApi {
   val version = ApiVersion(0, 0, 1)
+}
+
+object UserRegistrationApplicationDefinitions {
+  implicit val requestErrorDomain = RequestErrorDomain("UserRegistration")
 }
 
 trait UserRegistrationApi {
@@ -43,3 +49,24 @@ trait UserRegistrationApi {
   def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]]
 
 }
+
+
+object UserRegistrationRequestModel {
+
+  val userIdNotFoundErrorCode = 5001L
+  val userIdNotFound = EventSourceModelError("UserId not found. Login and password do not match any user.",
+    EventSourceCommandError(userIdNotFoundErrorCode))
+
+  val criticalUserNotFoundAfterSuccessRegistrationErrorCode = 5101L
+  val criticalUserNotFoundAfterSuccessRegistration = EventSourceModelError("UserId not found after a success registration command.",
+    EventSourceCommandError(criticalUserNotFoundAfterSuccessRegistrationErrorCode))
+}
+
+
+case class SearchForUserIdRequest(login: UserLogin, passwordHash: UserPassword)
+
+case class SearchForUserIdResponse(userId: UserID)
+
+case class RegisterUserRequest(login: UserLogin, passwordHash: UserPassword)
+
+case class RegisterUserResponse(userID: UserID)

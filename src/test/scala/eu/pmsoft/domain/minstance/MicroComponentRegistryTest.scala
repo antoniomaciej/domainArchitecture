@@ -26,7 +26,7 @@
 
 package eu.pmsoft.domain.minstance
 
-import eu.pmsoft.domain.minstance.components.{FrontendComponentApi, ProcessOneComponent, ProcessOneComponentApi}
+import eu.pmsoft.domain.minstance.components.{ProcessTwoComponent, FrontendComponentApi, ProcessOneComponent, ProcessOneComponentApi}
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.typelevel.scalatest.DisjunctionMatchers
@@ -35,6 +35,11 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class MicroComponentRegistryTest extends FlatSpec with Matchers
 with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
+
+  it should "not allow the initialization of a empty registry" in {
+    val registry = MicroComponentRegistry.create()
+    registry.initializeInstances().futureValue shouldBe -\/
+  }
 
   it should "resolve components independently of the registration order" in {
     val registry = MicroComponentRegistry.create()
@@ -59,13 +64,13 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
   }
 
   it should "fail when initialized two times" in {
-    val registry = MicroComponentRegistry.create()
+    val registry = createRegistryWithComponentTwoRegistered()
     registry.initializeInstances().futureValue shouldBe \/-
     registry.initializeInstances().futureValue shouldBe -\/
   }
 
   it should "not allow to register after initialization" in {
-    val registry = MicroComponentRegistry.create()
+    val registry = createRegistryWithComponentTwoRegistered()
     val processOne = new ProcessOneComponent {}
     registry.initializeInstances().futureValue shouldBe \/-
     registry.registerComponent(processOne) shouldBe -\/
@@ -79,15 +84,22 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
   }
 
   it should "fail to find components not registered" in {
-    val registry = MicroComponentRegistry.create()
+    val registry = createRegistryWithComponentTwoRegistered()
     registry.initializeInstances().futureValue shouldBe \/-
     registry.lookupComponent(ApiContract(classOf[FrontendComponentApi])).futureValue shouldBe -\/
   }
 
   it should "fail to find components not registered on bind" in {
-    val registry = MicroComponentRegistry.create()
+    val registry = createRegistryWithComponentTwoRegistered()
     registry.initializeInstances().futureValue shouldBe \/-
     registry.bindComponent(ApiContract(classOf[FrontendComponentApi])).failed.futureValue shouldBe a[IllegalStateException]
+  }
+
+  private def createRegistryWithComponentTwoRegistered() = {
+    val registry = MicroComponentRegistry.create()
+    val component = new ProcessTwoComponent {}
+    registry.registerComponent(component) shouldBe \/-
+    registry
   }
 
 }

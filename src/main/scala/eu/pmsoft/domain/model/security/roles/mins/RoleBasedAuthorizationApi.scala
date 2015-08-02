@@ -28,12 +28,31 @@ package eu.pmsoft.domain.model.security.roles.mins
 
 import eu.pmsoft.domain.minstance.ApiVersion
 import eu.pmsoft.domain.model.EventSourceDataModel.RequestResult
+import eu.pmsoft.domain.model.{RequestErrorDomain, EventSourceCommandError, EventSourceModelError}
 import eu.pmsoft.domain.model.security.roles.{Permission, AccessRole, PermissionID, RoleID}
 
 import scala.concurrent.Future
 
 object RoleBasedAuthorizationApi {
   val version = ApiVersion(0, 0, 1)
+}
+
+object RoleBasedAuthorizationDefinitions {
+
+  implicit val requestErrorDomain = RequestErrorDomain("RoleBasedAuthorization")
+}
+
+object RoleBasedAuthorizationRequestModel {
+
+  val permissionNotFoundAfterInsertErrorCode = 6001L
+  val permissionNotFoundAfterInsert = EventSourceModelError("After a successful insert the permission is not accessible.",
+    EventSourceCommandError(permissionNotFoundAfterInsertErrorCode))
+
+  val roleNotFoundAfterInsertErrorCode = 6002L
+  val roleNotFoundAfterInsert = EventSourceModelError("After a successful insert the permission is not accessible.",
+    EventSourceCommandError(roleNotFoundAfterInsertErrorCode))
+
+
 }
 
 trait RoleBasedAuthorizationApi {

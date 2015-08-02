@@ -27,9 +27,9 @@
 package eu.pmsoft.domain.minstance
 
 import eu.pmsoft.domain.model.ComponentSpec
+
 import scala.pickling.Defaults._
 import scala.pickling.json._
-import scala.pickling.shareNothing._
 
 class MicroComponentModelUtilTest extends ComponentSpec {
 
@@ -37,12 +37,22 @@ class MicroComponentModelUtilTest extends ComponentSpec {
   //TODO dodac inny format json dla resta
   //TODO zrobic wykrywanie protokolu po headeras requestu
   it should "serialize case classes to json using pickling" in {
-    val example = ExampleApiRequest("name",Some("value"),List(1,2,4),NestedTest(3))
+    val example = ExampleApiRequest("name", Some("value"), List(1, 2, 4), NestedTest(3))
     val json = example.pickle
-//    json.value shouldBe ""
-    json.unpickle[ExampleApiRequest] should be (example)
+    //    json.value shouldBe ""
+    json.unpickle[ExampleApiRequest] should be(example)
   }
 
+  it should "create json from case classes with json4s" in {
+    import org.json4s._
+    import org.json4s.native.Serialization
+    import org.json4s.native.Serialization.write
+    implicit val formats = Serialization.formats(NoTypeHints)
+
+    val example = ExampleApiRequest("name", Some("value"), List(1, 2, 4), NestedTest(3))
+    val json = write(example)
+    json.value shouldBe "{\"name\":\"name\",\"option\":\"value\",\"list\":[1,2,4],\"nested\":{\"nr\":3}}"
+  }
   it should "provide a endpoints dynamically" in {
 
     //TODO tworzyc server http
