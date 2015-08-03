@@ -37,12 +37,6 @@ import scala.concurrent.ExecutionContext
 
 class TestUserRegistrationInMemoryApplicationTest extends TestUserRegistrationModuleTest[TestUserRegistrationInMemoryApplication] {
 
-  val synchronousExecutionContext = ExecutionContext.fromExecutor(new Executor {
-    def execute(task: Runnable) = task.run()
-  })
-
-  implicit def executionContext: ExecutionContext = synchronousExecutionContext
-
   override def createEmptyModule(): TestUserRegistrationInMemoryApplication = new TestUserRegistrationInMemoryApplication()
 
   override def asyncCommandHandler(contextModule: TestUserRegistrationInMemoryApplication)

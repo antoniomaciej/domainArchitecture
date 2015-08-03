@@ -26,22 +26,10 @@
 
 package eu.pmsoft.mcomponents.model.security.password.reset
 
-import java.util.concurrent.Executor
-
 import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjection}
 import eu.pmsoft.mcomponents.model.security.password.reset.inmemory.PasswordResetInMemoryApplication
 
-import scala.concurrent.ExecutionContext
-
 class PasswordResetInMemoryApplicationTest extends PasswordResetModuleTest[PasswordResetInMemoryApplication] {
-
-  //TODO: extract to one common place
-  val synchronousExecutionContext = ExecutionContext.fromExecutor(new Executor {
-    def execute(task: Runnable) = task.run()
-  })
-
-  override implicit def executionContext: ExecutionContext = synchronousExecutionContext
-
 
   override def createEmptyModule(): PasswordResetInMemoryApplication = new PasswordResetInMemoryApplication()
 

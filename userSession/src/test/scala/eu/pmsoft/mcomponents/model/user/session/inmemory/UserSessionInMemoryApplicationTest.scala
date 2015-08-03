@@ -26,21 +26,10 @@
 
 package eu.pmsoft.mcomponents.model.user.session.inmemory
 
-import java.util.concurrent.Executor
-
 import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjection}
 import eu.pmsoft.mcomponents.model.user.session._
 
-import scala.concurrent.ExecutionContext
-
 class UserSessionInMemoryApplicationTest extends UserSessionModuleTest[UserSessionInMemoryApplication] {
-
-  val synchronousExecutionContext = ExecutionContext.fromExecutor(new Executor {
-    def execute(task: Runnable) = task.run()
-  })
-
-
-  override implicit def executionContext: ExecutionContext = synchronousExecutionContext
 
   override def createEmptyModule(): UserSessionInMemoryApplication = new UserSessionInMemoryApplication()
 

@@ -26,20 +26,10 @@
 
 package eu.pmsoft.mcomponents.model.security.roles
 
-import java.util.concurrent.Executor
-
 import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjection}
 import eu.pmsoft.mcomponents.model.security.roles.inmemory.RoleBasedAuthorizationInMemoryApplication
 
-import scala.concurrent.ExecutionContext
-
 class RoleBasedAuthorizationInMemoryApplicationTest extends RoleBasedAuthorizationModuleTest[RoleBasedAuthorizationInMemoryApplication] {
-
-  val synchronousExecutionContext = ExecutionContext.fromExecutor(new Executor {
-    def execute(task: Runnable) = task.run()
-  })
-
-  override implicit def executionContext: ExecutionContext = synchronousExecutionContext
 
   override def createEmptyModule(): RoleBasedAuthorizationInMemoryApplication = new RoleBasedAuthorizationInMemoryApplication()
 

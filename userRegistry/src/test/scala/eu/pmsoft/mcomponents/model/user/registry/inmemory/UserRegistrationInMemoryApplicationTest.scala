@@ -26,20 +26,10 @@
 
 package eu.pmsoft.mcomponents.model.user.registry.inmemory
 
-import java.util.concurrent.Executor
-
 import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjection}
 import eu.pmsoft.mcomponents.model.user.registry._
 
-import scala.concurrent.ExecutionContext
-
 class UserRegistrationInMemoryApplicationTest extends UserRegistrationModuleTest[UserRegistrationInMemoryApplication] {
-
-  val synchronousExecutionContext = ExecutionContext.fromExecutor(new Executor {
-    def execute(task: Runnable) = task.run()
-  })
-
-  implicit def executionContext: ExecutionContext = synchronousExecutionContext
 
   override def createEmptyModule(): UserRegistrationInMemoryApplication = new UserRegistrationInMemoryApplication()
 

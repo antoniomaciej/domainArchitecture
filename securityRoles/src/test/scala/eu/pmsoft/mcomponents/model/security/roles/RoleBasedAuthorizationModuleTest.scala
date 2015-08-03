@@ -34,9 +34,12 @@ GeneratedCommandSpecification[RoleBasedAuthorizationModelCommand, RoleBasedAutho
 
   it should "not allow empty roles names" in {
     val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(CreateRole(""))) { result =>
-      result should be(-\/)
-    }
+    asyncCommandHandler(module).execute(CreateRole("correct")).futureValue should be(-\/)
+  }
+  it should "not allow duplicated roles names" in {
+    val module = createEmptyModule()
+    asyncCommandHandler(module).execute(CreateRole("correct")).futureValue should be(\/-)
+    asyncCommandHandler(module).execute(CreateRole("correct")).futureValue should be(-\/)
   }
   it should "fail when adding not existing permissions to role" in {
     val module = createEmptyModule()

@@ -115,7 +115,6 @@ case class RoleBasedAuthorizationStateInMemory(
     (_roleByID ^|-? index(roleId))
       .getOption(this)
 
-  //TODO test that it is not possible to have name conflicts
   override def roleByName(roleName: String): Option[AccessRole] = roleByID.values.find(_.roleName == roleName)
 
   def addRole(role: AccessRole): RoleBasedAuthorizationStateInMemory =

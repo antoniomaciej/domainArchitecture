@@ -139,7 +139,6 @@ trait RoleBasedAuthorizationExtractorFromProjection {
       }
     }
 
-  //TODO. Create a projection on a exact store version to response according to the after command execution state
   def findRoleByName(cmdResult: EventSourceCommandConfirmation, roleName: String):
   Future[RequestResult[CreateRoleResponse]] =
     projection.atLeastOn(cmdResult.storeVersion).map { state =>

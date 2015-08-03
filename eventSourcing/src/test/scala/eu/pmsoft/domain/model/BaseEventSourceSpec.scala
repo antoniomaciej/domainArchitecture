@@ -26,6 +26,8 @@
 
 package eu.pmsoft.domain.model
 
+import java.util.concurrent.Executor
+
 import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjection}
 import org.scalacheck.Gen
 import org.scalatest.concurrent.ScalaFutures
@@ -49,7 +51,14 @@ trait GeneratedCommandSpecification[C, E, S, M] {
 
   def stateProjection(contextModule: M): AtomicEventStoreProjection[S]
 
-  implicit def executionContext: ExecutionContext
+  /**
+   * Default executor for event tests
+   */
+  private lazy val synchronousExecutionContext = ExecutionContext.fromExecutor(new Executor {
+    def execute(task: Runnable) = task.run()
+  })
+
+  implicit def executionContext: ExecutionContext = synchronousExecutionContext
 
   private def genModule: Gen[M] = Gen.wrap(Gen.const(createEmptyModule()))
 
