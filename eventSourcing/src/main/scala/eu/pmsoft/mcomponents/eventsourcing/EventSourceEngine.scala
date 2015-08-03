@@ -30,7 +30,8 @@ import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scalaz._
-import scalaz.std.scalaFuture._
+import scalaz.concurrent._
+import Scalaz._
 
 
 object EventSourceEngine {

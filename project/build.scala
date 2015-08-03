@@ -44,22 +44,55 @@ object domainArchitecture extends Build {
     publishArtifact in(Test, packageSrc) := true
   )
 
-
   lazy val eventSourcing = (project in file("eventSourcing")).
     settings(commonSettings: _*).
     settings(dependencies: _*)
 
-  lazy val aggregateOld = (project in file("aggregateOld")).
+  lazy val microInstances = (project in file("microInstances")).
     settings(commonSettings: _*).
     settings(dependencies: _*).
     dependsOn(eventSourcing % "test->test;compile->compile")
 
+  lazy val domainModel = (project in file("domainModel")).
+    settings(commonSettings: _*).
+    settings(dependencies: _*)
+
+  lazy val securityRoles = (project in file("securityRoles")).
+    settings(commonSettings: _*).
+    settings(dependencies: _*).
+    dependsOn(eventSourcing % "test->test;compile->compile").
+    dependsOn(microInstances % "test->test;compile->compile").
+    dependsOn(domainModel)
+
+  lazy val passwordReset = (project in file("passwordReset")).
+    settings(commonSettings: _*).
+    settings(dependencies: _*).
+    dependsOn(eventSourcing % "test->test;compile->compile").
+    dependsOn(userSession).
+    dependsOn(userRegistry).
+    dependsOn(microInstances % "test->test;compile->compile").
+    dependsOn(domainModel)
+
+  lazy val userRegistry = (project in file("userRegistry")).
+    settings(commonSettings: _*).
+    settings(dependencies: _*).
+    dependsOn(eventSourcing % "test->test;compile->compile").
+    dependsOn(securityRoles).
+    dependsOn(microInstances % "test->test;compile->compile").
+    dependsOn(domainModel)
+
+  lazy val userSession = (project in file("userSession")).
+    settings(commonSettings: _*).
+    settings(dependencies: _*).
+    dependsOn(eventSourcing % "test->test;compile->compile").
+    dependsOn(userRegistry).
+    dependsOn(microInstances % "test->test;compile->compile").
+    dependsOn(domainModel)
+
   lazy val root = (project in file(".")).
-    aggregate(eventSourcing, aggregateOld)
-
-  val monocleVersion = "1.1.1"
-
-
+    aggregate(eventSourcing, microInstances,
+      domainModel,
+      userSession,userRegistry,passwordReset,securityRoles)
   lazy val dependencies = Seq(
     libraryDependencies ++= Seq(
       "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
@@ -86,5 +119,6 @@ object domainArchitecture extends Build {
       "org.scalacheck" %% "scalacheck" % "1.12.4" % "test"
     )
   )
+  val monocleVersion = "1.1.1"
 
 }

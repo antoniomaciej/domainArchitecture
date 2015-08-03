@@ -58,15 +58,16 @@ case class TestRoleID(roleId: Int)
 //Model entities
 
 case class TestUser(uid: TestUserID,
-                login: TestUserLogin,
-                passwordHash: TestUserPassword,
-                activeStatus: Boolean = false,
-                roles: Set[TestRoleID] = Set())
+                    login: TestUserLogin,
+                    passwordHash: TestUserPassword,
+                    activeStatus: Boolean = false,
+                    roles: Set[TestRoleID] = Set())
 
 //Aggregate
 sealed trait TestUserRegistrationAggregate
 
 case class TestUserAggregateId(uid: TestUserID) extends TestUserRegistrationAggregate
+
 case class EmailAggregateIdTest(loginEmail: TestUserLogin) extends TestUserRegistrationAggregate
 
 //UserRegistrationModel commands
@@ -87,8 +88,8 @@ case class TestUpdateUserRoles(uid: TestUserID, roles: Set[TestRoleID]) extends 
 sealed trait TestUserRegistrationEvent
 
 case class TestUserCreated(uid: TestUserID,
-                       login: TestUserLogin,
-                       passwordHash: TestUserPassword) extends TestUserRegistrationEvent
+                           login: TestUserLogin,
+                           passwordHash: TestUserPassword) extends TestUserRegistrationEvent
 
 case class TestUserPasswordUpdated(userId: TestUserID, passwordHash: TestUserPassword) extends TestUserRegistrationEvent
 

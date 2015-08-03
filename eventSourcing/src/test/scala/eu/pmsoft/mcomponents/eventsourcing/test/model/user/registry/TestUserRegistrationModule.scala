@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry
 
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
-import eu.pmsoft.mcomponents.eventsourcing.{CommandToTransactionScope, DomainLogic, EventSourceCommandFailed, EventSourceDataModel}
+import eu.pmsoft.mcomponents.eventsourcing.{CommandToTransactionScope, DomainLogic, EventSourceCommandFailed}
 import org.apache.commons.validator.routines.EmailValidator
 
 import scalaz._
@@ -104,23 +104,27 @@ TestUserRegistrationValidations {
 }
 
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.TestUserRegistrationModel._
+
 sealed trait TestUserRegistrationValidations {
 
-  def availableLogin(login: TestUserLogin)(implicit atomicState: TestUserRegistrationState): CommandPartialValidation[TestUserLogin] =
+  def availableLogin(login: TestUserLogin)(implicit atomicState: TestUserRegistrationState)
+  : CommandPartialValidation[TestUserLogin] =
     if (!atomicState.loginExists(login)) {
       \/-(login)
     } else {
       -\/(EventSourceCommandFailed(invalidLoginTest.code))
     }
 
-  def validEmail(email: String)(implicit atomicState: TestUserRegistrationState): CommandPartialValidation[String] =
+  def validEmail(email: String)(implicit atomicState: TestUserRegistrationState)
+  : CommandPartialValidation[String] =
     if (EmailValidator.getInstance().isValid(email)) {
       \/-(email)
     } else {
       -\/(EventSourceCommandFailed(invalidEmailTest.code))
     }
 
-  def validUidExtractUser(uid: TestUserID)(implicit atomicState: TestUserRegistrationState): CommandPartialValidation[TestUser] = atomicState.getUserByID(uid) match {
+  def validUidExtractUser(uid: TestUserID)(implicit atomicState: TestUserRegistrationState)
+  : CommandPartialValidation[TestUser] = atomicState.getUserByID(uid) match {
     case Some(x) => \/-(x)
     case None => -\/(EventSourceCommandFailed(notExistingUserIDTest.code))
   }

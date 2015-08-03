@@ -34,6 +34,12 @@ object ApplicationModel {
 
 trait AbstractApplicationModule[C, E, A, S] {
 
+  lazy val commandHandler = new BindApplicationDomainLogic[C, E, A, S](
+    logic,
+    transactionScopeCalculator,
+    applicationContextProvider.contextStateAtomicProjection,
+    applicationContextProvider.contextEventStore)
+
   def applicationContextProvider: ApplicationContextProvider[E, A, S]
 
   def logic: DomainLogic[C, E, A, S]
@@ -42,17 +48,11 @@ trait AbstractApplicationModule[C, E, A, S] {
 
   implicit def executionContext: ExecutionContext
 
-  lazy val commandHandler = new BindApplicationDomainLogic[C, E, A, S](
-    logic,
-    transactionScopeCalculator,
-    applicationContextProvider.contextStateAtomicProjection,
-    applicationContextProvider.contextEventStore)
-
 }
 
 class BindApplicationDomainLogic[C, E, A, S](val logic: DomainLogic[C, E, A, S],
                                              val transactionScopeCalculator: CommandToTransactionScope[C, A, S],
-                                             val atomicProjection: VersionedEventStoreProjection[A,S],
+                                             val atomicProjection: VersionedEventStoreProjection[A, S],
                                              val store: AsyncEventStore[E, A])
                                             (implicit val executionContext: ExecutionContext)
   extends DomainLogicAsyncEventCommandHandler[C, E, A, S] {
@@ -60,4 +60,4 @@ class BindApplicationDomainLogic[C, E, A, S](val logic: DomainLogic[C, E, A, S],
 
 
 class ApplicationContextProvider[E, A, S](val contextEventStore: AsyncEventStore[E, A],
-                                          val contextStateAtomicProjection: VersionedEventStoreProjection[A,S])
+                                          val contextStateAtomicProjection: VersionedEventStoreProjection[A, S])

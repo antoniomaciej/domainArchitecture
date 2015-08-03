@@ -26,7 +26,7 @@
 
 package eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.test
 
-import eu.pmsoft.domain.model.{CommandGenerator, GeneratedCommandSpecification, BaseEventSourceSpec}
+import eu.pmsoft.domain.model.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjection
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry._
 
@@ -35,7 +35,8 @@ GeneratedCommandSpecification[TestUserRegistrationCommand, TestUserRegistrationE
 
   it should "not allow duplicated login names" in {
     val module = createEmptyModule()
-    val commands = List(TestAddUser(TestUserLogin("test@mail.com"), TestUserPassword("password")), TestAddUser(TestUserLogin("test@mail.com"), TestUserPassword("anyOther")))
+    val commands = List(TestAddUser(TestUserLogin("test@mail.com"), TestUserPassword("password")),
+      TestAddUser(TestUserLogin("test@mail.com"), TestUserPassword("anyOther")))
     val serialExecutions = serial(commands)(asyncCommandHandler(module).execute)
     whenReady(serialExecutions) { results =>
       results.size should be(2)
@@ -46,7 +47,8 @@ GeneratedCommandSpecification[TestUserRegistrationCommand, TestUserRegistrationE
 
   it should "not allow invalid emails as user login" in {
     val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(TestAddUser(TestUserLogin("invalidEmail"), TestUserPassword("password")))) { result =>
+    whenReady(asyncCommandHandler(module).execute(TestAddUser(TestUserLogin("invalidEmail"),
+      TestUserPassword("password")))) { result =>
       result should be(-\/) withClue ": Validation should reject the AddUser command"
     }
   }

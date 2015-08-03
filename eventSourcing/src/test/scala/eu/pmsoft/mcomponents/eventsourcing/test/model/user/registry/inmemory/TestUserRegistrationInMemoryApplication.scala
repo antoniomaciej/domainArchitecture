@@ -38,9 +38,9 @@ import scala.concurrent.ExecutionContext
 class TestUserRegistrationInMemoryApplication(implicit val executionContext: ExecutionContext)
   extends TestUserRegistrationApplication {
 
-  private val storeAndProjectionInMemory = new TestUserRegistrationInMemoryEventStore()
-
   override val sideEffects: TestUserRegistrationLocalSideEffects = new TestLocalThreadUserRegistrationLocalSideEffects()
+
+  private val storeAndProjectionInMemory = new TestUserRegistrationInMemoryEventStore()
 
   override val applicationContextProvider: ApplicationContextProvider[TestUserRegistrationEvent, TestUserRegistrationAggregate, TestUserRegistrationState] =
     new ApplicationContextProvider(storeAndProjectionInMemory, storeAndProjectionInMemory)
@@ -48,9 +48,9 @@ class TestUserRegistrationInMemoryApplication(implicit val executionContext: Exe
 }
 
 class TestLocalThreadUserRegistrationLocalSideEffects extends TestUserRegistrationLocalSideEffects {
-  override def createNextUid(): TestUserID = new TestUserID(uidCounter.getAndAdd(1))
-
   val uidCounter = new AtomicLong(0)
+
+  override def createNextUid(): TestUserID = new TestUserID(uidCounter.getAndAdd(1))
 
 }
 
@@ -91,16 +91,14 @@ object TestUserRegistrationStateInMemoryLenses {
 }
 
 case class TestUserRegistrationStateInMemory(
-                                          userByID: Map[TestUserID, TestUser] = Map(),
-                                          loginToUserID: Map[TestUserLogin, TestUserID] = Map(),
-                                          userRolesMap: Map[TestUserID, Set[TestRoleID]] = Map(),
-                                          version: EventStoreVersion = EventStoreVersion(0)
-                                          ) extends TestUserRegistrationState {
+                                              userByID: Map[TestUserID, TestUser] = Map(),
+                                              loginToUserID: Map[TestUserLogin, TestUserID] = Map(),
+                                              userRolesMap: Map[TestUserID, Set[TestRoleID]] = Map(),
+                                              version: EventStoreVersion = EventStoreVersion(0)
+                                              ) extends TestUserRegistrationState {
 
 
   import TestUserRegistrationStateInMemoryLenses._
-
-  override def getUserByID(uid: TestUserID): Option[TestUser] = userByID.get(uid)
 
   override def loginExists(login: TestUserLogin): Boolean = userByID.values.exists(_.login == login)
 
@@ -108,11 +106,13 @@ case class TestUserRegistrationStateInMemory(
 
   override def getUserByLogin(login: TestUserLogin): Option[TestUser] = loginToUserID.get(login).flatMap(getUserByID)
 
+  override def getUserByID(uid: TestUserID): Option[TestUser] = userByID.get(uid)
+
   override def getAllUid: Stream[TestUserID] = userByID.keys.toStream
 
   def createUser(uid: TestUserID, login: TestUserLogin, passwordHash: TestUserPassword): TestUserRegistrationStateInMemory = {
     val updateUserId = (_userByID ^|-> at(uid)).set(Some(TestUser(uid, login, passwordHash)))
-    val userByLoginMap =  (_loginToUserID ^|-> at(login)).set(Some(uid))
+    val userByLoginMap = (_loginToUserID ^|-> at(login)).set(Some(uid))
     updateUserId.compose(userByLoginMap)(this)
   }
 
