@@ -35,11 +35,6 @@ object MicroComponentRegistry {
 
 }
 
-//TODO create a registry that will expose api components as REST services.
-//TODO chain of decorators for remote calls api
-//TODO explicit bind to remote or local components
-//TODO CD, CI, docker images
-
 sealed trait RegistrationError
 
 case class RegisterIsEmpty() extends RegistrationError
