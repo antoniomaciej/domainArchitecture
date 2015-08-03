@@ -26,7 +26,6 @@
 
 package eu.pmsoft.mcomponents.model.security.roles.mins
 
-import eu.pmsoft.domain.model.security.roles.mins._
 import eu.pmsoft.domain.model.{ComponentSpec, Mocked}
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.model.security.roles._

@@ -28,7 +28,7 @@ package eu.pmsoft.mcomponents.model.user.session.inmemory
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import eu.pmsoft.domain.inmemory.AbstractAtomicEventStoreWithProjectionInMemory
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.AbstractAtomicEventStoreWithProjectionInMemory
 import eu.pmsoft.domain.model.{UserSession, SessionToken, UserID}
 import eu.pmsoft.mcomponents.eventsourcing.ApplicationContextProvider
 import eu.pmsoft.mcomponents.model.user.registry._

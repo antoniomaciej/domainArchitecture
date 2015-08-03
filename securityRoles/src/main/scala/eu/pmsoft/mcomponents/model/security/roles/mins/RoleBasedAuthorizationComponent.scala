@@ -24,14 +24,12 @@
  *
  */
 
-package eu.pmsoft.domain.model.security.roles.mins
+package eu.pmsoft.mcomponents.model.security.roles.mins
 
 import com.softwaremill.macwire._
-import eu.pmsoft.domain.model.security.roles.mins.RoleBasedAuthorizationDefinitions._
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.minstance._
 import eu.pmsoft.mcomponents.model.security.roles._
-import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz._
@@ -64,6 +62,8 @@ class RoleBasedAuthorizationRequestDispatcher(val commandHandler: AsyncEventComm
                                               val projection: AtomicEventStoreProjection[RoleBasedAuthorizationState])
                                              (implicit val executionContext: ExecutionContext)
   extends RoleBasedAuthorizationApi with RoleBasedAuthorizationExtractorFromProjection {
+  import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
+  import RoleBasedAuthorizationDefinitions._
 
   override def createRole(req: CreateRoleRequest): Future[RequestResult[CreateRoleResponse]] = (for {
     cmdConfirmation <- EitherT(commandHandler.execute(CreateRole(req.roleName)).map(_.asResponse))
@@ -125,6 +125,8 @@ class RoleBasedAuthorizationRequestDispatcher(val commandHandler: AsyncEventComm
 }
 
 trait RoleBasedAuthorizationExtractorFromProjection {
+  import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
+  import RoleBasedAuthorizationDefinitions._
 
   def projection: AtomicEventStoreProjection[RoleBasedAuthorizationState]
 

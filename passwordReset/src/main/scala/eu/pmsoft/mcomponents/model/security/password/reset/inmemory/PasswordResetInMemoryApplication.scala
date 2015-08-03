@@ -26,7 +26,7 @@
 
 package eu.pmsoft.mcomponents.model.security.password.reset.inmemory
 
-import eu.pmsoft.domain.inmemory.AbstractAtomicEventStoreWithProjectionInMemory
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.AbstractAtomicEventStoreWithProjectionInMemory
 import eu.pmsoft.domain.model._
 import eu.pmsoft.mcomponents.eventsourcing.ApplicationContextProvider
 import eu.pmsoft.mcomponents.model.security.password.reset._

@@ -29,7 +29,7 @@ package eu.pmsoft.domain.model.inmemory
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{CountDownLatch, Executor, Executors, TimeUnit}
 
-import eu.pmsoft.domain.inmemory.AbstractAtomicEventStoreWithProjectionInMemory
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.AbstractAtomicEventStoreWithProjectionInMemory
 import eu.pmsoft.mcomponents.eventsourcing.{EventSourceCommandFailed, EventSourceCommandRollback, EventStoreVersion}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.prop.PropertyChecks

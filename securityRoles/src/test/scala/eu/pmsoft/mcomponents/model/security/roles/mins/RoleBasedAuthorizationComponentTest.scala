@@ -27,15 +27,14 @@
 package eu.pmsoft.mcomponents.model.security.roles.mins
 
 import eu.pmsoft.domain.model.ComponentSpec
-import eu.pmsoft.domain.model.security.roles.mins._
 import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
 import eu.pmsoft.mcomponents.model.security.roles._
 import eu.pmsoft.mcomponents.model.security.roles.inmemory.RoleBasedAuthorizationInMemoryApplication
 
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class RoleBasedAuthorizationComponentTest extends ComponentSpec {
 
+  import scala.concurrent.ExecutionContext.Implicits.global
   it should "extract roles to permissions map" in {
     val api = createComponent()
     val roleID = api.createRole(CreateRoleRequest("test")).futureValue.toOption.get.roleID

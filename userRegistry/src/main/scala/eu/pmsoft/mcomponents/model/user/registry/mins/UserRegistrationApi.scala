@@ -24,7 +24,7 @@
  *
  */
 
-package eu.pmsoft.domain.model.user.registry.mins
+package eu.pmsoft.mcomponents.model.user.registry.mins
 
 import eu.pmsoft.domain.model.{UserPassword, UserLogin, UserID}
 import eu.pmsoft.mcomponents.eventsourcing._

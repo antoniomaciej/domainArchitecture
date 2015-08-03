@@ -69,7 +69,7 @@ CommandGenerator[TestUserRegistrationCommand] {
   } yield TestUpdateUserPassword(uid, password)
   val genUpdateUserRoles = for {
     uid <- genExistingUid
-    password <- Gen.containerOf[Set, TestRoleID](Gen.oneOf((0 to 6).map(TestRoleID(_))))
+    password <- Gen.containerOf[Set, TestRoleID](Gen.oneOf((0 to 6).map(TestRoleID)))
   } yield TestUpdateUserRoles(uid, password)
   val genUpdateActiveUserStatus = for {
     uid <- genExistingUid

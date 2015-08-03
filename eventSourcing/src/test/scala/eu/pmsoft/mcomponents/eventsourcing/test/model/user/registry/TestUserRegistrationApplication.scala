@@ -31,9 +31,11 @@ import eu.pmsoft.mcomponents.eventsourcing._
 abstract class TestUserRegistrationApplication
   extends AbstractApplicationModule[TestUserRegistrationCommand, TestUserRegistrationEvent, TestUserRegistrationAggregate, TestUserRegistrationState] {
 
-  override lazy val logic: DomainLogic[TestUserRegistrationCommand, TestUserRegistrationEvent, TestUserRegistrationAggregate, TestUserRegistrationState] =
+  override lazy val logic
+  : DomainLogic[TestUserRegistrationCommand, TestUserRegistrationEvent, TestUserRegistrationAggregate, TestUserRegistrationState] =
     new TestTestUserRegistrationHandlerLogic(sideEffects)
-  override lazy val transactionScopeCalculator: CommandToTransactionScope[TestUserRegistrationCommand, TestUserRegistrationAggregate, TestUserRegistrationState] =
+  override lazy val transactionScopeCalculator
+  : CommandToTransactionScope[TestUserRegistrationCommand, TestUserRegistrationAggregate, TestUserRegistrationState] =
     new TestUserRegistrationCommandToTransactionScope()
 
   def sideEffects: TestUserRegistrationLocalSideEffects

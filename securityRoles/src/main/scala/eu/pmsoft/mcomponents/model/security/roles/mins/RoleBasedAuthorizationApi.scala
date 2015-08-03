@@ -24,7 +24,7 @@
  *
  */
 
-package eu.pmsoft.domain.model.security.roles.mins
+package eu.pmsoft.mcomponents.model.security.roles.mins
 
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.minstance.ApiVersion

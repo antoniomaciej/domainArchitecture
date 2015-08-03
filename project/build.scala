@@ -92,7 +92,7 @@ object domainArchitecture extends Build {
   lazy val root = (project in file(".")).
     aggregate(eventSourcing, microInstances,
       domainModel,
-      userSession,userRegistry,passwordReset,securityRoles)
+      userSession, userRegistry, passwordReset, securityRoles)
   lazy val dependencies = Seq(
     libraryDependencies ++= Seq(
       "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",

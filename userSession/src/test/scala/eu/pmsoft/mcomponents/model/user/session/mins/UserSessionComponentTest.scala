@@ -26,18 +26,16 @@
 
 package eu.pmsoft.mcomponents.model.user.session.mins
 
-import eu.pmsoft.domain.model.{UserPassword, UserLogin, ComponentSpec}
-import eu.pmsoft.domain.model.user.registry.mins._
-import eu.pmsoft.mcomponents.minstance.{MicroComponentRegistry, ApiContract}
-import eu.pmsoft.mcomponents.model.session.mins.{UserLoginRequest, UserSessionApi, UserSessionComponent}
-import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationInMemoryApplication
+import eu.pmsoft.domain.model.{ComponentSpec, UserLogin, UserPassword}
+import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
 import eu.pmsoft.mcomponents.model.user.registry.UserRegistrationApplication
+import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationInMemoryApplication
+import eu.pmsoft.mcomponents.model.user.registry.mins._
 import eu.pmsoft.mcomponents.model.user.session.UserSessionApplication
 import eu.pmsoft.mcomponents.model.user.session.inmemory.UserSessionInMemoryApplication
 
-import scala.concurrent.Future
-
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class UserSessionComponentTest extends ComponentSpec {
 

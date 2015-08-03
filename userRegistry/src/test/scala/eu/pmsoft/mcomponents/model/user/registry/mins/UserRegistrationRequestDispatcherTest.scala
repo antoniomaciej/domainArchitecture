@@ -27,7 +27,6 @@
 package eu.pmsoft.mcomponents.model.user.registry.mins
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.domain.model.user.registry.mins._
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel.CommandResultConfirmed
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.model.user.registry._

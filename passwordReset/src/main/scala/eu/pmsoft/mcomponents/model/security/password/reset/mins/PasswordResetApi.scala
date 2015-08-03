@@ -24,10 +24,51 @@
  *
  */
 
-package eu.pmsoft.domain.model.security.password.reset.mins
+package eu.pmsoft.mcomponents.model.security.password.reset.mins
+
+import eu.pmsoft.domain.model.{SessionToken, UserID, UserPassword}
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandConfirmation
+import eu.pmsoft.mcomponents.minstance.ApiVersion
+import eu.pmsoft.mcomponents.model.security.password.reset.PasswordResetToken
+import eu.pmsoft.mcomponents.reqres.ReqResDataModel.RequestResult
+import eu.pmsoft.mcomponents.reqres.RequestErrorDomain
+
+import scala.concurrent.Future
 
 object PasswordResetApi {
+  val version = ApiVersion(0, 0, 1)
+}
+
+object PasswordResetApiDefinitions {
+  implicit val requestErrorDomain = RequestErrorDomain("PasswordResetDomain")
+}
+
+object PasswordResetApiModel {
 
 }
 
-//TODO
+trait PasswordResetApi {
+
+  def initializeFlow(req: InitializePasswordResetFlowRequest): Future[RequestResult[InitializePasswordResetFlowResponse]]
+
+  def cancelFlow(req: CancelPasswordResetFlowRequest): Future[RequestResult[CancelPasswordResetFlowResponse]]
+
+  def confirmFlow(req: ConfirmPasswordResetFlowRequest): Future[RequestResult[ConfirmPasswordResetFlowResponse]]
+}
+
+case class InitializePasswordResetFlowRequest(userId: UserID,
+                                              sessionToken: SessionToken)
+
+// reset password should be send by a email from a projection
+case class InitializePasswordResetFlowResponse(confirmation: EventSourceCommandConfirmation)
+
+case class CancelPasswordResetFlowRequest(passwordResetToken: PasswordResetToken)
+
+case class CancelPasswordResetFlowResponse(confirmation: EventSourceCommandConfirmation)
+
+case class ConfirmPasswordResetFlowRequest(sessionToken: SessionToken,
+                                           passwordResetToken: PasswordResetToken,
+                                           newPassword: UserPassword)
+
+case class ConfirmPasswordResetFlowResponse(confirmation: EventSourceCommandConfirmation)
+

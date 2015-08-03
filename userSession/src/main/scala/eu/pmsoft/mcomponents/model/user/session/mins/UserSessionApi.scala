@@ -24,7 +24,7 @@
  *
  */
 
-package eu.pmsoft.mcomponents.model.session.mins
+package eu.pmsoft.mcomponents.model.user.session.mins
 
 import eu.pmsoft.domain.model.{SessionToken, UserLogin, UserPassword}
 import eu.pmsoft.mcomponents.minstance.ApiVersion

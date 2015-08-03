@@ -28,7 +28,7 @@ package eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.inmemory
 
 import java.util.concurrent.atomic.AtomicLong
 
-import eu.pmsoft.domain.inmemory.AbstractAtomicEventStoreWithProjectionInMemory
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.AbstractAtomicEventStoreWithProjectionInMemory
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry._
 

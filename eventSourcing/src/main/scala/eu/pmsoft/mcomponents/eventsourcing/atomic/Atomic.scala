@@ -24,7 +24,7 @@
  *
  */
 
-package eu.pmsoft.domain.util.atom
+package eu.pmsoft.mcomponents.eventsourcing.atomic
 
 import java.util.concurrent.atomic._
 

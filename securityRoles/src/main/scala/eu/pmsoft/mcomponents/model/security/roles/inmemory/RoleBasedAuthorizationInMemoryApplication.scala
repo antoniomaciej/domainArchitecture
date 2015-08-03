@@ -28,7 +28,7 @@ package eu.pmsoft.mcomponents.model.security.roles.inmemory
 
 import java.util.concurrent.atomic.AtomicLong
 
-import eu.pmsoft.domain.inmemory.AbstractAtomicEventStoreWithProjectionInMemory
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.AbstractAtomicEventStoreWithProjectionInMemory
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.model.security.roles._
 

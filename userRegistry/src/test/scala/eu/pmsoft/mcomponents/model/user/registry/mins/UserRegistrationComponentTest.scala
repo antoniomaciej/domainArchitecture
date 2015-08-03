@@ -27,7 +27,6 @@
 package eu.pmsoft.mcomponents.model.user.registry.mins
 
 import eu.pmsoft.domain.model.{UserPassword, UserLogin, ComponentSpec}
-import eu.pmsoft.domain.model.user.registry.mins.{RegisterUserRequest, UserRegistrationApi, UserRegistrationComponent}
 import eu.pmsoft.mcomponents.minstance.{MicroComponentRegistry, ApiContract}
 import eu.pmsoft.mcomponents.model.user.registry._
 import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationInMemoryApplication

@@ -24,15 +24,13 @@
  *
  */
 
-package eu.pmsoft.domain.model.user.registry.mins
+package eu.pmsoft.mcomponents.model.user.registry.mins
 
 import com.softwaremill.macwire._
 import eu.pmsoft.domain.model.UserLogin
-import eu.pmsoft.domain.model.user.registry.mins.UserRegistrationApplicationDefinitions._
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.minstance.{MicroComponentModel, MicroComponentContract, MicroComponent}
 import eu.pmsoft.mcomponents.model.user.registry._
-import eu.pmsoft.mcomponents.reqres.ReqResDataModel
 import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -68,6 +66,8 @@ class UserRegistrationRequestDispatcher(val registrationState: AtomicEventStoreP
                                         val commandHandler: AsyncEventCommandHandler[UserRegistrationCommand])
                                        (implicit val executionContext: ExecutionContext)
   extends UserRegistrationApi {
+  import eu.pmsoft.mcomponents.reqres.ReqResDataModel
+  import UserRegistrationApplicationDefinitions._
 
   override def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]] =
     registrationState.lastSnapshot().map { state =>

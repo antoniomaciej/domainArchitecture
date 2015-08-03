@@ -27,11 +27,9 @@
 package eu.pmsoft.mcomponents.model.user.session.mins
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.domain.model.user.registry.mins._
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel.CommandResultConfirmed
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.model.session.mins.{UserSessionApplicationDefinitions, UserLoginRequest, UserServiceComponentInstance}
-import eu.pmsoft.mcomponents.model.user.registry._
+import eu.pmsoft.mcomponents.model.user.registry.mins._
 import eu.pmsoft.mcomponents.model.user.session._
 import eu.pmsoft.mcomponents.reqres.ReqResDataModel
 
@@ -40,8 +38,8 @@ import scala.concurrent.Future
 
 class UserServiceComponentInstanceTest extends ComponentSpec {
 
-  import UserSessionApplicationDefinitions._
   import ReqResDataModel._
+  import UserSessionApplicationDefinitions._
 
   it should "return a critical error if user is not found after successful registration command" in {
     val userSessionStateMock = new OrderedEventStoreProjector[UserSessionSSOState] {

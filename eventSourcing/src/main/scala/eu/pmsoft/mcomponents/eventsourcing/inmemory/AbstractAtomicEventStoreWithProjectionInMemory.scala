@@ -24,11 +24,11 @@
  *
  */
 
-package eu.pmsoft.domain.inmemory
+package eu.pmsoft.mcomponents.eventsourcing.inmemory
 
-import eu.pmsoft.domain.util.atom.Atomic
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel.CommandResult
 import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.eventsourcing.atomic.Atomic
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.{Future, Promise}

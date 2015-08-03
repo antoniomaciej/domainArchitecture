@@ -24,18 +24,14 @@
  *
  */
 
-package eu.pmsoft.mcomponents.model.session.mins
+package eu.pmsoft.mcomponents.model.user.session.mins
 
 import com.softwaremill.macwire._
-import eu.pmsoft.domain.model.{UserSession, UserID}
-import eu.pmsoft.domain.model.user.registry.mins._
+import eu.pmsoft.domain.model.{UserID, UserSession}
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.minstance.{MicroComponentModel, MicroComponentContract, MicroComponent}
-import eu.pmsoft.mcomponents.model.session.mins.UserSessionApplicationDefinitions._
-import eu.pmsoft.mcomponents.model.user.registry._
+import eu.pmsoft.mcomponents.minstance.{MicroComponent, MicroComponentContract, MicroComponentModel}
+import eu.pmsoft.mcomponents.model.user.registry.mins.{SearchForUserIdRequest, UserRegistrationApi}
 import eu.pmsoft.mcomponents.model.user.session._
-import eu.pmsoft.mcomponents.reqres.ReqResDataModel
-import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz._
@@ -81,6 +77,10 @@ class UserServiceComponentInstance(val userRegistration: UserRegistrationApi,
                                    val userSessionProjection: OrderedEventStoreProjector[UserSessionSSOState])
                                   (implicit val executionContext: ExecutionContext)
   extends UserSessionApi {
+  import UserSessionApplicationDefinitions._
+  import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
+
+
   override def loginUser(loginRequest: UserLoginRequest): Future[RequestResult[UserLoginResponse]] = (for {
     userIdRes <- EitherT(userRegistration.findRegisteredUser(SearchForUserIdRequest(loginRequest.login, loginRequest.passwordHash)))
     cmdResult <- EitherT(commandHandler.execute(CreateUserSession(userIdRes.userId)).map(_.asResponse))

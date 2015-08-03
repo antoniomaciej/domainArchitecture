@@ -26,7 +26,7 @@
 
 package eu.pmsoft.mcomponents.minstance
 
-import eu.pmsoft.domain.util.atom.Atomic
+import eu.pmsoft.mcomponents.eventsourcing.atomic.Atomic
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scalaz.{-\/, \/, \/-}

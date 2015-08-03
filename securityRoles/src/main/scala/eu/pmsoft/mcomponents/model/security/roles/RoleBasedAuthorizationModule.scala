@@ -94,11 +94,13 @@ final class RoleBasedAuthorizationHandlerLogic(val sideEffects: RoleBasedAuthori
 
     case CreateRole(roleName) => for {
       roleNameValid <- validName(roleName)
+      roleName <- ensureRoleNamesAreUnique(roleName)
     } yield List(AccessRoleCreated(sideEffects.generateUniqueRoleId(), roleNameValid))
 
     case UpdateRoleName(roleID, roleName) => for {
       roleNameValid <- validName(roleName)
       currRole <- existingRoleById(roleID)
+      roleName <- ensureRoleNamesAreUnique(roleName, currRole)
     } yield if (currRole.roleName == roleNameValid) {
         List()
       } else {
@@ -158,6 +160,20 @@ trait RoleBasedAuthorizationValidations {
       \/-(name)
     } else {
       -\/(EventSourceCommandFailed(invalidName.code))
+    }
+
+  def ensureRoleNamesAreUnique(name: String, roleInContext: AccessRole)(implicit state: RoleBasedAuthorizationState): CommandPartialValidation[String] =
+    if (roleInContext.roleName == name) {
+      \/-(name)
+    } else {
+      ensureRoleNamesAreUnique(name)
+    }
+
+  def ensureRoleNamesAreUnique(name: String)(implicit state: RoleBasedAuthorizationState): CommandPartialValidation[String] =
+    if (state.roleByName(name).isEmpty) {
+      \/-(name)
+    } else {
+      -\/(EventSourceCommandFailed(nameForRoleUsed.code))
     }
 
   def validDescription(description: String)(implicit state: RoleBasedAuthorizationState): CommandPartialValidation[String] =

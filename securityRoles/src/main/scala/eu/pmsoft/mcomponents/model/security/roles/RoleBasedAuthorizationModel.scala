@@ -51,6 +51,10 @@ object RoleBasedAuthorizationModel {
   val invalidName = EventSourceModelError("invalid name",
     EventSourceCommandError(invalidNameErrorCode))
 
+  val nameForRoleUsedErrorCode = 2006L
+  val nameForRoleUsed = EventSourceModelError("a role with this name already exist",
+    EventSourceCommandError(nameForRoleUsedErrorCode))
+
 
 }
 
