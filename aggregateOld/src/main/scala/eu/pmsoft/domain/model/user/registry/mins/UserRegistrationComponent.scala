@@ -30,7 +30,8 @@ import com.softwaremill.macwire._
 import eu.pmsoft.domain.minstance._
 import eu.pmsoft.domain.model.user.registry._
 import eu.pmsoft.domain.model.user.registry.mins.UserRegistrationApplicationDefinitions._
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
+import eu.pmsoft.mcomponents.reqres.ReqResDataModel
+import ReqResDataModel._
 import eu.pmsoft.mcomponents.eventsourcing._
 
 import scala.concurrent.{ExecutionContext, Future}

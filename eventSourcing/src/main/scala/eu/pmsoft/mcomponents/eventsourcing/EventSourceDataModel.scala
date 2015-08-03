@@ -26,21 +26,9 @@
 
 package eu.pmsoft.mcomponents.eventsourcing
 
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
-
-import scala.concurrent.Future
-import scala.language.implicitConversions
 import scalaz.\/
 
 object EventSourceDataModel {
-
-  //Request/Response types
-  type CommandResultOnDomain = ResponseError \/ EventSourceCommandConfirmation
-
-  type RequestResult[R] = ResponseError \/ R
-
-  type CommandVersionResult = ResponseError \/ EventStoreVersion
-
 
   //Commands/Events types
 
@@ -55,26 +43,7 @@ object EventSourceDataModel {
   type CommandResultConfirmed = EventSourceCommandFailed \/ EventSourceCommandConfirmation
 
 
-  implicit def commandToResponse(cmdResult: CommandResultConfirmed)(implicit serviceDomain: RequestErrorDomain):
-  CommandResultToResponseResultTranslator = new DomainScopeCommandResultToResponseResultTranslator(cmdResult)
-
-  implicit def errorToResponse(cmdError: EventSourceModelError)(implicit serviceDomain: RequestErrorDomain):
-  EventErrorToResponseErrorTranslator = new DomainScopeEventSourceModelErrorToResponseResultTranslator(cmdError)
-
 }
-
-//Request/Response model
-abstract class RequestHandler[Req, Res] {
-
-  def handle(request: Req): Future[RequestResult[Res]]
-
-}
-
-case class RequestErrorCode(val code: Long) extends AnyVal
-
-case class RequestErrorDomain(val domain: String) extends AnyVal
-
-case class ResponseError(errorCode: RequestErrorCode, domain: RequestErrorDomain)
 
 
 //Commands/Events model
@@ -109,31 +78,3 @@ case class EventSourceCommandConfirmation(storeVersion: EventStoreVersion)
 
 case class EventSourceModelError(description: String, code: EventSourceCommandError)
 
-
-trait CommandResultToResponseResultTranslator {
-
-  def asResponse: RequestResult[EventSourceCommandConfirmation]
-
-}
-
-class DomainScopeCommandResultToResponseResultTranslator(val cmdResult: CommandResultConfirmed)
-                                                        (implicit val serviceDomain: RequestErrorDomain)
-  extends CommandResultToResponseResultTranslator {
-
-  override def asResponse: RequestResult[EventSourceCommandConfirmation] = cmdResult.leftMap { cmdError =>
-    ResponseError(RequestErrorCode(cmdError.error.errorCode), serviceDomain)
-  }
-}
-
-
-trait EventErrorToResponseErrorTranslator {
-
-  def toResponseError: ResponseError
-
-}
-
-class DomainScopeEventSourceModelErrorToResponseResultTranslator(val cmdError: EventSourceModelError)
-                                                                (implicit val serviceDomain: RequestErrorDomain)
-  extends EventErrorToResponseErrorTranslator {
-  override def toResponseError: ResponseError = ResponseError(RequestErrorCode(cmdError.code.errorCode), serviceDomain)
-}

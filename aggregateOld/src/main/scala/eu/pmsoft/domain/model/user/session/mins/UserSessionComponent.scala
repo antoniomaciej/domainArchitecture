@@ -31,7 +31,8 @@ import eu.pmsoft.domain.minstance._
 import eu.pmsoft.domain.model.user.registry.UserID
 import eu.pmsoft.domain.model.user.registry.mins._
 import eu.pmsoft.domain.model.user.session._
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
+import eu.pmsoft.mcomponents.reqres.ReqResDataModel
+import ReqResDataModel._
 import eu.pmsoft.mcomponents.eventsourcing._
 
 import UserSessionApplicationDefinitions._

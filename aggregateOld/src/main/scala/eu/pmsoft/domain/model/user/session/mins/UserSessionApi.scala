@@ -29,7 +29,8 @@ package eu.pmsoft.domain.model.user.session.mins
 import eu.pmsoft.domain.minstance.ApiVersion
 import eu.pmsoft.domain.model.security.password.reset.SessionToken
 import eu.pmsoft.domain.model.user.registry._
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
+import eu.pmsoft.mcomponents.reqres.{RequestErrorDomain, ReqResDataModel}
+import ReqResDataModel._
 import eu.pmsoft.mcomponents.eventsourcing._
 
 import scala.concurrent.Future

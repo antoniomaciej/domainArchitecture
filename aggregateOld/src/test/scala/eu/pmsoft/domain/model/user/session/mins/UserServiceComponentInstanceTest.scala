@@ -26,19 +26,22 @@
 
 package eu.pmsoft.domain.model.user.session.mins
 
-import eu.pmsoft.domain.model.{Mocked, ComponentSpec}
 import eu.pmsoft.domain.model.security.password.reset.SessionToken
-import eu.pmsoft.domain.model.user.registry.{UserPassword, UserLogin, UserID}
 import eu.pmsoft.domain.model.user.registry.mins._
-import eu.pmsoft.domain.model.user.session.{UserSessionModel, UserSessionCommand, UserSession, UserSessionSSOState}
+import eu.pmsoft.domain.model.user.registry.{UserID, UserLogin, UserPassword}
+import eu.pmsoft.domain.model.user.session.{UserSession, UserSessionCommand, UserSessionModel, UserSessionSSOState}
+import eu.pmsoft.domain.model.{ComponentSpec, Mocked}
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel.CommandResultConfirmed
 import eu.pmsoft.mcomponents.eventsourcing._
-import EventSourceDataModel._
+import eu.pmsoft.mcomponents.reqres.ReqResDataModel
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import UserSessionApplicationDefinitions._
 
 class UserServiceComponentInstanceTest extends ComponentSpec {
+
+  import ReqResDataModel._
+  import UserSessionApplicationDefinitions._
 
   it should "return a critical error if user is not found after successful registration command" in {
     val userSessionStateMock = new OrderedEventStoreProjector[UserSessionSSOState] {

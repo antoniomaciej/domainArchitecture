@@ -31,7 +31,8 @@ import eu.pmsoft.domain.minstance._
 import eu.pmsoft.mcomponents.eventsourcing._
 
 import eu.pmsoft.domain.model.security.roles._
-import EventSourceDataModel._
+import eu.pmsoft.mcomponents.reqres.ReqResDataModel
+import ReqResDataModel._
 
 import RoleBasedAuthorizationDefinitions._
 import scala.concurrent.{ExecutionContext, Future}

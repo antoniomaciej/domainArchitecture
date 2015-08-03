@@ -28,18 +28,20 @@ package eu.pmsoft.domain.model.user.registry.mins
 
 import eu.pmsoft.domain.model.Mocked
 import eu.pmsoft.domain.model.user.registry._
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel.CommandResultConfirmed
 import eu.pmsoft.mcomponents.eventsourcing._
-import EventSourceDataModel._
+import eu.pmsoft.mcomponents.reqres.ReqResDataModel
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.typelevel.scalatest.DisjunctionMatchers
 
 import scala.concurrent.{ExecutionContext, Future}
-import UserRegistrationApplicationDefinitions._
 
 class UserRegistrationRequestDispatcherTest extends FlatSpec with Matchers
 with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
 
+  import ReqResDataModel._
+  import UserRegistrationApplicationDefinitions._
   it should "return a critical error if user is not found after successful registration command" in {
     val registrationStateMock = new AtomicEventStoreProjection[UserRegistrationState] {
       override def atLeastOn(storeVersion: EventStoreVersion): Future[UserRegistrationState] =

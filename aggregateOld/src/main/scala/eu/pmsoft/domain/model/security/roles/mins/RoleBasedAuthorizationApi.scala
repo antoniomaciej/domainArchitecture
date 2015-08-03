@@ -29,7 +29,8 @@ package eu.pmsoft.domain.model.security.roles.mins
 import eu.pmsoft.domain.minstance.ApiVersion
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.domain.model.security.roles._
-import EventSourceDataModel._
+import eu.pmsoft.mcomponents.reqres.{RequestErrorDomain, ReqResDataModel}
+import ReqResDataModel._
 
 import scala.concurrent.Future
 

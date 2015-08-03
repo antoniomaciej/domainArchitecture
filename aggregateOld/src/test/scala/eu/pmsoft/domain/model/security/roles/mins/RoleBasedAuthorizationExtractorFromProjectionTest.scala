@@ -29,12 +29,13 @@ package eu.pmsoft.domain.model.security.roles.mins
 import eu.pmsoft.domain.model.{Mocked, ComponentSpec}
 import eu.pmsoft.domain.model.security.roles._
 import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.reqres.ReqResDataModel
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class RoleBasedAuthorizationExtractorFromProjectionTest extends ComponentSpec {
 
-  import EventSourceDataModel._
+  import ReqResDataModel._
   import RoleBasedAuthorizationDefinitions._
 
   it should "failure with permissionNotFoundAfterInsert when permission not found after insert" in {

@@ -29,7 +29,8 @@ package eu.pmsoft.domain.model.user.registry.mins
 import eu.pmsoft.domain.minstance.ApiVersion
 import eu.pmsoft.domain.model.user.registry.{UserID, UserPassword, UserLogin}
 import eu.pmsoft.mcomponents.eventsourcing._
-import EventSourceDataModel._
+import eu.pmsoft.mcomponents.reqres.{RequestErrorDomain, ReqResDataModel}
+import ReqResDataModel._
 
 import scala.concurrent.Future
 
