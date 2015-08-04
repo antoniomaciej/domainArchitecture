@@ -26,7 +26,7 @@
 
 package eu.pmsoft.mcomponents.minstance
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 object MicroComponentModel {
 
@@ -43,6 +43,8 @@ case class MicroComponentContract[T](apiVersion: ApiVersion, contract: ApiContra
 
 
 trait MicroComponent[T] {
+
+  implicit def executionContext: ExecutionContext
 
   def providedContact: MicroComponentContract[T]
 

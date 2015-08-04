@@ -26,10 +26,12 @@
 
 package eu.pmsoft.mcomponents.model.user.registry.mins
 
-import eu.pmsoft.domain.model.{UserPassword, UserLogin, ComponentSpec}
-import eu.pmsoft.mcomponents.minstance.{MicroComponentRegistry, ApiContract}
+import eu.pmsoft.domain.model.{ComponentSpec, UserLogin, UserPassword}
+import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
 import eu.pmsoft.mcomponents.model.user.registry._
 import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationInMemoryApplication
+
+import scala.concurrent.ExecutionContext
 
 class UserRegistrationComponentTest extends ComponentSpec {
 
@@ -54,6 +56,8 @@ class UserRegistrationComponentTest extends ComponentSpec {
     val userRegistration = new UserRegistrationComponent {
 
       override lazy val applicationModule: UserRegistrationApplication = new UserRegistrationInMemoryApplication()
+
+      override implicit lazy val executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
     }
 
     registry.registerComponent(userRegistration)

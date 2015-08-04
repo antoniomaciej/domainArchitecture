@@ -30,8 +30,8 @@ import eu.pmsoft.domain.model.ComponentSpec
 import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
 import eu.pmsoft.mcomponents.model.minstance.components._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * Test to try to find a dsl definition for components with dependencies.
@@ -50,23 +50,24 @@ import scala.concurrent.Future
 class MicroComponentModelTest extends ComponentSpec {
 
   it should "create components and inject dependencies as futures" in {
+    import scala.concurrent.ExecutionContext.Implicits.global
 
     val registry = MicroComponentRegistry.create()
 
     //Create components independently
-    val frontend = new FrontendComponent {
+    val frontend = new FrontendComponent with ImplicitProvidedExecutionContextForTest{
       override def backendRef: Future[BackendComponentApi] =
         registry.bindComponent(ApiContract(classOf[BackendComponentApi]))
     }
-    val backend = new BackendComponent {
+    val backend = new BackendComponent with ImplicitProvidedExecutionContextForTest{
       override def processTwo: Future[ProcessTwoComponentApi] =
         registry.bindComponent(ApiContract(classOf[ProcessTwoComponentApi]))
 
       override def processOne: Future[ProcessOneComponentApi] =
         registry.bindComponent(ApiContract(classOf[ProcessOneComponentApi]))
     }
-    val processOne = new ProcessOneComponent {}
-    val processTwo = new ProcessTwoComponent {}
+    val processOne = new ProcessOneComponent with ImplicitProvidedExecutionContextForTest{}
+    val processTwo = new ProcessTwoComponent with ImplicitProvidedExecutionContextForTest{}
 
     //Register the components on the components registry
     registry.registerComponent(frontend)
@@ -82,4 +83,6 @@ class MicroComponentModelTest extends ComponentSpec {
     frontendApi.callBackend().futureValue shouldBe List("ONE", "TWO")
 
   }
+
 }
+

@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.model.minstance
 
 import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
-import eu.pmsoft.mcomponents.model.minstance.components.{FrontendComponentApi, ProcessOneComponent, ProcessOneComponentApi, ProcessTwoComponent}
+import eu.pmsoft.mcomponents.model.minstance.components._
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.typelevel.scalatest.DisjunctionMatchers
@@ -44,7 +44,7 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
 
   it should "resolve components independently of the registration order" in {
     val registry = MicroComponentRegistry.create()
-    val processOne = new ProcessOneComponent {}
+    val processOne = new ProcessOneComponent with ImplicitProvidedExecutionContextForTest{}
     // lookup before registering
     val lookup = registry.lookupComponent(ApiContract(classOf[ProcessOneComponentApi]))
 
@@ -55,7 +55,7 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
 
   it should "resolve components independently of the registration order with bind" in {
     val registry = MicroComponentRegistry.create()
-    val processOne = new ProcessOneComponent {}
+    val processOne = new ProcessOneComponent with ImplicitProvidedExecutionContextForTest{}
     // bind before registering
     val bind = registry.bindComponent(ApiContract(classOf[ProcessOneComponentApi]))
 
@@ -72,14 +72,14 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
 
   it should "not allow to register after initialization" in {
     val registry = createRegistryWithComponentTwoRegistered()
-    val processOne = new ProcessOneComponent {}
+    val processOne = new ProcessOneComponent with ImplicitProvidedExecutionContextForTest{}
     registry.initializeInstances().futureValue shouldBe \/-
     registry.registerComponent(processOne) shouldBe -\/
   }
 
   it should "not allow to register two times the same component" in {
     val registry = MicroComponentRegistry.create()
-    val processOne = new ProcessOneComponent {}
+    val processOne = new ProcessOneComponent with ImplicitProvidedExecutionContextForTest{}
     registry.registerComponent(processOne) shouldBe \/-
     registry.registerComponent(processOne) shouldBe -\/
   }
@@ -98,7 +98,7 @@ with ScalaFutures with AppendedClues with ParallelTestExecution with Disjunction
 
   private def createRegistryWithComponentTwoRegistered() = {
     val registry = MicroComponentRegistry.create()
-    val component = new ProcessTwoComponent {}
+    val component = new ProcessTwoComponent with ImplicitProvidedExecutionContextForTest{}
     registry.registerComponent(component) shouldBe \/-
     registry
   }

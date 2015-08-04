@@ -45,7 +45,7 @@ trait UserSessionComponent extends MicroComponent[UserSessionApi] {
 
   def applicationModule: UserSessionApplication
 
-  private implicit lazy val executionContext = applicationModule.executionContext
+  implicit lazy val executionContext = applicationModule.executionContext
 
   override lazy val app: Future[UserSessionApi] = for {
     userRegistrationRef <- userRegistrationService

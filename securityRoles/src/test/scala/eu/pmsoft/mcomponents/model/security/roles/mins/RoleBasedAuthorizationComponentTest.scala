@@ -31,6 +31,8 @@ import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
 import eu.pmsoft.mcomponents.model.security.roles._
 import eu.pmsoft.mcomponents.model.security.roles.inmemory.RoleBasedAuthorizationInMemoryApplication
 
+import scala.concurrent.ExecutionContext
+
 
 class RoleBasedAuthorizationComponentTest extends ComponentSpec {
 
@@ -125,6 +127,8 @@ class RoleBasedAuthorizationComponentTest extends ComponentSpec {
 
     val roleAuth = new RoleBasedAuthorizationComponent {
       override lazy val application: RoleBasedAuthorizationApplication = new RoleBasedAuthorizationInMemoryApplication()
+
+      override implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
     }
 
     registry.registerComponent(roleAuth)

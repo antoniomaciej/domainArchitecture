@@ -35,7 +35,7 @@ import eu.pmsoft.mcomponents.model.user.session.UserSessionApplication
 import eu.pmsoft.mcomponents.model.user.session.inmemory.UserSessionInMemoryApplication
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class UserSessionComponentTest extends ComponentSpec {
 
@@ -76,6 +76,8 @@ class UserSessionComponentTest extends ComponentSpec {
     val userRegistration = new UserRegistrationComponent {
 
       override lazy val applicationModule: UserRegistrationApplication = new UserRegistrationInMemoryApplication()
+
+      override implicit lazy val executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
     }
 
     registry.registerComponent(userSession)
