@@ -52,7 +52,7 @@ trait AbstractApplicationModule[C, E, A, S] {
 
 class BindApplicationDomainLogic[C, E, A, S](val logic: DomainLogic[C, E, A, S],
                                              val transactionScopeCalculator: CommandToTransactionScope[C, A, S],
-                                             val atomicProjection: VersionedEventStoreProjection[A, S],
+                                             val atomicProjection: VersionedEventStoreProjectionView[A, S],
                                              val store: AsyncEventStore[E, A])
                                             (implicit val executionContext: ExecutionContext)
   extends DomainLogicAsyncEventCommandHandler[C, E, A, S] {
@@ -60,4 +60,4 @@ class BindApplicationDomainLogic[C, E, A, S](val logic: DomainLogic[C, E, A, S],
 
 
 class ApplicationContextProvider[E, A, S](val contextEventStore: AsyncEventStore[E, A],
-                                          val contextStateAtomicProjection: VersionedEventStoreProjection[A, S])
+                                          val contextStateAtomicProjection: VersionedEventStoreProjectionView[A, S])

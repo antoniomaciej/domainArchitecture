@@ -62,7 +62,7 @@ trait UserRegistrationInternalInjector {
 
 }
 
-class UserRegistrationRequestDispatcher(val registrationState: AtomicEventStoreProjection[UserRegistrationState],
+class UserRegistrationRequestDispatcher(val registrationState: AtomicEventStoreProjectionView[UserRegistrationState],
                                         val commandHandler: AsyncEventCommandHandler[UserRegistrationCommand])
                                        (implicit val executionContext: ExecutionContext)
   extends UserRegistrationApi {

@@ -26,7 +26,7 @@
 
 package eu.pmsoft.mcomponents.model.user.session.inmemory
 
-import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjection}
+import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjectionView}
 import eu.pmsoft.mcomponents.model.user.session._
 
 class UserSessionInMemoryApplicationTest extends UserSessionModuleTest[UserSessionInMemoryApplication] {
@@ -37,6 +37,6 @@ class UserSessionInMemoryApplicationTest extends UserSessionModuleTest[UserSessi
   AsyncEventCommandHandler[UserSessionCommand] = contextModule.commandHandler
 
   override def stateProjection(contextModule: UserSessionInMemoryApplication):
-  AtomicEventStoreProjection[UserSessionSSOState] = contextModule.applicationContextProvider.contextStateAtomicProjection
+  AtomicEventStoreProjectionView[UserSessionSSOState] = contextModule.applicationContextProvider.contextStateAtomicProjection
 
 }

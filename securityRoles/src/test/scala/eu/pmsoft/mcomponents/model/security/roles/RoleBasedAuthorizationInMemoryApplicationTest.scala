@@ -26,7 +26,7 @@
 
 package eu.pmsoft.mcomponents.model.security.roles
 
-import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjection}
+import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjectionView}
 import eu.pmsoft.mcomponents.model.security.roles.inmemory.RoleBasedAuthorizationInMemoryApplication
 
 class RoleBasedAuthorizationInMemoryApplicationTest extends RoleBasedAuthorizationModuleTest[RoleBasedAuthorizationInMemoryApplication] {
@@ -37,5 +37,5 @@ class RoleBasedAuthorizationInMemoryApplicationTest extends RoleBasedAuthorizati
   : AsyncEventCommandHandler[RoleBasedAuthorizationModelCommand] = contextModule.commandHandler
 
   override def stateProjection(contextModule: RoleBasedAuthorizationInMemoryApplication)
-  : AtomicEventStoreProjection[RoleBasedAuthorizationState] = contextModule.applicationContextProvider.contextStateAtomicProjection
+  : AtomicEventStoreProjectionView[RoleBasedAuthorizationState] = contextModule.applicationContextProvider.contextStateAtomicProjection
 }

@@ -58,8 +58,8 @@ class RoleBasedAuthorizationExtractorFromProjectionTest extends ComponentSpec {
 
     override implicit def executionContext: ExecutionContext = ExecutionContext.global
 
-    override def projection: AtomicEventStoreProjection[RoleBasedAuthorizationState] =
-      new AtomicEventStoreProjection[RoleBasedAuthorizationState] {
+    override def projection: AtomicEventStoreProjectionView[RoleBasedAuthorizationState] =
+      new AtomicEventStoreProjectionView[RoleBasedAuthorizationState] {
 
         override def lastSnapshot(): Future[RoleBasedAuthorizationState] = Mocked.shouldNotBeCalled
 

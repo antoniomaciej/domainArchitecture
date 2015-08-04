@@ -78,8 +78,8 @@ class DomainLogicAsyncEventCommandHandlerTest extends ComponentSpec {
             scalaz.\/-(List(RollbackTestEvent()))
         }
 
-      override protected def atomicProjection: VersionedEventStoreProjection[RollbackTestAggregateId, RollbackTestState] =
-        new VersionedEventStoreProjection[RollbackTestAggregateId, RollbackTestState] {
+      override protected def atomicProjection: VersionedEventStoreProjectionView[RollbackTestAggregateId, RollbackTestState] =
+        new VersionedEventStoreProjectionView[RollbackTestAggregateId, RollbackTestState] {
           override def projection(transactionScope: Set[RollbackTestAggregateId]):
           Future[VersionedProjection[RollbackTestAggregateId, RollbackTestState]] =
             Future.successful(VersionedProjection(Map(), RollbackTestState()))

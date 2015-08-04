@@ -26,7 +26,7 @@
 
 package eu.pmsoft.mcomponents.model.user.registry.inmemory
 
-import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjection}
+import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjectionView}
 import eu.pmsoft.mcomponents.model.user.registry._
 
 class UserRegistrationInMemoryApplicationTest extends UserRegistrationModuleTest[UserRegistrationInMemoryApplication] {
@@ -37,5 +37,5 @@ class UserRegistrationInMemoryApplicationTest extends UserRegistrationModuleTest
   : AsyncEventCommandHandler[UserRegistrationCommand] = contextModule.commandHandler
 
   override def stateProjection(contextModule: UserRegistrationInMemoryApplication)
-  : AtomicEventStoreProjection[UserRegistrationState] = contextModule.applicationContextProvider.contextStateAtomicProjection
+  : AtomicEventStoreProjectionView[UserRegistrationState] = contextModule.applicationContextProvider.contextStateAtomicProjection
 }

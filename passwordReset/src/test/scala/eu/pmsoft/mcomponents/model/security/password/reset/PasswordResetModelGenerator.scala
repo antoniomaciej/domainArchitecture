@@ -27,11 +27,11 @@
 package eu.pmsoft.mcomponents.model.security.password.reset
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjection
+import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
 import org.scalacheck.Gen
 import org.scalacheck.Gen._
 
-class PasswordResetModelGenerator(val state: AtomicEventStoreProjection[PasswordResetModelState])
+class PasswordResetModelGenerator(val state: AtomicEventStoreProjectionView[PasswordResetModelState])
   extends CommandGenerator[PasswordResetModelCommand] {
 
   lazy val genInitializePasswordResetFlow = for {

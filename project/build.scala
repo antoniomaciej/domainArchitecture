@@ -93,25 +93,18 @@ object domainArchitecture extends Build {
     aggregate(eventSourcing, microInstances,
       domainModel,
       userSession, userRegistry, passwordReset, securityRoles)
+
+  val monocleVersion = "1.1.1"
+
   lazy val dependencies = Seq(
     libraryDependencies ++= Seq(
-      "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
       "org.jasypt" % "jasypt" % "1.9.2",
       "com.softwaremill.macwire" %% "runtime" % "1.0.5",
       "com.softwaremill.macwire" %% "macros" % "1.0.5",
-      "io.reactivex" %% "rxscala" % "0.25.0",
-      "ch.qos.logback" % "logback-classic" % "1.1.2",
       "commons-validator" % "commons-validator" % "1.4.1",
       "com.github.julien-truffaut" %% "monocle-core" % monocleVersion,
       "com.github.julien-truffaut" %% "monocle-generic" % monocleVersion,
       "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion,
-      "org.scala-lang.modules" %% "scala-pickling" % "0.10.1",
-      "org.json4s" %% "json4s-native" % "3.2.10",
-      "com.typesafe.akka" %% "akka-actor" % "2.3.12",
-      "io.spray" %% "spray-can" % "1.3.3",
-      "io.spray" %% "spray-routing-shapeless2" % "1.3.3",
-      "io.spray" %% "spray-io" % "1.3.3",
-      "io.spray" %% "spray-servlet" % "1.3.3",
       "org.scalaz" %% "scalaz-core" % "7.1.2",
       "org.scalaz" %% "scalaz-concurrent" % "7.1.2",
       "org.typelevel" %% "scalaz-scalatest" % "0.2.2" % "test",
@@ -119,6 +112,5 @@ object domainArchitecture extends Build {
       "org.scalacheck" %% "scalacheck" % "1.12.4" % "test"
     )
   )
-  val monocleVersion = "1.1.1"
 
 }

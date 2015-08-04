@@ -40,7 +40,7 @@ class UserRegistrationRequestDispatcherTest extends ComponentSpec {
   import UserRegistrationApplicationDefinitions._
 
   it should "return a critical error if user is not found after successful registration command" in {
-    val registrationStateMock = new AtomicEventStoreProjection[UserRegistrationState] {
+    val registrationStateMock = new AtomicEventStoreProjectionView[UserRegistrationState] {
       override def atLeastOn(storeVersion: EventStoreVersion): Future[UserRegistrationState] =
         Future.successful(new UserRegistrationState {
           override def uidExists(uid: UserID): Boolean = Mocked.shouldNotBeCalled

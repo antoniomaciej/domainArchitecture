@@ -51,7 +51,6 @@ class PasswordResetComponentTest extends ComponentSpec {
 
   }
 
-
   def createComponent(testApp: PasswordResetInMemoryApplication): PasswordResetApi = {
     val registry = MicroComponentRegistry.create()
 

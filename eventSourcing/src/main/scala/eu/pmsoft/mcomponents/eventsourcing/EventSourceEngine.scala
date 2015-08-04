@@ -29,9 +29,8 @@ package eu.pmsoft.mcomponents.eventsourcing
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
+import scalaz.Scalaz._
 import scalaz._
-import scalaz.concurrent._
-import Scalaz._
 
 
 object EventSourceEngine {
@@ -43,28 +42,21 @@ trait DomainLogic[C, E, A, S] {
   def executeCommand(command: C, transactionScope: Map[A, Long])(implicit state: S): CommandToEventsResult[E]
 }
 
-trait EventSourceProjection[E] {
 
-  def projectEvent(event: E, storeVersion: EventStoreVersion): Unit
-
-  def lastSnapshotVersion(): EventStoreVersion
+trait OrderedEventStoreProjectionView[+P] {
+  def atLeastOn(storeVersion: EventStoreVersion): Future[P]
 }
 
-trait AtomicEventStoreProjection[+P] extends OrderedEventStoreProjector[P] {
-
+trait AtomicEventStoreProjectionView[+P] extends OrderedEventStoreProjectionView[P] {
   def lastSnapshot(): Future[P]
 }
 
-trait VersionedEventStoreProjection[A, +P] extends AtomicEventStoreProjection[P] {
-
+trait VersionedEventStoreProjectionView[A, +P] extends AtomicEventStoreProjectionView[P] {
   def projection(transactionScope: Set[A]): Future[VersionedProjection[A, P]]
 }
 
 case class VersionedProjection[A, +P](transactionScopeVersion: Map[A, Long], projection: P)
 
-trait OrderedEventStoreProjector[+P] {
-  def atLeastOn(storeVersion: EventStoreVersion): Future[P]
-}
 
 trait CommandToTransactionScope[C, A, S] {
   def calculateTransactionScope(command: C, state: S): CommandToAggregateResult[A]
@@ -83,7 +75,7 @@ trait AsyncEventHandlingModule[C, E, S] {
 
   def commandHandler: AsyncEventCommandHandler[C]
 
-  def state: AtomicEventStoreProjection[S]
+  def state: AtomicEventStoreProjectionView[S]
 
 }
 
@@ -99,7 +91,7 @@ trait DomainLogicAsyncEventCommandHandler[C, E, A, S] extends AsyncEventCommandH
 
   protected def store: AsyncEventStore[E, A]
 
-  protected def atomicProjection: VersionedEventStoreProjection[A, S]
+  protected def atomicProjection: VersionedEventStoreProjectionView[A, S]
 
   protected def transactionScopeCalculator: CommandToTransactionScope[C, A, S]
 

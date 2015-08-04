@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.model.user.registry
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjection
+import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
 
 abstract class UserRegistrationModuleTest[M] extends BaseEventSourceSpec with
 GeneratedCommandSpecification[UserRegistrationCommand, UserRegistrationEvent, UserRegistrationState, M] {
@@ -70,7 +70,7 @@ GeneratedCommandSpecification[UserRegistrationCommand, UserRegistrationEvent, Us
     }
   }
 
-  override def buildGenerator(state: AtomicEventStoreProjection[UserRegistrationState]):
+  override def buildGenerator(state: AtomicEventStoreProjectionView[UserRegistrationState]):
   CommandGenerator[UserRegistrationCommand] = new UserRegistrationGenerators(state)
 
   def postCommandValidation(state: UserRegistrationState, command: UserRegistrationCommand): Unit = command match {

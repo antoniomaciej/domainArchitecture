@@ -28,7 +28,7 @@ package eu.pmsoft.domain.model
 
 import java.util.concurrent.Executor
 
-import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjection}
+import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjectionView}
 import org.scalacheck.Gen
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.prop.PropertyChecks
@@ -49,7 +49,7 @@ trait GeneratedCommandSpecification[C, E, S, M] {
 
   def asyncCommandHandler(contextModule: M): AsyncEventCommandHandler[C]
 
-  def stateProjection(contextModule: M): AtomicEventStoreProjection[S]
+  def stateProjection(contextModule: M): AtomicEventStoreProjectionView[S]
 
   /**
    * Default executor for event tests
@@ -69,7 +69,7 @@ trait GeneratedCommandSpecification[C, E, S, M] {
     } yield previousResults :+ nextResult
   }
 
-  def buildGenerator(state: AtomicEventStoreProjection[S]): CommandGenerator[C]
+  def buildGenerator(state: AtomicEventStoreProjectionView[S]): CommandGenerator[C]
 
   def validateState(state: S): Unit
 

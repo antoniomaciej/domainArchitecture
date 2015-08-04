@@ -31,7 +31,7 @@ import java.util.concurrent.Executor
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry._
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.inmemory._
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.test.TestUserRegistrationModuleTest
-import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjection}
+import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjectionView}
 
 import scala.concurrent.ExecutionContext
 
@@ -43,5 +43,5 @@ class TestUserRegistrationInMemoryApplicationTest extends TestUserRegistrationMo
   : AsyncEventCommandHandler[TestUserRegistrationCommand] = contextModule.commandHandler
 
   override def stateProjection(contextModule: TestUserRegistrationInMemoryApplication)
-  : AtomicEventStoreProjection[TestUserRegistrationState] = contextModule.applicationContextProvider.contextStateAtomicProjection
+  : AtomicEventStoreProjectionView[TestUserRegistrationState] = contextModule.applicationContextProvider.contextStateAtomicProjection
 }

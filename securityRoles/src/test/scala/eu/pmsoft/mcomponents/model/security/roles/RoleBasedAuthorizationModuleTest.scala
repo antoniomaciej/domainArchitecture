@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.model.security.roles
 
 import eu.pmsoft.domain.model.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjection
+import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
 
 abstract class RoleBasedAuthorizationModuleTest[M] extends BaseEventSourceSpec with
 GeneratedCommandSpecification[RoleBasedAuthorizationModelCommand, RoleBasedAuthorizationEvent, RoleBasedAuthorizationState, M] {
@@ -77,7 +77,7 @@ GeneratedCommandSpecification[RoleBasedAuthorizationModelCommand, RoleBasedAutho
 
   }
 
-  override def buildGenerator(state: AtomicEventStoreProjection[RoleBasedAuthorizationState])
+  override def buildGenerator(state: AtomicEventStoreProjectionView[RoleBasedAuthorizationState])
   : CommandGenerator[RoleBasedAuthorizationModelCommand] = new RoleBasedAuthorizationGenerators(state)
 
   override def postCommandValidation(state: RoleBasedAuthorizationState, command: RoleBasedAuthorizationModelCommand): Unit = command match {

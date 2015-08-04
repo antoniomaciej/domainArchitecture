@@ -35,7 +35,8 @@ import scala.concurrent.{Future, Promise}
 import scalaz.{-\/, \/, \/-}
 
 
-abstract class AbstractAtomicEventStoreWithProjectionInMemory[E, A, S] extends AsyncEventStore[E, A] with VersionedEventStoreProjection[A, S] {
+abstract class AbstractAtomicEventStoreWithProjectionInMemory[E, A, S]
+  extends AsyncEventStore[E, A] with VersionedEventStoreProjectionView[A, S] {
 
   protected[this] val inMemoryStore = Atomic(AtomicEventStoreState[E, A, S](buildInitialState()))
 

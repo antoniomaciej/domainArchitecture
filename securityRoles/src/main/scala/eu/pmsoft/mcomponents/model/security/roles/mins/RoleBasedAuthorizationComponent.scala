@@ -59,7 +59,7 @@ trait RoleBasedAuthorizationInternalInjector {
 }
 
 class RoleBasedAuthorizationRequestDispatcher(val commandHandler: AsyncEventCommandHandler[RoleBasedAuthorizationModelCommand],
-                                              val projection: AtomicEventStoreProjection[RoleBasedAuthorizationState])
+                                              val projection: AtomicEventStoreProjectionView[RoleBasedAuthorizationState])
                                              (implicit val executionContext: ExecutionContext)
   extends RoleBasedAuthorizationApi with RoleBasedAuthorizationExtractorFromProjection {
   import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
@@ -128,7 +128,7 @@ trait RoleBasedAuthorizationExtractorFromProjection {
   import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
   import RoleBasedAuthorizationDefinitions._
 
-  def projection: AtomicEventStoreProjection[RoleBasedAuthorizationState]
+  def projection: AtomicEventStoreProjectionView[RoleBasedAuthorizationState]
 
   implicit def executionContext: ExecutionContext
 

@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.model.security.password.reset.mins
 
 import com.softwaremill.macwire._
-import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjection}
+import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjectionView}
 import eu.pmsoft.mcomponents.minstance._
 import eu.pmsoft.mcomponents.model.security.password.reset._
 import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
@@ -58,7 +58,7 @@ trait PasswordResetApiInternalInjector {
 }
 
 class PasswordResetApiDispatcher(val commandHandler: AsyncEventCommandHandler[PasswordResetModelCommand],
-                                 val projection: AtomicEventStoreProjection[PasswordResetModelState])
+                                 val projection: AtomicEventStoreProjectionView[PasswordResetModelState])
                                 (implicit val executionContext: ExecutionContext) extends PasswordResetApi {
 
   import PasswordResetApiDefinitions._

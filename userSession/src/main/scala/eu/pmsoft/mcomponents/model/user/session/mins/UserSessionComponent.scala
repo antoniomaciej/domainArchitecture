@@ -66,7 +66,7 @@ trait UserSessionInternalInjector {
   private implicit def internalExecutionContext: ExecutionContext = module.executionContext
 
   lazy val commandHandler = module.commandHandler
-  lazy val projection: OrderedEventStoreProjector[UserSessionSSOState] = module.applicationContextProvider.contextStateAtomicProjection
+  lazy val projection: OrderedEventStoreProjectionView[UserSessionSSOState] = module.applicationContextProvider.contextStateAtomicProjection
   lazy val app = wire[UserServiceComponentInstance]
 
 }
@@ -74,7 +74,7 @@ trait UserSessionInternalInjector {
 
 class UserServiceComponentInstance(val userRegistration: UserRegistrationApi,
                                    val commandHandler: AsyncEventCommandHandler[UserSessionCommand],
-                                   val userSessionProjection: OrderedEventStoreProjector[UserSessionSSOState])
+                                   val userSessionProjection: OrderedEventStoreProjectionView[UserSessionSSOState])
                                   (implicit val executionContext: ExecutionContext)
   extends UserSessionApi {
   import UserSessionApplicationDefinitions._

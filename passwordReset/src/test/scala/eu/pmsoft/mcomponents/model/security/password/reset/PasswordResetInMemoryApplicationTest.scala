@@ -26,7 +26,7 @@
 
 package eu.pmsoft.mcomponents.model.security.password.reset
 
-import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjection}
+import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjectionView}
 import eu.pmsoft.mcomponents.model.security.password.reset.inmemory.PasswordResetInMemoryApplication
 
 class PasswordResetInMemoryApplicationTest extends PasswordResetModuleTest[PasswordResetInMemoryApplication] {
@@ -37,6 +37,6 @@ class PasswordResetInMemoryApplicationTest extends PasswordResetModuleTest[Passw
   AsyncEventCommandHandler[PasswordResetModelCommand] = contextModule.commandHandler
 
   override def stateProjection(contextModule: PasswordResetInMemoryApplication):
-  AtomicEventStoreProjection[PasswordResetModelState] = contextModule.applicationContextProvider.contextStateAtomicProjection
+  AtomicEventStoreProjectionView[PasswordResetModelState] = contextModule.applicationContextProvider.contextStateAtomicProjection
 
 }

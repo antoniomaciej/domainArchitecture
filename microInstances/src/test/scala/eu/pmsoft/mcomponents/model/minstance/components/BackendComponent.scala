@@ -28,9 +28,6 @@ package eu.pmsoft.mcomponents.model.minstance.components
 
 import eu.pmsoft.mcomponents.minstance.{ApiVersion, MicroComponent, MicroComponentContract, MicroComponentModel}
 
-//TODO make execution context implicit for components
-
-//import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 trait BackendComponent extends MicroComponent[BackendComponentApi] {

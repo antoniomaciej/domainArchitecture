@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.model.security.password.reset
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjection
+import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
 
 abstract class PasswordResetModuleTest[M] extends BaseEventSourceSpec with
 GeneratedCommandSpecification[PasswordResetModelCommand, PasswordResetModelEvent, PasswordResetModelState, M] {
@@ -87,7 +87,7 @@ GeneratedCommandSpecification[PasswordResetModelCommand, PasswordResetModelEvent
     }
   }
 
-  override def buildGenerator(state: AtomicEventStoreProjection[PasswordResetModelState]):
+  override def buildGenerator(state: AtomicEventStoreProjectionView[PasswordResetModelState]):
   CommandGenerator[PasswordResetModelCommand] = new PasswordResetModelGenerator(state)
 
   override def postCommandValidation(state: PasswordResetModelState, command: PasswordResetModelCommand): Unit =

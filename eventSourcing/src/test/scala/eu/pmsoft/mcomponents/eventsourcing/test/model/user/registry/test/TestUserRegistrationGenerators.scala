@@ -29,14 +29,14 @@ package eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.test
 import java.util.concurrent.atomic.AtomicInteger
 
 import eu.pmsoft.domain.model.CommandGenerator
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjection
+import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry._
 import org.scalacheck.Gen._
 import org.scalacheck._
 
 import scala.language.postfixOps
 
-class TestUserRegistrationGenerators(val state: AtomicEventStoreProjection[TestUserRegistrationState]) extends
+class TestUserRegistrationGenerators(val state: AtomicEventStoreProjectionView[TestUserRegistrationState]) extends
 CommandGenerator[TestUserRegistrationCommand] {
 
   private lazy val minimumTextLen = 5

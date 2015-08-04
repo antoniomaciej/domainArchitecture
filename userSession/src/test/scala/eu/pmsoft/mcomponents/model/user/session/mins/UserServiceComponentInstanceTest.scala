@@ -42,7 +42,7 @@ class UserServiceComponentInstanceTest extends ComponentSpec {
   import UserSessionApplicationDefinitions._
 
   it should "return a critical error if user is not found after successful registration command" in {
-    val userSessionStateMock = new OrderedEventStoreProjector[UserSessionSSOState] {
+    val userSessionStateMock = new OrderedEventStoreProjectionView[UserSessionSSOState] {
       override def atLeastOn(storeVersion: EventStoreVersion): Future[UserSessionSSOState] =
         Future.successful(new UserSessionSSOState {
           override def findAllUserSessions(): Stream[UserSession] = Mocked.shouldNotBeCalled
