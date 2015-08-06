@@ -21,21 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- *
  */
 
-package eu.pmsoft.domain.model
+package eu.pmsoft.domain.model.deploy
 
-object UsersModel {
+import org.json4s.{DefaultFormats, Formats}
+import spray.httpx.Json4sSupport
 
+object JsonConfiguration extends Json4sSupport {
+  implicit lazy val json4sFormats: Formats = DefaultFormats
 }
-
-case class UserSession(sessionToken: SessionToken, userId: UserID)
-
-case class UserID(val id: Long) extends AnyVal
-
-case class UserPassword(val passwordHash: String) extends AnyVal
-
-case class SessionToken(val token: String) extends AnyVal
-
-case class UserLogin(val login: String) extends AnyVal

@@ -21,21 +21,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- *
  */
 
-package eu.pmsoft.domain.model
+package eu.pmsoft.domain.model.deploy
 
-object UsersModel {
+import spray.http.MediaTypes
+import spray.routing
+import spray.routing._
+
+
+trait ApiDirectives {
+  self: Directives =>
+
+  def getJson(route: Route): routing.Route = get {
+    respondWithMediaType(MediaTypes.`application/json`) {
+      route
+    }
+  }
+
+  def postJson(route: Route): routing.Route = post {
+    respondWithMediaType(MediaTypes.`application/json`) {
+      route
+    }
+  }
 
 }
-
-case class UserSession(sessionToken: SessionToken, userId: UserID)
-
-case class UserID(val id: Long) extends AnyVal
-
-case class UserPassword(val passwordHash: String) extends AnyVal
-
-case class SessionToken(val token: String) extends AnyVal
-
-case class UserLogin(val login: String) extends AnyVal

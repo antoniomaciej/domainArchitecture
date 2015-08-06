@@ -21,21 +21,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- *
  */
 
-package eu.pmsoft.domain.model
+package eu.pmsoft.domain.model.deploy
 
-object UsersModel {
+import akka.actor._
+import akka.io.IO
+import akka.pattern.ask
+import akka.util.Timeout
+import eu.pmsoft.mcomponents.model.security.password.reset.mins.PasswordResetApi
+import spray.can.Http
 
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+
+object Boot extends App {
+  implicit val system = ActorSystem("deploymentApp")
+  val service = system.actorOf(Props[BindActorToRouting], "user-management-service")
+  implicit val timeout = Timeout(5.seconds)
+  val post8080 = 8080
+  IO(Http) ? Http.Bind(service, interface = "localhost", port = post8080)
 }
 
-case class UserSession(sessionToken: SessionToken, userId: UserID)
+class BindActorToRouting extends Actor with UserManagementService {
 
-case class UserID(val id: Long) extends AnyVal
+  override def receive: Actor.Receive = runRoute(routingDefinition)
 
-case class UserPassword(val passwordHash: String) extends AnyVal
+  override implicit def actorRefFactory: ActorContext = context
 
-case class SessionToken(val token: String) extends AnyVal
+  override lazy val api: PasswordResetApi = new MockApi()
 
-case class UserLogin(val login: String) extends AnyVal
+  override implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
+}

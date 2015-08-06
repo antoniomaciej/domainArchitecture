@@ -68,31 +68,38 @@ object domainArchitecture extends Build {
     settings(commonSettings: _*).
     settings(dependencies: _*).
     dependsOn(eventSourcing % "test->test;compile->compile").
-    dependsOn(userSession).
-    dependsOn(userRegistry).
     dependsOn(microInstances % "test->test;compile->compile").
-    dependsOn(domainModel)
+    dependsOn(domainModel).
+    dependsOn(userSession, userRegistry)
 
   lazy val userRegistry = (project in file("userRegistry")).
     settings(commonSettings: _*).
     settings(dependencies: _*).
     dependsOn(eventSourcing % "test->test;compile->compile").
-    dependsOn(securityRoles).
     dependsOn(microInstances % "test->test;compile->compile").
-    dependsOn(domainModel)
+    dependsOn(domainModel).
+    dependsOn(securityRoles)
 
   lazy val userSession = (project in file("userSession")).
     settings(commonSettings: _*).
     settings(dependencies: _*).
     dependsOn(eventSourcing % "test->test;compile->compile").
-    dependsOn(userRegistry).
     dependsOn(microInstances % "test->test;compile->compile").
-    dependsOn(domainModel)
+    dependsOn(domainModel).
+    dependsOn(userRegistry)
+
+  lazy val deploymentApp = (project in file("deploymentApp")).
+    settings(commonSettings: _*).
+    settings(dependencies: _*).
+    settings(deploymentDependencies: _*).
+    dependsOn(microInstances % "test->test;compile->compile").
+    dependsOn(domainModel).
+    dependsOn(userSession, userRegistry, passwordReset, securityRoles)
 
   lazy val root = (project in file(".")).
     aggregate(eventSourcing, microInstances,
       domainModel,
-      userSession, userRegistry, passwordReset, securityRoles)
+      userSession, userRegistry, passwordReset, securityRoles,deploymentApp)
 
   val monocleVersion = "1.1.1"
 
@@ -110,6 +117,21 @@ object domainArchitecture extends Build {
       "org.typelevel" %% "scalaz-scalatest" % "0.2.2" % "test",
       "org.scalatest" %% "scalatest" % "2.2.0" % "test",
       "org.scalacheck" %% "scalacheck" % "1.12.4" % "test"
+    )
+  )
+
+  lazy val akkaVersion = "2.3.12"
+  lazy val sprayVersion = "1.3.3"
+
+  lazy val deploymentDependencies = Seq(
+    libraryDependencies ++= Seq(
+      "org.json4s" %% "json4s-native" % "3.2.10",
+      "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+      "io.spray" %% "spray-can" % sprayVersion,
+      "io.spray" %% "spray-routing-shapeless2" % sprayVersion,
+      "io.spray" %% "spray-testkit" % sprayVersion % "test",
+      "ch.qos.logback" % "logback-classic" % "1.1.2",
+      "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0"
     )
   )
 
