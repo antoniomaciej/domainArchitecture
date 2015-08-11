@@ -26,98 +26,40 @@
 
 package eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.test
 
-import eu.pmsoft.domain.model.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
+import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry._
+import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 
-abstract class TestUserRegistrationModuleTest[M] extends BaseEventSourceSpec with
-GeneratedCommandSpecification[TestUserRegistrationCommand, TestUserRegistrationEvent, TestUserRegistrationState, M] {
+abstract class TestUserRegistrationModuleTest extends BaseEventSourceSpec with
+GeneratedCommandSpecification[TheTestCommand, TheTestEvent,
+  TheTestState, TheTestAggregate, TestUserRegistrationApplication] {
 
-  it should "not allow duplicated login names" in {
-    val module = createEmptyModule()
-    val commands = List(TestAddUser(TestUserLogin("test@mail.com"), TestUserPassword("password")),
-      TestAddUser(TestUserLogin("test@mail.com"), TestUserPassword("anyOther")))
-    val serialExecutions = serial(commands)(asyncCommandHandler(module).execute)
-    whenReady(serialExecutions) { results =>
-      results.size should be(2)
-      results.head should be(\/-) withClue ": The first command should success"
-      results.tail.head should be(-\/) withClue ": The second command should fail"
+  def infrastructure(): TheTestInfrastructure
+
+  override def buildGenerator(state: AtomicEventStoreView[TheTestState]): CommandGenerator[TheTestCommand] =
+    new TestUserRegistrationGenerators(state)
+
+  override def createEmptyModule(): TestUserRegistrationApplication = new TestUserRegistrationApplication(infrastructure())
+
+  override def postCommandValidation(state: TheTestState, command: TheTestCommand): Unit = command match {
+    case TestCommandOne() => state.lastAdded() should be(1)
+    case TestCommandTwo(createTwo) => if (createTwo) {
+      state.lastAdded() should be(2)
+    } else {
+      state.lastAdded() should be(3)
     }
   }
 
-  it should "not allow invalid emails as user login" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(TestAddUser(TestUserLogin("invalidEmail"),
-      TestUserPassword("password")))) { result =>
-      result should be(-\/) withClue ": Validation should reject the AddUser command"
+  override def validateState(state: TheTestState): Unit = {
+    def countState(expected: Char)(counter: Int, char: Char) = {
+      if (char == expected) {
+        counter + 1
+      } else {
+        counter
+      }
     }
+    state.history().foldLeft(0)(countState('1')) should be(state.countOne())
+    state.history().foldLeft(0)(countState('2')) should be(state.countTwo())
+    state.history().foldLeft(0)(countState('3')) should be(state.countThree())
   }
-
-  it should "not allow empty emails as user login" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(TestAddUser(TestUserLogin(""), TestUserPassword("password")))) { result =>
-      result should be(-\/) withClue ": Validation should reject the AddUser command"
-    }
-  }
-
-  it should "fail to update password for not existing users" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(TestUpdateUserPassword(TestUserID(0), TestUserPassword("AnyPassword")))) { result =>
-      result should be(-\/) withClue ": Validation should reject the non existing userID"
-    }
-  }
-  it should "fail to update active status for not existing users" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(TestUpdateActiveUserStatus(TestUserID(0), active = false))) { result =>
-      result should be(-\/) withClue ": Validation should reject the non existing userID"
-    }
-  }
-
-  override def buildGenerator(state: AtomicEventStoreProjectionView[TestUserRegistrationState]):
-  CommandGenerator[TestUserRegistrationCommand] = new TestUserRegistrationGenerators(state)
-
-  def postCommandValidation(state: TestUserRegistrationState, command: TestUserRegistrationCommand): Unit = command match {
-    case TestUpdateActiveUserStatus(uid, active) =>
-      state.getUserByID(uid).get.activeStatus shouldBe active
-    case TestAddUser(loginEmail, passwordHash) =>
-      state.getAllUid
-        .map(state.getUserByID).map(_.get)
-        .find(user => user.login == loginEmail && user.passwordHash == passwordHash) should not be empty
-    case TestUpdateUserPassword(uid, passwordHash) =>
-      state.getUserByID(uid) should not be empty
-      state.getUserByID(uid).get.passwordHash should be(passwordHash)
-    case TestUpdateUserRoles(uid, roles) =>
-      state.getUserByID(uid).get.roles should equal(roles)
-  }
-
-  def validateState(state: TestUserRegistrationState): Unit = {
-    findInconsistentUid(state) shouldBe empty withClue ": UserID registered but marked as not existing"
-    findMissingUsers(state) shouldBe empty withClue ": Can not find used for the given userId"
-    findUsersThatCanNotLogin(state) shouldBe empty withClue ": User exists but login marked as not existing"
-  }
-
-  private def findInconsistentUid(state: TestUserRegistrationState): List[TestUserID] = {
-    state
-      .getAllUid
-      .filter(uid => !state.uidExists(uid))
-      .toList
-  }
-
-  private def findMissingUsers(state: TestUserRegistrationState): List[TestUserID] = {
-    state
-      .getAllUid
-      .filter(uid => state.getUserByID(uid).isEmpty)
-      .toList
-  }
-
-  private def findUsersThatCanNotLogin(state: TestUserRegistrationState): List[TestUser] = {
-    state
-      .getAllUid
-      .filter(uid => state.getUserByID(uid).isEmpty)
-      .map(uid => state.getUserByID(uid).get)
-      .filter(user => state.loginExists(user.login))
-      .toList
-  }
-
-
 }

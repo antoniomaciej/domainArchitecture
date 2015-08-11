@@ -26,9 +26,8 @@
 
 package eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry
 
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
-import eu.pmsoft.mcomponents.eventsourcing.{CommandToTransactionScope, DomainLogic, EventSourceCommandFailed}
-import org.apache.commons.validator.routines.EmailValidator
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
+import eu.pmsoft.mcomponents.eventsourcing.{CommandToTransactionScope, DomainLogic}
 
 import scalaz._
 
@@ -40,92 +39,47 @@ trait TestUserRegistrationModule {
 /**
  * Projection that should be changes atomically with relation to the handled commands.
  */
-trait TestUserRegistrationState {
-  def uidExists(uid: TestUserID): Boolean
+trait TheTestState {
 
-  def getAllUid: Stream[TestUserID]
+  def history(): String
 
-  def getUserByID(uid: TestUserID): Option[TestUser]
+  def countOne(): Int
 
-  def getUserByLogin(login: TestUserLogin): Option[TestUser]
+  def countTwo(): Int
 
-  def loginExists(login: TestUserLogin): Boolean
+  def countThree(): Int
 
+  def lastAdded(): Int
 }
 
-trait TestUserRegistrationLocalSideEffects {
-  def createNextUid(): TestUserID
+trait TestSideEffects {
+  def randomSelectTwoOrThree(): Boolean
 }
 
 final class TestUserRegistrationCommandToTransactionScope
-  extends CommandToTransactionScope[TestUserRegistrationCommand, TestUserRegistrationAggregate, TestUserRegistrationState] {
-  override def calculateTransactionScope(command: TestUserRegistrationCommand, state: TestUserRegistrationState):
-  CommandToAggregateResult[TestUserRegistrationAggregate] =
+  extends CommandToTransactionScope[TheTestCommand, TheTestAggregate, TheTestState] {
+  override def calculateTransactionScope(command: TheTestCommand, state: TheTestState):
+  CommandToAggregateResult[TheTestAggregate] =
     command match {
-      case TestAddUser(loginEmail, passwordHash) => \/-(Set(EmailAggregateIdTest(loginEmail)))
-      case TestUpdateUserPassword(uid, passwordHash) => \/-(Set(TestUserAggregateId(uid)))
-      case TestUpdateActiveUserStatus(uid, active) => \/-(Set(TestUserAggregateId(uid)))
-      case TestUpdateUserRoles(uid, roles) => \/-(Set(TestUserAggregateId(uid)))
+      case TestCommandOne() => \/-(Set(TestAggregateOne()))
+      case TestCommandTwo(createTwo) => \/-(Set(TestAggregateTwo()))
     }
 
 }
 
-final class TestTestUserRegistrationHandlerLogic(val sideEffects: TestUserRegistrationLocalSideEffects) extends
-DomainLogic[TestUserRegistrationCommand, TestUserRegistrationEvent, TestUserRegistrationAggregate, TestUserRegistrationState] with
-TestUserRegistrationValidations {
+final class TestTestUserRegistrationHandlerLogic(val sideEffects: TestSideEffects) extends
+DomainLogic[TheTestCommand, TheTestEvent, TheTestAggregate, TheTestState] {
 
-  override def executeCommand(command: TestUserRegistrationCommand,
-                              transactionScope: Map[TestUserRegistrationAggregate, Long])
-                             (implicit state: TestUserRegistrationState):
-  CommandToEventsResult[TestUserRegistrationEvent] = command match {
-    case TestUpdateActiveUserStatus(uid, active) => for {
-      user <- validUidExtractUser(uid)
-    } yield if (user.activeStatus == active) {
-        //Do not activate if status match the state
-        List()
+  override def executeCommand(command: TheTestCommand,
+                              transactionScope: Map[TheTestAggregate, Long])
+                             (implicit state: TheTestState): CommandToEventsResult[TheTestEvent] =
+    command match {
+      case TestCommandOne() => \/-(List(TestEventOne()))
+      case TestCommandTwo(createTwo) => if (createTwo) {
+        \/-(List(TestEventTwo()))
       } else {
-        List(TestUserActiveStatusUpdated(uid, active))
+        \/-(List(TestEventThree()))
       }
-
-    case TestAddUser(loginEmail, passwordHash) => for {
-      login <- availableLogin(loginEmail)
-      email <- validEmail(loginEmail.login)
-    } yield List(TestUserCreated(sideEffects.createNextUid(), loginEmail, passwordHash))
-
-    case TestUpdateUserPassword(uid, passwordHash) => for {
-      user <- validUidExtractUser(uid)
-    } yield List(TestUserPasswordUpdated(uid, passwordHash))
-
-    case TestUpdateUserRoles(uid, roles) => for {
-      user <- validUidExtractUser(uid)
-    } yield List(TestUserObtainedAccessRoles(uid, roles))
-  }
-
-}
-
-import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.TestUserRegistrationModel._
-
-sealed trait TestUserRegistrationValidations {
-
-  def availableLogin(login: TestUserLogin)(implicit atomicState: TestUserRegistrationState)
-  : CommandPartialValidation[TestUserLogin] =
-    if (!atomicState.loginExists(login)) {
-      \/-(login)
-    } else {
-      -\/(EventSourceCommandFailed(invalidLoginTest.code))
     }
 
-  def validEmail(email: String)(implicit atomicState: TestUserRegistrationState)
-  : CommandPartialValidation[String] =
-    if (EmailValidator.getInstance().isValid(email)) {
-      \/-(email)
-    } else {
-      -\/(EventSourceCommandFailed(invalidEmailTest.code))
-    }
-
-  def validUidExtractUser(uid: TestUserID)(implicit atomicState: TestUserRegistrationState)
-  : CommandPartialValidation[TestUser] = atomicState.getUserByID(uid) match {
-    case Some(x) => \/-(x)
-    case None => -\/(EventSourceCommandFailed(notExistingUserIDTest.code))
-  }
 }

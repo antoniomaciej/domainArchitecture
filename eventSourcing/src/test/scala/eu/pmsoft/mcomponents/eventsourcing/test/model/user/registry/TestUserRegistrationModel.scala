@@ -30,70 +30,37 @@ import eu.pmsoft.mcomponents.eventsourcing._
 
 object TestUserRegistrationModel {
 
-  val invalidLoginErrorCodeTest = 4001L
-  val invalidLoginTest = EventSourceModelError("invalid login",
-    EventSourceCommandError(invalidLoginErrorCodeTest))
+  val invalidErrorCode = 4001L
+  val invalidErrorTest = EventSourceModelError("error message",
+    EventSourceCommandError(invalidErrorCode))
 
-  val invalidEmailErrorCodeTest = 4002L
-  val invalidEmailTest = EventSourceModelError("invalid email",
-    EventSourceCommandError(invalidEmailErrorCodeTest))
-
-  val notExistingUserIDErrorCodeTest = 4003L
-  val notExistingUserIDTest = EventSourceModelError("not existing userId",
-    EventSourceCommandError(notExistingUserIDErrorCodeTest))
-
-  val loginAndPasswordMismatchErrorCodeTest = 4004L
-  val loginAndPasswordMismatchTest = EventSourceModelError("login and password do not match",
-    EventSourceCommandError(loginAndPasswordMismatchErrorCodeTest))
 }
-
-case class TestUserID(val id: Long) extends AnyVal
-
-case class TestUserPassword(val passwordHash: String) extends AnyVal
-
-case class TestUserLogin(val login: String) extends AnyVal
-
-case class TestRoleID(roleId: Int)
 
 //Model entities
 
-case class TestUser(uid: TestUserID,
-                    login: TestUserLogin,
-                    passwordHash: TestUserPassword,
-                    activeStatus: Boolean = false,
-                    roles: Set[TestRoleID] = Set())
-
 //Aggregate
-sealed trait TestUserRegistrationAggregate
+sealed trait TheTestAggregate
 
-case class TestUserAggregateId(uid: TestUserID) extends TestUserRegistrationAggregate
+case class TestAggregateOne() extends TheTestAggregate
 
-case class EmailAggregateIdTest(loginEmail: TestUserLogin) extends TestUserRegistrationAggregate
+case class TestAggregateTwo() extends TheTestAggregate
 
 //UserRegistrationModel commands
 
-sealed trait TestUserRegistrationCommand
+sealed trait TheTestCommand
 
-case class TestAddUser(loginEmail: TestUserLogin, passwordHash: TestUserPassword) extends TestUserRegistrationCommand
+case class TestCommandOne() extends TheTestCommand
 
-case class TestUpdateUserPassword(uid: TestUserID, passwordHash: TestUserPassword) extends TestUserRegistrationCommand
-
-case class TestUpdateActiveUserStatus(uid: TestUserID, active: Boolean) extends TestUserRegistrationCommand
-
-case class TestUpdateUserRoles(uid: TestUserID, roles: Set[TestRoleID]) extends TestUserRegistrationCommand
+case class TestCommandTwo(createTwo: Boolean) extends TheTestCommand
 
 
 //UserRegistrationModel events
 
-sealed trait TestUserRegistrationEvent
+sealed trait TheTestEvent
 
-case class TestUserCreated(uid: TestUserID,
-                           login: TestUserLogin,
-                           passwordHash: TestUserPassword) extends TestUserRegistrationEvent
+case class TestEventOne() extends TheTestEvent
 
-case class TestUserPasswordUpdated(userId: TestUserID, passwordHash: TestUserPassword) extends TestUserRegistrationEvent
+case class TestEventTwo() extends TheTestEvent
 
-case class TestUserActiveStatusUpdated(userId: TestUserID, active: Boolean) extends TestUserRegistrationEvent
-
-case class TestUserObtainedAccessRoles(userId: TestUserID, roles: Set[TestRoleID]) extends TestUserRegistrationEvent
+case class TestEventThree() extends TheTestEvent
 

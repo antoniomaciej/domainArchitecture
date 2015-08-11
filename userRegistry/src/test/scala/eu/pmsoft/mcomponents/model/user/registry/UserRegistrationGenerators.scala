@@ -29,14 +29,15 @@ package eu.pmsoft.mcomponents.model.user.registry
 import java.util.concurrent.atomic.AtomicInteger
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
+import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
 import eu.pmsoft.mcomponents.model.security.roles.RoleID
+import eu.pmsoft.mcomponents.test.CommandGenerator
 import org.scalacheck.Gen._
 import org.scalacheck._
 
 import scala.language.postfixOps
 
-class UserRegistrationGenerators(val state: AtomicEventStoreProjectionView[UserRegistrationState]) extends
+class UserRegistrationGenerators(val state: AtomicEventStoreView[UserRegistrationState]) extends
 CommandGenerator[UserRegistrationCommand] {
   private lazy val minimumTextLen = 5
   private lazy val maximumTextLen = 30

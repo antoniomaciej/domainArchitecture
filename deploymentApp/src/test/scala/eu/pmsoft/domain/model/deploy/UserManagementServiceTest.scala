@@ -27,9 +27,9 @@ package eu.pmsoft.domain.model.deploy
 
 import akka.actor.ActorSystem
 import eu.pmsoft.domain.model._
+import eu.pmsoft.mcomponents.minstance.ResponseError
 import eu.pmsoft.mcomponents.model.security.password.reset._
 import eu.pmsoft.mcomponents.model.security.password.reset.mins._
-import eu.pmsoft.mcomponents.reqres.ResponseError
 import org.scalatest.{FlatSpec, Matchers}
 import spray.http.HttpEncodings
 import spray.http.HttpHeaders.`Accept-Encoding`
@@ -73,7 +73,7 @@ class UserManagementServiceTest
     ) ~> routingDefinition ~> check {
       status should be(BadRequest)
       val res = responseAs[ResponseError]
-      res.errorCode.code should be(MockApiConstanat.testErrorCode)
+      res.errorCode.code should be(MockApiConstants.testErrorCode)
       res.domain.domain should be("domainTest")
     }
   }

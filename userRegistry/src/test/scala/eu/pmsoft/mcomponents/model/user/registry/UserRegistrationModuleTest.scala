@@ -27,10 +27,14 @@
 package eu.pmsoft.mcomponents.model.user.registry
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
+import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
+import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 
-abstract class UserRegistrationModuleTest[M] extends BaseEventSourceSpec with
-GeneratedCommandSpecification[UserRegistrationCommand, UserRegistrationEvent, UserRegistrationState, M] {
+abstract class UserRegistrationModuleTest extends BaseEventSourceSpec with
+GeneratedCommandSpecification[UserRegistrationCommand, UserRegistrationEvent,
+  UserRegistrationState, UserRegistrationAggregate, UserRegistrationApplication] {
+
+  def infrastructure(): UserRegistrationApplicationInfrastructure
 
   it should "not allow duplicated login names" in {
     val module = createEmptyModule()
@@ -70,7 +74,10 @@ GeneratedCommandSpecification[UserRegistrationCommand, UserRegistrationEvent, Us
     }
   }
 
-  override def buildGenerator(state: AtomicEventStoreProjectionView[UserRegistrationState]):
+
+  override def createEmptyModule(): UserRegistrationApplication = UserRegistrationApplication.createApplication(infrastructure())
+
+  override def buildGenerator(state: AtomicEventStoreView[UserRegistrationState]):
   CommandGenerator[UserRegistrationCommand] = new UserRegistrationGenerators(state)
 
   def postCommandValidation(state: UserRegistrationState, command: UserRegistrationCommand): Unit = command match {

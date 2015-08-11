@@ -26,11 +26,22 @@
 
 package eu.pmsoft.mcomponents.model.security.roles
 
-import eu.pmsoft.domain.model.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
+import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreView}
+import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 
-abstract class RoleBasedAuthorizationModuleTest[M] extends BaseEventSourceSpec with
-GeneratedCommandSpecification[RoleBasedAuthorizationModelCommand, RoleBasedAuthorizationEvent, RoleBasedAuthorizationState, M] {
+abstract class RoleBasedAuthorizationModuleTest extends BaseEventSourceSpec with
+GeneratedCommandSpecification[RoleBasedAuthorizationModelCommand, RoleBasedAuthorizationEvent,
+  RoleBasedAuthorizationState, RoleBasedAuthorizationAggregate, RoleBasedAuthorizationApplication] {
+
+  def infrastructure(): RoleBasedAuthorizationEventStoreInfrastructure
+
+  override def createEmptyModule(): RoleBasedAuthorizationApplication = RoleBasedAuthorizationApplication.createApplication(infrastructure())
+
+  override def asyncCommandHandler(contextModule: RoleBasedAuthorizationApplication)
+  : AsyncEventCommandHandler[RoleBasedAuthorizationModelCommand] = contextModule.commandHandler
+
+  override def stateProjection(contextModule: RoleBasedAuthorizationApplication)
+  : AtomicEventStoreView[RoleBasedAuthorizationState] = contextModule.atomicProjection
 
   it should "not allow empty roles names" in {
     val module = createEmptyModule()
@@ -77,7 +88,7 @@ GeneratedCommandSpecification[RoleBasedAuthorizationModelCommand, RoleBasedAutho
 
   }
 
-  override def buildGenerator(state: AtomicEventStoreProjectionView[RoleBasedAuthorizationState])
+  override def buildGenerator(state: AtomicEventStoreView[RoleBasedAuthorizationState])
   : CommandGenerator[RoleBasedAuthorizationModelCommand] = new RoleBasedAuthorizationGenerators(state)
 
   override def postCommandValidation(state: RoleBasedAuthorizationState, command: RoleBasedAuthorizationModelCommand): Unit = command match {

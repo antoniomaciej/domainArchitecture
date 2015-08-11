@@ -43,9 +43,9 @@ trait UserSessionComponent extends MicroComponent[UserSessionApi] {
 
   def userRegistrationService: Future[UserRegistrationApi]
 
-  def applicationModule: UserSessionApplication
+  def application: UserSessionApplication
 
-  implicit lazy val executionContext = applicationModule.executionContext
+  final implicit def executionContext: ExecutionContext = application.executionContext
 
   override lazy val app: Future[UserSessionApi] = for {
     userRegistrationRef <- userRegistrationService
@@ -53,7 +53,7 @@ trait UserSessionComponent extends MicroComponent[UserSessionApi] {
 
       override lazy val userRegistration: UserRegistrationApi = userRegistrationRef
 
-      override lazy val module: UserSessionApplication = applicationModule
+      override lazy val module: UserSessionApplication = application
     }.app
 
 }
@@ -63,10 +63,10 @@ trait UserSessionInternalInjector {
 
   def module: UserSessionApplication
 
-  private implicit def internalExecutionContext: ExecutionContext = module.executionContext
+  private implicit lazy val eventSourceExecutionContext = module.eventSourceExecutionContext
 
   lazy val commandHandler = module.commandHandler
-  lazy val projection: OrderedEventStoreProjectionView[UserSessionSSOState] = module.applicationContextProvider.contextStateAtomicProjection
+  lazy val projection: OrderedEventStoreView[UserSessionSSOState] = module.atomicProjection
   lazy val app = wire[UserServiceComponentInstance]
 
 }
@@ -74,12 +74,12 @@ trait UserSessionInternalInjector {
 
 class UserServiceComponentInstance(val userRegistration: UserRegistrationApi,
                                    val commandHandler: AsyncEventCommandHandler[UserSessionCommand],
-                                   val userSessionProjection: OrderedEventStoreProjectionView[UserSessionSSOState])
-                                  (implicit val executionContext: ExecutionContext)
-  extends UserSessionApi {
-  import UserSessionApplicationDefinitions._
-  import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
+                                   val userSessionProjection: OrderedEventStoreView[UserSessionSSOState])
+                                  (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
+  extends UserSessionApi with EventSourceExecutionContextProvided {
 
+  import UserSessionApplicationDefinitions._
+  import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
 
   override def loginUser(loginRequest: UserLoginRequest): Future[RequestResult[UserLoginResponse]] = (for {
     userIdRes <- EitherT(userRegistration.findRegisteredUser(SearchForUserIdRequest(loginRequest.login, loginRequest.passwordHash)))

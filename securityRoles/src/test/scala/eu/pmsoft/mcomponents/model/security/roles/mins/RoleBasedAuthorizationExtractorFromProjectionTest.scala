@@ -26,15 +26,17 @@
 
 package eu.pmsoft.mcomponents.model.security.roles.mins
 
-import eu.pmsoft.domain.model.{ComponentSpec, Mocked}
 import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
+import eu.pmsoft.mcomponents.minstance.ReqResDataModel
 import eu.pmsoft.mcomponents.model.security.roles._
+import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, Mocked}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class RoleBasedAuthorizationExtractorFromProjectionTest extends ComponentSpec {
+class RoleBasedAuthorizationExtractorFromProjectionTest extends BaseEventSourceSpec {
 
-  import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
+  import ReqResDataModel._
   import RoleBasedAuthorizationDefinitions._
 
   it should "failure with permissionNotFoundAfterInsert when permission not found after insert" in {
@@ -54,40 +56,42 @@ class RoleBasedAuthorizationExtractorFromProjectionTest extends ComponentSpec {
 
   }
 
-  private def createMocked = new RoleBasedAuthorizationExtractorFromProjection {
+  private def createMocked = new MockedRoleBasedAuthorizationExtractorFromProjection()
+}
 
-    override implicit def executionContext: ExecutionContext = ExecutionContext.global
+class MockedRoleBasedAuthorizationExtractorFromProjection extends RoleBasedAuthorizationExtractorFromProjection with EventSourceExecutionContextProvided {
+  override implicit def eventSourceExecutionContext: EventSourceExecutionContext =
+    EventSourceExecutionContextProvider.create()(EventSourcingConfiguration(ExecutionContext.Implicits.global, LocalBindingInfrastructure.create()))
 
-    override def projection: AtomicEventStoreProjectionView[RoleBasedAuthorizationState] =
-      new AtomicEventStoreProjectionView[RoleBasedAuthorizationState] {
+  override def projection: AtomicEventStoreView[RoleBasedAuthorizationState] =
+    new AtomicEventStoreView[RoleBasedAuthorizationState] {
 
-        override def lastSnapshot(): Future[RoleBasedAuthorizationState] = Mocked.shouldNotBeCalled
+      override def lastSnapshot(): Future[RoleBasedAuthorizationState] = Mocked.shouldNotBeCalled
 
-        override def atLeastOn(storeVersion: EventStoreVersion): Future[RoleBasedAuthorizationState] =
-          Future.successful(new RoleBasedAuthorizationState {
-            //Roles
-            override def allRoleId: Stream[RoleID] = Mocked.shouldNotBeCalled
+      override def atLeastOn(storeVersion: EventStoreVersion): Future[RoleBasedAuthorizationState] =
+        Future.successful(new RoleBasedAuthorizationState {
+          //Roles
+          override def allRoleId: Stream[RoleID] = Mocked.shouldNotBeCalled
 
-            override def roleIdExists(roleId: RoleID): Boolean = Mocked.shouldNotBeCalled
+          override def roleIdExists(roleId: RoleID): Boolean = Mocked.shouldNotBeCalled
 
-            // Permission X Role relation
-            override def isPermissionInRole(roleId: RoleID, permissionID: PermissionID): Boolean = Mocked.shouldNotBeCalled
+          // Permission X Role relation
+          override def isPermissionInRole(roleId: RoleID, permissionID: PermissionID): Boolean = Mocked.shouldNotBeCalled
 
-            override def getPermissionsForRole(roleId: RoleID): Set[PermissionID] = Mocked.shouldNotBeCalled
+          override def getPermissionsForRole(roleId: RoleID): Set[PermissionID] = Mocked.shouldNotBeCalled
 
-            //Permissions
-            override def allPermissionID: Stream[PermissionID] = Mocked.shouldNotBeCalled
+          //Permissions
+          override def allPermissionID: Stream[PermissionID] = Mocked.shouldNotBeCalled
 
-            override def roleByName(roleName: String): Option[AccessRole] = None
+          override def roleByName(roleName: String): Option[AccessRole] = None
 
-            override def roleById(roleId: RoleID): Option[AccessRole] = Mocked.shouldNotBeCalled
+          override def roleById(roleId: RoleID): Option[AccessRole] = Mocked.shouldNotBeCalled
 
-            override def permissionIdExists(permissionID: PermissionID): Boolean = Mocked.shouldNotBeCalled
+          override def permissionIdExists(permissionID: PermissionID): Boolean = Mocked.shouldNotBeCalled
 
-            override def permissionByCode(code: String): Option[Permission] = None
+          override def permissionByCode(code: String): Option[Permission] = None
 
-            override def permissionById(permissionID: PermissionID): Option[Permission] = Mocked.shouldNotBeCalled
-          })
-      }
-  }
+          override def permissionById(permissionID: PermissionID): Option[Permission] = Mocked.shouldNotBeCalled
+        })
+    }
 }

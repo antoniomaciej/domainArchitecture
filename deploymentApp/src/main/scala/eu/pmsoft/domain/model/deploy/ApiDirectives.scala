@@ -33,12 +33,6 @@ import spray.routing._
 trait ApiDirectives {
   self: Directives =>
 
-  def getJson(route: Route): routing.Route = get {
-    respondWithMediaType(MediaTypes.`application/json`) {
-      route
-    }
-  }
-
   def postJson(route: Route): routing.Route = post {
     respondWithMediaType(MediaTypes.`application/json`) {
       route

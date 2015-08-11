@@ -28,10 +28,9 @@ package eu.pmsoft.mcomponents.model.security.password.reset.mins
 
 import eu.pmsoft.domain.model.{SessionToken, UserID, UserPassword}
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandConfirmation
-import eu.pmsoft.mcomponents.minstance.ApiVersion
+import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
+import eu.pmsoft.mcomponents.minstance.{ApiVersion, RequestErrorDomain}
 import eu.pmsoft.mcomponents.model.security.password.reset.PasswordResetToken
-import eu.pmsoft.mcomponents.reqres.ReqResDataModel.RequestResult
-import eu.pmsoft.mcomponents.reqres.RequestErrorDomain
 
 import scala.concurrent.Future
 

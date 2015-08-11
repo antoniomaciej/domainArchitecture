@@ -26,8 +26,8 @@
 
 package eu.pmsoft.mcomponents.model.user.session
 
-import eu.pmsoft.domain.model.{UserSession, SessionToken, UserID}
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
+import eu.pmsoft.domain.model.{SessionToken, UserID, UserSession}
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.model.user.session.UserSessionModel._
 

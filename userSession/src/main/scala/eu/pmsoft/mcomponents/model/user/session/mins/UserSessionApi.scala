@@ -27,9 +27,8 @@
 package eu.pmsoft.mcomponents.model.user.session.mins
 
 import eu.pmsoft.domain.model.{SessionToken, UserLogin, UserPassword}
-import eu.pmsoft.mcomponents.minstance.ApiVersion
-import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
-import eu.pmsoft.mcomponents.reqres.RequestErrorDomain
+import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
+import eu.pmsoft.mcomponents.minstance._
 
 import scala.concurrent.Future
 

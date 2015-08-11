@@ -26,18 +26,20 @@
 
 package eu.pmsoft.mcomponents.model.user.session.mins
 
-import eu.pmsoft.domain.model.{ComponentSpec, UserLogin, UserPassword}
+import eu.pmsoft.domain.model.{UserLogin, UserPassword}
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
+import eu.pmsoft.mcomponents.eventsourcing.{EventSourceExecutionContextProvider, EventSourcingConfiguration}
 import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
 import eu.pmsoft.mcomponents.model.user.registry.UserRegistrationApplication
-import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationInMemoryApplication
+import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationInMemoryInfrastructure
 import eu.pmsoft.mcomponents.model.user.registry.mins._
 import eu.pmsoft.mcomponents.model.user.session.UserSessionApplication
-import eu.pmsoft.mcomponents.model.user.session.inmemory.UserSessionInMemoryApplication
+import eu.pmsoft.mcomponents.model.user.session.inmemory.UserSessionInMemoryInfrastructure
+import eu.pmsoft.mcomponents.test.BaseEventSourceSpec
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
-class UserSessionComponentTest extends ComponentSpec {
+class UserSessionComponentTest extends BaseEventSourceSpec {
 
   it should "create sessions for a registered user" in {
 
@@ -64,20 +66,25 @@ class UserSessionComponentTest extends ComponentSpec {
   }
 
   def componentsInitialization(): MicroComponentRegistry = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val registry = MicroComponentRegistry.create()
+    implicit val configuration = EventSourcingConfiguration(global,LocalBindingInfrastructure.create())
+    implicit val eventSourceExecutionContext = EventSourceExecutionContextProvider.create()
 
     val userSession = new UserSessionComponent {
       override lazy val userRegistrationService: Future[UserRegistrationApi] =
         registry.bindComponent(ApiContract(classOf[UserRegistrationApi]))
 
-      override lazy val applicationModule: UserSessionApplication = new UserSessionInMemoryApplication()
+      override lazy val application: UserSessionApplication =
+        UserSessionApplication.createApplication(UserSessionInMemoryInfrastructure.createInfrastructure())
+
     }
 
     val userRegistration = new UserRegistrationComponent {
 
-      override lazy val applicationModule: UserRegistrationApplication = new UserRegistrationInMemoryApplication()
+      override lazy val application: UserRegistrationApplication =
+        UserRegistrationApplication.createApplication(UserRegistrationInMemoryInfrastructure.createInfrastructure())
 
-      override implicit lazy val executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
     }
 
     registry.registerComponent(userSession)

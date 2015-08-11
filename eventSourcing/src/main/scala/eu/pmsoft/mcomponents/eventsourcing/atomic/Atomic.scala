@@ -60,4 +60,6 @@ trait Atomic[A] {
   def apply(): A
 
   def updateAndGetWithCondition[E](f: A => A, c: A => E \/ A): E \/ A
+
+  def updateAndGet(f: A => A): A = updateAndGetWithCondition(f, (a) => \/-(a)).toOption.get
 }

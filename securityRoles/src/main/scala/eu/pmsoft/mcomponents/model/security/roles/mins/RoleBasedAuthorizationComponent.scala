@@ -31,9 +31,9 @@ import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.minstance._
 import eu.pmsoft.mcomponents.model.security.roles._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
+import scalaz.Scalaz._
 import scalaz._
-import scalaz.std.scalaFuture._
 
 trait RoleBasedAuthorizationComponent extends MicroComponent[RoleBasedAuthorizationApi] {
   override def providedContact: MicroComponentContract[RoleBasedAuthorizationApi] =
@@ -49,20 +49,23 @@ trait RoleBasedAuthorizationComponent extends MicroComponent[RoleBasedAuthorizat
 trait RoleBasedAuthorizationInternalInjector {
   def module: RoleBasedAuthorizationApplication
 
-  private implicit def internalExecutionContext: ExecutionContext = module.executionContext
+  private implicit lazy val eventSourceExecutionContext: EventSourceExecutionContext = module.eventSourceExecutionContext
 
   lazy val commandHandler = module.commandHandler
-  lazy val projection = module.applicationContextProvider.contextStateAtomicProjection
+
+  lazy val projection = module.atomicProjection
 
   lazy val dispatcher = wire[RoleBasedAuthorizationRequestDispatcher]
 
 }
 
+
 class RoleBasedAuthorizationRequestDispatcher(val commandHandler: AsyncEventCommandHandler[RoleBasedAuthorizationModelCommand],
-                                              val projection: AtomicEventStoreProjectionView[RoleBasedAuthorizationState])
-                                             (implicit val executionContext: ExecutionContext)
-  extends RoleBasedAuthorizationApi with RoleBasedAuthorizationExtractorFromProjection {
-  import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
+                                              val projection: AtomicEventStoreView[RoleBasedAuthorizationState])
+                                             (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
+  extends RoleBasedAuthorizationApi with RoleBasedAuthorizationExtractorFromProjection with EventSourceExecutionContextProvided {
+
+  import ReqResDataModel._
   import RoleBasedAuthorizationDefinitions._
 
   override def createRole(req: CreateRoleRequest): Future[RequestResult[CreateRoleResponse]] = (for {
@@ -125,12 +128,12 @@ class RoleBasedAuthorizationRequestDispatcher(val commandHandler: AsyncEventComm
 }
 
 trait RoleBasedAuthorizationExtractorFromProjection {
-  import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
+  self: EventSourceExecutionContextProvided =>
+
+  import ReqResDataModel._
   import RoleBasedAuthorizationDefinitions._
 
-  def projection: AtomicEventStoreProjectionView[RoleBasedAuthorizationState]
-
-  implicit def executionContext: ExecutionContext
+  def projection: AtomicEventStoreView[RoleBasedAuthorizationState]
 
   def findPermissionByName(cmdResult: EventSourceCommandConfirmation, code: String):
   Future[RequestResult[CreatePermissionResponse]] =

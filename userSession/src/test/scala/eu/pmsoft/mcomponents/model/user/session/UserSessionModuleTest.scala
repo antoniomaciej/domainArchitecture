@@ -27,11 +27,18 @@
 package eu.pmsoft.mcomponents.model.user.session
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
+import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
+import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 
-abstract class UserSessionModuleTest[M] extends BaseEventSourceSpec with
-GeneratedCommandSpecification[UserSessionCommand, UserSessionEvent, UserSessionSSOState, M] {
-  override def buildGenerator(state: AtomicEventStoreProjectionView[UserSessionSSOState]):
+abstract class UserSessionModuleTest extends BaseEventSourceSpec with
+GeneratedCommandSpecification[UserSessionCommand, UserSessionEvent,
+  UserSessionSSOState, UserSessionAggregate, UserSessionApplication] {
+
+  def infrastructure(): UserSessionApplicationInfrastructure
+
+  override def createEmptyModule(): UserSessionApplication = UserSessionApplication.createApplication(infrastructure())
+
+  override def buildGenerator(state: AtomicEventStoreView[UserSessionSSOState]):
   CommandGenerator[UserSessionCommand] = new UserSessionGenerators(state)
 
   override def validateState(state: UserSessionSSOState): Unit = {

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015 Pawe? Cesar Sanjuan Szklarz
+ * Copyright (c) 2015 Paweł Cesar Sanjuan Szklarz
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,17 +27,20 @@ package eu.pmsoft.mcomponents.eventsourcing
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import eu.pmsoft.domain.model.{ComponentSpec, Mocked}
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
+import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, Mocked}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class DomainLogicAsyncEventCommandHandlerTest extends ComponentSpec {
+class DomainLogicAsyncEventCommandHandlerTest extends BaseEventSourceSpec {
 
   it should "retry to execute commands when result is rollback" in {
     //given a mocked domain logic that returns rollback the first 3 times
     val eventStore = new AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] {
       val counter = new AtomicInteger(0)
+
+      override def reference: EventStoreReference[RollbackTestEvent, RollbackTestAggregateId] = Mocked.shouldNotBeCalled
 
       override def persistEvents(events: List[RollbackTestEvent], transactionScopeVersion: Map[RollbackTestAggregateId, Long]): Future[CommandResult] = {
         if (counter.getAndAdd(1) > 3) {
@@ -59,6 +62,8 @@ class DomainLogicAsyncEventCommandHandlerTest extends ComponentSpec {
     val eventStore = new AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] {
       val counter = new AtomicInteger(0)
 
+      override def reference: EventStoreReference[RollbackTestEvent, RollbackTestAggregateId] = Mocked.shouldNotBeCalled
+
       override def persistEvents(events: List[RollbackTestEvent], transactionScopeVersion: Map[RollbackTestAggregateId, Long]): Future[CommandResult] =
         Future.failed(new IllegalStateException("test error"))
     }
@@ -69,37 +74,40 @@ class DomainLogicAsyncEventCommandHandlerTest extends ComponentSpec {
     result shouldBe a[IllegalStateException]
   }
 
-  private def createMockedDomainLogicForRollback(eventStore: AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId]) =
-    new DomainLogicAsyncEventCommandHandler[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] {
-      override protected def logic: DomainLogic[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] =
-        new DomainLogic[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] {
-          override def executeCommand(command: RollbackTestCommand, transactionScope: Map[RollbackTestAggregateId, Long])
-                                     (implicit state: RollbackTestState): CommandToEventsResult[RollbackTestEvent] =
-            scalaz.\/-(List(RollbackTestEvent()))
-        }
-
-      override protected def atomicProjection: VersionedEventStoreProjectionView[RollbackTestAggregateId, RollbackTestState] =
-        new VersionedEventStoreProjectionView[RollbackTestAggregateId, RollbackTestState] {
-          override def projection(transactionScope: Set[RollbackTestAggregateId]):
-          Future[VersionedProjection[RollbackTestAggregateId, RollbackTestState]] =
-            Future.successful(VersionedProjection(Map(), RollbackTestState()))
-
-          override def lastSnapshot(): Future[RollbackTestState] = Future.successful(RollbackTestState())
-
-          override def atLeastOn(storeVersion: EventStoreVersion): Future[RollbackTestState] = Mocked.shouldNotBeCalled
-        }
-
-      override implicit def executionContext: ExecutionContext = ExecutionContext.global
-
-      override protected lazy val store: AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] = eventStore
+  private def createMockedDomainLogicForRollback(eventStore: AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId]) = {
+    val logic: DomainLogic[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] =
+      new DomainLogic[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] {
+        override def executeCommand(command: RollbackTestCommand, transactionScope: Map[RollbackTestAggregateId, Long])
+                                   (implicit state: RollbackTestState): CommandToEventsResult[RollbackTestEvent] =
+          scalaz.\/-(List(RollbackTestEvent()))
+      }
 
 
-      override protected def transactionScopeCalculator: CommandToTransactionScope[RollbackTestCommand, RollbackTestAggregateId, RollbackTestState] =
-        new CommandToTransactionScope[RollbackTestCommand, RollbackTestAggregateId, RollbackTestState] {
-          override def calculateTransactionScope(command: RollbackTestCommand, state: RollbackTestState): CommandToAggregateResult[RollbackTestAggregateId] =
-            scalaz.\/-(Set(RollbackTestAggregateId()))
-        }
-    }
+    val transactionScopeCalculator: CommandToTransactionScope[RollbackTestCommand, RollbackTestAggregateId, RollbackTestState] =
+      new CommandToTransactionScope[RollbackTestCommand, RollbackTestAggregateId, RollbackTestState] {
+        override def calculateTransactionScope(command: RollbackTestCommand, state: RollbackTestState): CommandToAggregateResult[RollbackTestAggregateId] =
+          scalaz.\/-(Set(RollbackTestAggregateId()))
+      }
+
+    val atomicProjection: VersionedEventStoreView[RollbackTestAggregateId, RollbackTestState] =
+      new VersionedEventStoreView[RollbackTestAggregateId, RollbackTestState] {
+        override def projection(transactionScope: Set[RollbackTestAggregateId]):
+        Future[VersionedProjection[RollbackTestAggregateId, RollbackTestState]] =
+          Future.successful(VersionedProjection(Map(), RollbackTestState()))
+
+        override def lastSnapshot(): Future[RollbackTestState] = Future.successful(RollbackTestState())
+
+        override def atLeastOn(storeVersion: EventStoreVersion): Future[RollbackTestState] = Mocked.shouldNotBeCalled
+      }
+    val storeStorage: AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId] = eventStore
+    implicit val eventSourceExecutionContext: EventSourceExecutionContext =
+      EventSourceExecutionContextProvider.create()(EventSourcingConfiguration(ExecutionContext.global, LocalBindingInfrastructure.create()))
+
+    new DomainLogicAsyncEventCommandHandler[RollbackTestCommand,
+      RollbackTestEvent,
+      RollbackTestAggregateId,
+      RollbackTestState](logic, transactionScopeCalculator, atomicProjection, storeStorage)
+  }
 
 
 }

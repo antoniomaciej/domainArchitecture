@@ -27,15 +27,15 @@ package eu.pmsoft.domain.model.deploy
 
 import java.util.concurrent.TimeoutException
 
-import eu.pmsoft.mcomponents.eventsourcing.{EventStoreVersion, EventSourceCommandConfirmation}
+import eu.pmsoft.mcomponents.eventsourcing.{EventSourceCommandConfirmation, EventStoreVersion}
+import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
+import eu.pmsoft.mcomponents.minstance._
 import eu.pmsoft.mcomponents.model.security.password.reset.mins._
-import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
-import eu.pmsoft.mcomponents.reqres.{RequestErrorDomain, RequestErrorCode, ResponseError}
 
 import scala.concurrent.Future
 import scalaz.{-\/, \/-}
 
-object MockApiConstanat {
+object MockApiConstants {
   val testErrorCode = 101L
 }
 
@@ -44,7 +44,7 @@ class MockApi extends PasswordResetApi {
     Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion(0L)))))
 
   override def cancelFlow(req: CancelPasswordResetFlowRequest): Future[RequestResult[CancelPasswordResetFlowResponse]] =
-    Future.successful(-\/(ResponseError(RequestErrorCode(MockApiConstanat.testErrorCode), RequestErrorDomain("domainTest"))))
+    Future.successful(-\/(ResponseError(RequestErrorCode(MockApiConstants.testErrorCode), RequestErrorDomain("domainTest"))))
 
   override def confirmFlow(req: ConfirmPasswordResetFlowRequest): Future[RequestResult[ConfirmPasswordResetFlowResponse]] =
     Future.failed(new TimeoutException("test timeout"))

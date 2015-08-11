@@ -27,10 +27,14 @@
 package eu.pmsoft.mcomponents.model.security.password.reset
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
+import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
+import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 
-abstract class PasswordResetModuleTest[M] extends BaseEventSourceSpec with
-GeneratedCommandSpecification[PasswordResetModelCommand, PasswordResetModelEvent, PasswordResetModelState, M] {
+abstract class PasswordResetModuleTest extends BaseEventSourceSpec with
+GeneratedCommandSpecification[PasswordResetModelCommand, PasswordResetModelEvent,
+  PasswordResetModelState, PasswordResetAggregate, PasswordResetApplication] {
+
+  def infrastructure(): PasswordResetApplicationInfrastructure
 
   it should "reject invalid session tokens" in {
     val module = createEmptyModule()
@@ -87,7 +91,10 @@ GeneratedCommandSpecification[PasswordResetModelCommand, PasswordResetModelEvent
     }
   }
 
-  override def buildGenerator(state: AtomicEventStoreProjectionView[PasswordResetModelState]):
+
+  override def createEmptyModule(): PasswordResetApplication = PasswordResetApplication.createApplication(infrastructure())
+
+  override def buildGenerator(state: AtomicEventStoreView[PasswordResetModelState]):
   CommandGenerator[PasswordResetModelCommand] = new PasswordResetModelGenerator(state)
 
   override def postCommandValidation(state: PasswordResetModelState, command: PasswordResetModelCommand): Unit =

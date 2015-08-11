@@ -27,10 +27,8 @@
 package eu.pmsoft.mcomponents.model.security.roles.mins
 
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.minstance.ApiVersion
+import eu.pmsoft.mcomponents.minstance.{ApiVersion, ReqResDataModel, RequestErrorDomain}
 import eu.pmsoft.mcomponents.model.security.roles._
-import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
-import eu.pmsoft.mcomponents.reqres._
 
 import scala.concurrent.Future
 
@@ -42,6 +40,8 @@ object RoleBasedAuthorizationDefinitions {
 
   implicit val requestErrorDomain = RequestErrorDomain("RoleBasedAuthorization")
 }
+
+import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
 
 object RoleBasedAuthorizationRequestModel {
 

@@ -29,11 +29,11 @@ package eu.pmsoft.mcomponents.model.user.registry.mins
 import com.softwaremill.macwire._
 import eu.pmsoft.domain.model.UserLogin
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.minstance.{MicroComponentModel, MicroComponentContract, MicroComponent}
+import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
+import eu.pmsoft.mcomponents.minstance.{MicroComponent, MicroComponentContract, MicroComponentModel}
 import eu.pmsoft.mcomponents.model.user.registry._
-import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scalaz._
 import scalaz.std.scalaFuture._
 
@@ -42,31 +42,31 @@ trait UserRegistrationComponent extends MicroComponent[UserRegistrationApi] {
   override def providedContact: MicroComponentContract[UserRegistrationApi] =
     MicroComponentModel.contractFor(UserRegistrationApi.version, classOf[UserRegistrationApi])
 
-  def applicationModule: UserRegistrationApplication
+  def application: UserRegistrationApplication
 
   override lazy val app: Future[UserRegistrationApi] = Future.successful(new UserRegistrationInternalInjector {
 
-    override lazy val module: UserRegistrationApplication = applicationModule
+    override lazy val module: UserRegistrationApplication = application
   }.app)
 }
 
 trait UserRegistrationInternalInjector {
   def module: UserRegistrationApplication
 
-  private implicit def executionContextInternal: ExecutionContext = module.executionContext
+  private implicit lazy val eventSourceExecutionContext: EventSourceExecutionContext = module.eventSourceExecutionContext
 
   lazy val commandHandler = module.commandHandler
 
-  lazy val projection = module.applicationContextProvider.contextStateAtomicProjection
+  lazy val projection = module.atomicProjection
   lazy val app = wire[UserRegistrationRequestDispatcher]
 
 }
 
-class UserRegistrationRequestDispatcher(val registrationState: AtomicEventStoreProjectionView[UserRegistrationState],
+class UserRegistrationRequestDispatcher(val registrationState: AtomicEventStoreView[UserRegistrationState],
                                         val commandHandler: AsyncEventCommandHandler[UserRegistrationCommand])
-                                       (implicit val executionContext: ExecutionContext)
-  extends UserRegistrationApi {
-  import eu.pmsoft.mcomponents.reqres.ReqResDataModel
+                                       (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
+  extends UserRegistrationApi with EventSourceExecutionContextProvided {
+
   import UserRegistrationApplicationDefinitions._
 
   override def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]] =

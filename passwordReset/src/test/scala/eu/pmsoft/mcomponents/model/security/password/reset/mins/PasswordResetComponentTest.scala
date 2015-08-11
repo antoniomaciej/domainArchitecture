@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015 Pawe? Cesar Sanjuan Szklarz
+ * Copyright (c) 2015 Paweł Cesar Sanjuan Szklarz
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,20 +26,59 @@
 package eu.pmsoft.mcomponents.model.security.password.reset.mins
 
 import eu.pmsoft.domain.model._
+import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
 import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
-import eu.pmsoft.mcomponents.model.security.password.reset.PasswordResetApplication
-import eu.pmsoft.mcomponents.model.security.password.reset.inmemory.PasswordResetInMemoryApplication
+import eu.pmsoft.mcomponents.model.security.password.reset._
+import eu.pmsoft.mcomponents.model.security.password.reset.inmemory.PasswordResetInMemoryInfrastructure
+import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, TestEventStoreHistoryProjection}
 
-import scala.concurrent.ExecutionContext
+import scala.reflect._
 
-class PasswordResetComponentTest extends ComponentSpec {
-
-  //TODO add a projection to validate state changes
+class PasswordResetComponentTest extends BaseEventSourceSpec {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
+  it should "event store match the reference id" in {
+    //given
+    implicit val eventSourceConfiguration = EventSourcingConfiguration(global, LocalBindingInfrastructure.create())
+    implicit val eventSourceExecutionContext = EventSourceExecutionContextProvider.create()
+    //when
+    val infrastructure: PasswordResetApplicationInfrastructure = PasswordResetInMemoryInfrastructure.createInfrastructure()
+    //then
+    infrastructure.storeStorage.reference should be(EventStoreReference(
+      EventStoreID("PasswordResetModelStateProjection"),
+      classTag[PasswordResetModelEvent],
+      classTag[PasswordResetAggregate]))
+  }
+
+  it should "publish creation events to projection to send emails to users" in {
+    //given
+    val app = standardApp()
+    val eventStoreRef = app.storeStorage.reference
+    //and a test projection
+    val projection = new TestEventStoreHistoryProjection[PasswordResetModelEvent]()
+    app.eventSourceExecutionContext.registerProjection(projection, eventStoreRef)
+    //and a component providing the api
+    val api = createComponent(app)
+
+    //when api request is executed
+    val initCall = api.initializeFlow(
+      InitializePasswordResetFlowRequest(UserID(0L), SessionToken("sessionToken"))
+    ).futureValue
+    initCall should be(\/-)
+
+    //then the projection get the flow creation event
+    projection.events().find {
+      _ match {
+        case PasswordResetFlowCreated(UserID(0L), SessionToken("sessionToken"), passwordResetToken) => true
+        case _ => false
+      }
+    } should not be empty
+  }
+
   it should "start a reset password flow and cancel" in {
-    val app: PasswordResetInMemoryApplication = new PasswordResetInMemoryApplication()
+    val app = standardApp()
 
     val api = createComponent(app)
     val initCall = api.initializeFlow(
@@ -47,7 +86,7 @@ class PasswordResetComponentTest extends ComponentSpec {
     ).futureValue
     initCall should be(\/-)
 
-    val state = app.applicationContextProvider.contextStateAtomicProjection.lastSnapshot().futureValue
+    val state = app.atomicProjection.lastSnapshot().futureValue
     val processOp = state.findFlowByUserID(UserID(0L))
     processOp should not be empty
     val process = processOp.get
@@ -56,7 +95,7 @@ class PasswordResetComponentTest extends ComponentSpec {
 
   }
   it should "start a reset password flow and confirm" in {
-    val app: PasswordResetInMemoryApplication = new PasswordResetInMemoryApplication()
+    val app = standardApp()
 
     val api = createComponent(app)
     val initCall = api.initializeFlow(
@@ -64,7 +103,7 @@ class PasswordResetComponentTest extends ComponentSpec {
     ).futureValue
     initCall should be(\/-)
 
-    val state = app.applicationContextProvider.contextStateAtomicProjection.lastSnapshot().futureValue
+    val state = app.atomicProjection.lastSnapshot().futureValue
     val processOp = state.findFlowByUserID(UserID(0L))
     processOp should not be empty
     val process = processOp.get
@@ -76,12 +115,20 @@ class PasswordResetComponentTest extends ComponentSpec {
 
   }
 
-  def createComponent(testApp: PasswordResetInMemoryApplication): PasswordResetApi = {
+  def standardApp(): PasswordResetApplication = {
+    implicit val eventSourceConfiguration = EventSourcingConfiguration(global, LocalBindingInfrastructure.create())
+    implicit val eventSourceExecutionContext = EventSourceExecutionContextProvider.create()
+    val infrastructure: PasswordResetApplicationInfrastructure = PasswordResetInMemoryInfrastructure.createInfrastructure()
+    PasswordResetApplication.createApplication(infrastructure)
+  }
+
+  def createComponent(testApp: PasswordResetApplication): PasswordResetApi = {
     val registry = MicroComponentRegistry.create()
 
     val roleAuth = new PasswordResetComponent {
+
       override lazy val application: PasswordResetApplication = testApp
-      override implicit lazy val executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
+
     }
 
     registry.registerComponent(roleAuth)

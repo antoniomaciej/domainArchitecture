@@ -26,12 +26,10 @@
 
 package eu.pmsoft.mcomponents.model.user.registry.mins
 
-import eu.pmsoft.domain.model.{UserPassword, UserLogin, UserID}
+import eu.pmsoft.domain.model.{UserID, UserLogin, UserPassword}
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.minstance.ApiVersion
-import eu.pmsoft.mcomponents.model.user.registry._
-import eu.pmsoft.mcomponents.reqres.ReqResDataModel._
-import eu.pmsoft.mcomponents.reqres.{ReqResDataModel, RequestErrorDomain}
+import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
+import eu.pmsoft.mcomponents.minstance._
 
 import scala.concurrent.Future
 
@@ -44,6 +42,7 @@ object UserRegistrationApplicationDefinitions {
   implicit val requestErrorDomain = RequestErrorDomain("UserRegistration")
 }
 
+//TODO create a full api to update user information
 trait UserRegistrationApi {
 
   def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]]
@@ -64,7 +63,7 @@ object UserRegistrationRequestModel {
     EventSourceCommandError(criticalUserNotFoundAfterSuccessRegistrationErrorCode))
 }
 
-
+//TODO how to avoid pass of password on this api??
 case class SearchForUserIdRequest(login: UserLogin, passwordHash: UserPassword)
 
 case class SearchForUserIdResponse(userId: UserID)

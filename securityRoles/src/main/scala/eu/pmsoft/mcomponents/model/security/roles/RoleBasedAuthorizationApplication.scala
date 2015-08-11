@@ -28,7 +28,28 @@ package eu.pmsoft.mcomponents.model.security.roles
 
 import eu.pmsoft.mcomponents.eventsourcing._
 
-abstract class RoleBasedAuthorizationApplication
+
+object RoleBasedAuthorizationApplication {
+
+  def createApplication(infrastructure: RoleBasedAuthorizationEventStoreInfrastructure)
+                       (implicit eventSourceExecutionContext: EventSourceExecutionContext): RoleBasedAuthorizationApplication =
+    new RoleBasedAuthorizationApplication(infrastructure)
+}
+
+/**
+ * Implementation must return singleton values. Use lazy val override.
+ */
+trait RoleBasedAuthorizationEventStoreInfrastructure {
+  def sideEffects: RoleBasedAuthorizationLocalSideEffects
+
+  def atomicProjection: VersionedEventStoreView[RoleBasedAuthorizationAggregate, RoleBasedAuthorizationState]
+
+  def storeStorage: AsyncEventStore[RoleBasedAuthorizationEvent, RoleBasedAuthorizationAggregate]
+}
+
+
+final class RoleBasedAuthorizationApplication(val infrastructure: RoleBasedAuthorizationEventStoreInfrastructure)
+                                             (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
   extends AbstractApplicationModule[RoleBasedAuthorizationModelCommand,
     RoleBasedAuthorizationEvent,
     RoleBasedAuthorizationAggregate,
@@ -37,12 +58,15 @@ abstract class RoleBasedAuthorizationApplication
   override lazy val logic: DomainLogic[RoleBasedAuthorizationModelCommand,
     RoleBasedAuthorizationEvent,
     RoleBasedAuthorizationAggregate,
-    RoleBasedAuthorizationState] =
-    new RoleBasedAuthorizationHandlerLogic(sideEffects)
+    RoleBasedAuthorizationState] = new RoleBasedAuthorizationHandlerLogic(infrastructure.sideEffects)
+
   override lazy val transactionScopeCalculator: CommandToTransactionScope[RoleBasedAuthorizationModelCommand,
     RoleBasedAuthorizationAggregate,
-    RoleBasedAuthorizationState] =
-    new RoleBaseAuthorizationCommandToTransactionScope()
+    RoleBasedAuthorizationState] = new RoleBaseAuthorizationCommandToTransactionScope()
 
-  def sideEffects: RoleBasedAuthorizationLocalSideEffects
+  override lazy val atomicProjection: VersionedEventStoreView[RoleBasedAuthorizationAggregate,
+    RoleBasedAuthorizationState] = infrastructure.atomicProjection
+
+  override lazy val storeStorage: AsyncEventStore[RoleBasedAuthorizationEvent,
+    RoleBasedAuthorizationAggregate] = infrastructure.storeStorage
 }

@@ -26,8 +26,8 @@
 
 package eu.pmsoft.mcomponents.model.security.password.reset
 
-import eu.pmsoft.domain.model.{UserPassword, UserID, SessionToken}
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
+import eu.pmsoft.domain.model.{SessionToken, UserID, UserPassword}
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
 import eu.pmsoft.mcomponents.eventsourcing._
 
 import scala.collection.immutable.Nil
@@ -55,7 +55,7 @@ trait PasswordResetModelSideEffects {
                                  passwordResetToken: PasswordResetToken): Boolean
 }
 
-import PasswordResetModel._
+import eu.pmsoft.mcomponents.model.security.password.reset.PasswordResetModel._
 
 final class PasswordResetCommandToTransactionScope
   extends CommandToTransactionScope[PasswordResetModelCommand, PasswordResetAggregate, PasswordResetModelState] {

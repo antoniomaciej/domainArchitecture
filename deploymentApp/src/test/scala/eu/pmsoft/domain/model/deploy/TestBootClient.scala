@@ -34,8 +34,8 @@ import eu.pmsoft.mcomponents.model.security.password.reset.mins.{InitializePassw
 import spray.can.Http
 import spray.client.pipelining._
 import spray.http.BasicHttpCredentials
+import spray.httpx.encoding.{Deflate, Gzip}
 import spray.util._
-import spray.httpx.encoding.{Gzip, Deflate}
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}

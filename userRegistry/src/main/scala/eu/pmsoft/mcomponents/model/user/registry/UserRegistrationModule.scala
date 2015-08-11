@@ -26,8 +26,8 @@
 
 package eu.pmsoft.mcomponents.model.user.registry
 
-import eu.pmsoft.domain.model.{UserLogin, UserID}
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
+import eu.pmsoft.domain.model.{UserID, UserLogin}
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
 import eu.pmsoft.mcomponents.eventsourcing.{CommandToTransactionScope, DomainLogic, EventSourceCommandFailed}
 import org.apache.commons.validator.routines.EmailValidator
 

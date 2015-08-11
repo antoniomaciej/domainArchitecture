@@ -26,22 +26,17 @@
 
 package eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.inmemory.test
 
-import java.util.concurrent.Executor
-
-import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry._
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
+import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.TheTestInfrastructure
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.inmemory._
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.test.TestUserRegistrationModuleTest
-import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreProjectionView}
+import eu.pmsoft.mcomponents.eventsourcing.{BindingInfrastructure, EventSourceExecutionContext, EventSourceExecutionContextProvider}
 
-import scala.concurrent.ExecutionContext
+class TestUserRegistrationInMemoryApplicationTest extends TestUserRegistrationModuleTest {
 
-class TestUserRegistrationInMemoryApplicationTest extends TestUserRegistrationModuleTest[TestUserRegistrationInMemoryApplication] {
+  override def bindingInfrastructure: BindingInfrastructure = LocalBindingInfrastructure.create()
 
-  override def createEmptyModule(): TestUserRegistrationInMemoryApplication = new TestUserRegistrationInMemoryApplication()
+  implicit def eventSourceExecutionContext: EventSourceExecutionContext = EventSourceExecutionContextProvider.create()
 
-  override def asyncCommandHandler(contextModule: TestUserRegistrationInMemoryApplication)
-  : AsyncEventCommandHandler[TestUserRegistrationCommand] = contextModule.commandHandler
-
-  override def stateProjection(contextModule: TestUserRegistrationInMemoryApplication)
-  : AtomicEventStoreProjectionView[TestUserRegistrationState] = contextModule.applicationContextProvider.contextStateAtomicProjection
+  override def infrastructure(): TheTestInfrastructure = TestUserRegistrationInMemoryApplication.infrastructure()
 }

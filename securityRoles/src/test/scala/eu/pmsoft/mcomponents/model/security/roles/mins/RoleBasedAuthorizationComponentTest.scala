@@ -26,17 +26,18 @@
 
 package eu.pmsoft.mcomponents.model.security.roles.mins
 
-import eu.pmsoft.domain.model.ComponentSpec
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
+import eu.pmsoft.mcomponents.eventsourcing.{EventSourceExecutionContextProvider, EventSourcingConfiguration}
 import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
 import eu.pmsoft.mcomponents.model.security.roles._
-import eu.pmsoft.mcomponents.model.security.roles.inmemory.RoleBasedAuthorizationInMemoryApplication
+import eu.pmsoft.mcomponents.model.security.roles.inmemory.RoleBasedAuthorizationInMemoryInfrastructure
+import eu.pmsoft.mcomponents.test.BaseEventSourceSpec
 
-import scala.concurrent.ExecutionContext
 
-
-class RoleBasedAuthorizationComponentTest extends ComponentSpec {
+class RoleBasedAuthorizationComponentTest extends BaseEventSourceSpec {
 
   import scala.concurrent.ExecutionContext.Implicits.global
+
   it should "extract roles to permissions map" in {
     val api = createComponent()
     val roleID = api.createRole(CreateRoleRequest("test")).futureValue.toOption.get.roleID
@@ -123,12 +124,20 @@ class RoleBasedAuthorizationComponentTest extends ComponentSpec {
   }
 
   def createComponent(): RoleBasedAuthorizationApi = {
+    val bindingInfrastructure = LocalBindingInfrastructure.create()
+    implicit val eventSourceConfiguration = EventSourcingConfiguration(
+      scala.concurrent.ExecutionContext.Implicits.global,
+      bindingInfrastructure
+    )
+    implicit val eventExecutionContext = EventSourceExecutionContextProvider.create()
+    val applicationInstance = RoleBasedAuthorizationApplication.createApplication(
+      RoleBasedAuthorizationInMemoryInfrastructure.createInfrastructure()
+    )
+
     val registry = MicroComponentRegistry.create()
 
     val roleAuth = new RoleBasedAuthorizationComponent {
-      override lazy val application: RoleBasedAuthorizationApplication = new RoleBasedAuthorizationInMemoryApplication()
-
-      override implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
+      override lazy val application: RoleBasedAuthorizationApplication = applicationInstance
     }
 
     registry.registerComponent(roleAuth)

@@ -28,17 +28,42 @@ package eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry
 
 import eu.pmsoft.mcomponents.eventsourcing._
 
-abstract class TestUserRegistrationApplication
-  extends AbstractApplicationModule[TestUserRegistrationCommand, TestUserRegistrationEvent, TestUserRegistrationAggregate, TestUserRegistrationState] {
 
-  override lazy val logic
-  : DomainLogic[TestUserRegistrationCommand, TestUserRegistrationEvent, TestUserRegistrationAggregate, TestUserRegistrationState] =
-    new TestTestUserRegistrationHandlerLogic(sideEffects)
-  override lazy val transactionScopeCalculator
-  : CommandToTransactionScope[TestUserRegistrationCommand, TestUserRegistrationAggregate, TestUserRegistrationState] =
-    new TestUserRegistrationCommandToTransactionScope()
+object TestUserRegistrationApplication {
+  def createApplication(infrastructure: TheTestInfrastructure)
+                       (implicit eventSourceExecutionContext: EventSourceExecutionContext): TestUserRegistrationApplication =
+    new TestUserRegistrationApplication(infrastructure)
+}
 
-  def sideEffects: TestUserRegistrationLocalSideEffects
+trait TheTestInfrastructure {
+  def sideEffects: TestSideEffects
+
+  def atomicProjection: VersionedEventStoreView[TheTestAggregate, TheTestState]
+
+  def storeStorage: AsyncEventStore[TheTestEvent, TheTestAggregate]
+}
+
+final class TestUserRegistrationApplication(val infrastructure: TheTestInfrastructure)
+                                           (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
+  extends AbstractApplicationModule[TheTestCommand,
+    TheTestEvent,
+    TheTestAggregate,
+    TheTestState] {
+
+  override lazy val logic: DomainLogic[TheTestCommand,
+    TheTestEvent,
+    TheTestAggregate,
+    TheTestState] = new TestTestUserRegistrationHandlerLogic(infrastructure.sideEffects)
+
+  override lazy val transactionScopeCalculator: CommandToTransactionScope[TheTestCommand,
+    TheTestAggregate,
+    TheTestState] = new TestUserRegistrationCommandToTransactionScope()
+
+  override lazy val atomicProjection: VersionedEventStoreView[TheTestAggregate,
+    TheTestState] = infrastructure.atomicProjection
+
+  override lazy val storeStorage: AsyncEventStore[TheTestEvent,
+    TheTestAggregate] = infrastructure.storeStorage
 }
 
 

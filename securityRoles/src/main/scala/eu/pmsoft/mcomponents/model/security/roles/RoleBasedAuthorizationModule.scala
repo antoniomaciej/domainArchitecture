@@ -26,7 +26,7 @@
 
 package eu.pmsoft.mcomponents.model.security.roles
 
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel._
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
 import eu.pmsoft.mcomponents.eventsourcing.{CommandToTransactionScope, DomainLogic, EventSourceCommandFailed}
 
 import scalaz._

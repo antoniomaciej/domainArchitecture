@@ -54,9 +54,6 @@ object UserSessionModel {
 }
 
 
-
-
-
 //aggregate
 sealed trait UserSessionAggregate
 

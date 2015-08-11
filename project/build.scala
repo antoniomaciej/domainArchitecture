@@ -44,14 +44,22 @@ object domainArchitecture extends Build {
     publishArtifact in(Test, packageSrc) := true
   )
 
-  lazy val eventSourcing = (project in file("eventSourcing")).
+
+  lazy val eventSourcingApi = (project in file("eventSourcingApi")).
     settings(commonSettings: _*).
     settings(dependencies: _*)
 
-  lazy val microInstances = (project in file("microInstances")).
+  lazy val eventSourcingTest = (project in file("eventSourcingTest")).
     settings(commonSettings: _*).
     settings(dependencies: _*).
-    dependsOn(eventSourcing % "test->test;compile->compile")
+    settings(testDependencies: _*).
+    dependsOn(eventSourcingApi)
+
+  lazy val eventSourcing = (project in file("eventSourcing")).
+    settings(commonSettings: _*).
+    settings(dependencies: _*).
+    dependsOn(eventSourcingTest % "test").
+    dependsOn(eventSourcingApi)
 
   lazy val domainModel = (project in file("domainModel")).
     settings(commonSettings: _*).
@@ -60,46 +68,47 @@ object domainArchitecture extends Build {
   lazy val securityRoles = (project in file("securityRoles")).
     settings(commonSettings: _*).
     settings(dependencies: _*).
-    dependsOn(eventSourcing % "test->test;compile->compile").
-    dependsOn(microInstances % "test->test;compile->compile").
+    dependsOn(eventSourcing).
+    dependsOn(eventSourcingTest % "test").
     dependsOn(domainModel)
 
   lazy val passwordReset = (project in file("passwordReset")).
     settings(commonSettings: _*).
     settings(dependencies: _*).
-    dependsOn(eventSourcing % "test->test;compile->compile").
-    dependsOn(microInstances % "test->test;compile->compile").
+    dependsOn(eventSourcing).
+    dependsOn(eventSourcingTest % "test").
     dependsOn(domainModel).
     dependsOn(userSession, userRegistry)
 
   lazy val userRegistry = (project in file("userRegistry")).
     settings(commonSettings: _*).
     settings(dependencies: _*).
-    dependsOn(eventSourcing % "test->test;compile->compile").
-    dependsOn(microInstances % "test->test;compile->compile").
+    dependsOn(eventSourcing).
+    dependsOn(eventSourcingTest % "test").
     dependsOn(domainModel).
     dependsOn(securityRoles)
 
   lazy val userSession = (project in file("userSession")).
     settings(commonSettings: _*).
     settings(dependencies: _*).
-    dependsOn(eventSourcing % "test->test;compile->compile").
-    dependsOn(microInstances % "test->test;compile->compile").
+    dependsOn(eventSourcing).
+    dependsOn(eventSourcingTest % "test").
     dependsOn(domainModel).
     dependsOn(userRegistry)
 
   lazy val deploymentApp = (project in file("deploymentApp")).
     settings(commonSettings: _*).
     settings(dependencies: _*).
+    dependsOn(eventSourcingTest % "test").
     settings(deploymentDependencies: _*).
-    dependsOn(microInstances % "test->test;compile->compile").
     dependsOn(domainModel).
     dependsOn(userSession, userRegistry, passwordReset, securityRoles)
 
   lazy val root = (project in file(".")).
-    aggregate(eventSourcing, microInstances,
+    aggregate(eventSourcing, eventSourcingApi, eventSourcingTest,
       domainModel,
-      userSession, userRegistry, passwordReset, securityRoles,deploymentApp)
+      userSession, userRegistry, passwordReset, securityRoles,
+      deploymentApp)
 
   val monocleVersion = "1.1.1"
 
@@ -114,9 +123,15 @@ object domainArchitecture extends Build {
       "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion,
       "org.scalaz" %% "scalaz-core" % "7.1.2",
       "org.scalaz" %% "scalaz-concurrent" % "7.1.2",
-      "org.typelevel" %% "scalaz-scalatest" % "0.2.2" % "test",
-      "org.scalatest" %% "scalatest" % "2.2.0" % "test",
-      "org.scalacheck" %% "scalacheck" % "1.12.4" % "test"
+      "io.reactivex" % "rxjava" % "1.0.14"
+    )
+  )
+
+  lazy val testDependencies = Seq(
+    libraryDependencies ++= Seq(
+      "org.typelevel" %% "scalaz-scalatest" % "0.2.2",
+      "org.scalatest" %% "scalatest" % "2.2.0",
+      "org.scalacheck" %% "scalacheck" % "1.12.4"
     )
   )
 
@@ -130,6 +145,7 @@ object domainArchitecture extends Build {
       "io.spray" %% "spray-can" % sprayVersion,
       "io.spray" %% "spray-routing-shapeless2" % sprayVersion,
       "io.spray" %% "spray-testkit" % sprayVersion % "test",
+      "io.spray" %% "spray-client" % sprayVersion % "test",
       "ch.qos.logback" % "logback-classic" % "1.1.2",
       "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0"
     )

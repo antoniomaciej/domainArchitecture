@@ -26,38 +26,65 @@
 
 package eu.pmsoft.mcomponents.model.user.registry.mins
 
-import eu.pmsoft.domain.model.{ComponentSpec, UserLogin, UserPassword}
+import eu.pmsoft.domain.model.{UserLogin, UserPassword}
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
+import eu.pmsoft.mcomponents.eventsourcing.{EventSourceExecutionContextProvider, EventSourcingConfiguration}
 import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
 import eu.pmsoft.mcomponents.model.user.registry._
-import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationInMemoryApplication
+import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationInMemoryInfrastructure
+import eu.pmsoft.mcomponents.test.BaseEventSourceSpec
 
-import scala.concurrent.ExecutionContext
+class UserRegistrationComponentTest extends BaseEventSourceSpec {
 
-class UserRegistrationComponentTest extends ComponentSpec {
 
-  import scala.concurrent.ExecutionContext.Implicits.global
-
-  it should "fail to register a nor valid email login" in {
-
+  it should "fail to register a invalid email login" in {
+    //given
     val registry = componentsInitialization()
-
     val userRegistrationApi = registry.bindComponent(
       ApiContract(classOf[UserRegistrationApi])).futureValue
-
+    //when then
     userRegistrationApi.registerUser(RegisterUserRequest(
       UserLogin("testLogin@invalid"), UserPassword("testPassword")
     )).futureValue shouldBe -\/
+  }
+
+  it should "register a valid email login" in {
+    //given
+    val registry = componentsInitialization()
+    val userRegistrationApi = registry.bindComponent(
+      ApiContract(classOf[UserRegistrationApi])).futureValue
+
+    //when used not registered
+    //then find fail
+    userRegistrationApi.findRegisteredUser(SearchForUserIdRequest(
+      UserLogin("testLogin@domain.com"),
+      UserPassword("testPassword"))
+    ).futureValue shouldBe -\/
+
+    //when used registered
+    userRegistrationApi.registerUser(RegisterUserRequest(
+      UserLogin("testLogin@domain.com"), UserPassword("testPassword")
+    )).futureValue shouldBe \/-
+    //then find works
+    userRegistrationApi.findRegisteredUser(SearchForUserIdRequest(
+      UserLogin("testLogin@domain.com"),
+      UserPassword("testPassword"))
+    ).futureValue shouldBe \/-
 
   }
 
   def componentsInitialization(): MicroComponentRegistry = {
+
+    import scala.concurrent.ExecutionContext.Implicits.global
     val registry = MicroComponentRegistry.create()
+    val configuration: EventSourcingConfiguration = EventSourcingConfiguration(global,LocalBindingInfrastructure.create())
+    implicit val eventSourceExecutionContext = EventSourceExecutionContextProvider.create()(configuration)
+    val applicationInstance = UserRegistrationApplication.createApplication(UserRegistrationInMemoryInfrastructure.createInfrastructure())
 
     val userRegistration = new UserRegistrationComponent {
 
-      override lazy val applicationModule: UserRegistrationApplication = new UserRegistrationInMemoryApplication()
+      override lazy val application: UserRegistrationApplication = applicationInstance
 
-      override implicit lazy val executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
     }
 
     registry.registerComponent(userRegistration)

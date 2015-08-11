@@ -28,15 +28,43 @@ package eu.pmsoft.mcomponents.model.user.registry
 
 import eu.pmsoft.mcomponents.eventsourcing._
 
-abstract class UserRegistrationApplication
-  extends AbstractApplicationModule[UserRegistrationCommand, UserRegistrationEvent, UserRegistrationAggregate, UserRegistrationState] {
 
-  override lazy val logic: DomainLogic[UserRegistrationCommand, UserRegistrationEvent, UserRegistrationAggregate, UserRegistrationState] =
-    new UserRegistrationHandlerLogic(sideEffects)
-  override lazy val transactionScopeCalculator: CommandToTransactionScope[UserRegistrationCommand, UserRegistrationAggregate, UserRegistrationState] =
-    new UserRegistrationCommandToTransactionScope()
+object UserRegistrationApplication {
+  def createApplication(infrastructure: UserRegistrationApplicationInfrastructure)
+                       (implicit eventSourceExecutionContext: EventSourceExecutionContext): UserRegistrationApplication =
+    new UserRegistrationApplication(infrastructure)
+}
+
+trait UserRegistrationApplicationInfrastructure {
 
   def sideEffects: UserRegistrationLocalSideEffects
+
+  def atomicProjection: VersionedEventStoreView[UserRegistrationAggregate, UserRegistrationState]
+
+  def storeStorage: AsyncEventStore[UserRegistrationEvent, UserRegistrationAggregate]
+}
+
+final class UserRegistrationApplication(val infrastructure: UserRegistrationApplicationInfrastructure)
+                                       (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
+  extends AbstractApplicationModule[UserRegistrationCommand,
+    UserRegistrationEvent,
+    UserRegistrationAggregate,
+    UserRegistrationState] {
+
+  override lazy val logic: DomainLogic[UserRegistrationCommand,
+    UserRegistrationEvent,
+    UserRegistrationAggregate,
+    UserRegistrationState] = new UserRegistrationHandlerLogic(infrastructure.sideEffects)
+
+  override lazy val transactionScopeCalculator: CommandToTransactionScope[UserRegistrationCommand,
+    UserRegistrationAggregate,
+    UserRegistrationState] = new UserRegistrationCommandToTransactionScope()
+
+  override lazy val atomicProjection: VersionedEventStoreView[UserRegistrationAggregate,
+    UserRegistrationState] = infrastructure.atomicProjection
+
+  override lazy val storeStorage: AsyncEventStore[UserRegistrationEvent,
+    UserRegistrationAggregate] = infrastructure.storeStorage
 }
 
 

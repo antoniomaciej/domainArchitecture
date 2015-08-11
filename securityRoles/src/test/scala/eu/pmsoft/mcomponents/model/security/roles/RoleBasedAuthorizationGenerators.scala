@@ -26,12 +26,12 @@
 
 package eu.pmsoft.mcomponents.model.security.roles
 
-import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
+import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
+import eu.pmsoft.mcomponents.test.CommandGenerator
 import org.scalacheck.Gen
 import org.scalacheck.Gen._
 
-class RoleBasedAuthorizationGenerators(val state: AtomicEventStoreProjectionView[RoleBasedAuthorizationState]) extends
+class RoleBasedAuthorizationGenerators(val state: AtomicEventStoreView[RoleBasedAuthorizationState]) extends
 CommandGenerator[RoleBasedAuthorizationModelCommand] {
 
   lazy val roleAndPermission = for {

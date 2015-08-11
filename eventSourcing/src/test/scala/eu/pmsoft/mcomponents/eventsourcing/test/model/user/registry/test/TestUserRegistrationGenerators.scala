@@ -26,67 +26,22 @@
 
 package eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.test
 
-import java.util.concurrent.atomic.AtomicInteger
-
-import eu.pmsoft.domain.model.CommandGenerator
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreProjectionView
+import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry._
-import org.scalacheck.Gen._
+import eu.pmsoft.mcomponents.test.CommandGenerator
 import org.scalacheck._
 
-import scala.language.postfixOps
+class TestUserRegistrationGenerators(val state: AtomicEventStoreView[TheTestState]) extends
+CommandGenerator[TheTestCommand] {
+  override def generateSingleCommands: Gen[TheTestCommand] = oneOrTwo
 
-class TestUserRegistrationGenerators(val state: AtomicEventStoreProjectionView[TestUserRegistrationState]) extends
-CommandGenerator[TestUserRegistrationCommand] {
+  override def generateWarmUpCommands: Gen[List[TheTestCommand]] = Gen.nonEmptyListOf(oneOrTwo)
 
-  private lazy val minimumTextLen = 5
-  private lazy val maximumTextLen = 30
-  private lazy val passwordLen = 20
-  //Generators that depend on the model state as provided by the query api
-  val genExistingUid = Gen.wrap(
-    Gen.oneOf(loadAllUID())
-  )
-  val noEmptyTextString = for {
-    size <- choose(minimumTextLen, maximumTextLen)
-    chars <- listOfN(size, Gen.alphaNumChar)
-  } yield chars.mkString
-  val userNameCounter = new AtomicInteger(0)
-  val genUniqueUserName = Gen.wrap(Gen.const(nextUserName))
-  val genEmail = for {
-    user <- genUniqueUserName
-  } yield TestUserLogin(s"$user@test.domain.com")
-  val genPassword = for {
-    chars <- listOfN(passwordLen, Gen.alphaNumChar)
-  } yield TestUserPassword(chars.mkString)
-  //Commands
-  val genAddUser = for {
-    email <- genEmail
-    password <- genPassword
-  } yield TestAddUser(email, password)
-  val genUpdateUser = for {
-    uid <- genExistingUid
-    password <- genPassword
-  } yield TestUpdateUserPassword(uid, password)
-  val genUpdateUserRoles = for {
-    uid <- genExistingUid
-    password <- Gen.containerOf[Set, TestRoleID](Gen.oneOf((0 to 6).map(TestRoleID)))
-  } yield TestUpdateUserRoles(uid, password)
-  val genUpdateActiveUserStatus = for {
-    uid <- genExistingUid
-    status <- Gen.oneOf(true, false)
-  } yield TestUpdateActiveUserStatus(uid, status)
+  lazy val oneOrTwo = Gen.oneOf(genOne, genTwo)
 
-  def loadAllUID(): Seq[TestUserID] = state.lastSnapshot().futureValue.getAllUid.toSeq
-
-  override def generateSingleCommands: Gen[TestUserRegistrationCommand] = Gen.frequency(
-    (1, genAddUser),
-    (3, genUpdateUser),
-    (3, genUpdateActiveUserStatus),
-    (10, genUpdateUserRoles)
-  )
-
-  override def generateWarmUpCommands: Gen[List[TestUserRegistrationCommand]] = Gen.nonEmptyListOf[TestUserRegistrationCommand](genAddUser)
-
-  private def nextUserName = "userName" + userNameCounter.getAndAdd(1)
+  lazy val genOne = Gen.const(TestCommandOne())
+  lazy val genTwo = for {
+    bool <- Gen.oneOf(true, false)
+  } yield TestCommandTwo(bool)
 
 }

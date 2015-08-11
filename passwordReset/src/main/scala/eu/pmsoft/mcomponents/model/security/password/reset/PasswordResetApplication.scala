@@ -28,13 +28,42 @@ package eu.pmsoft.mcomponents.model.security.password.reset
 
 import eu.pmsoft.mcomponents.eventsourcing._
 
-abstract class PasswordResetApplication
-  extends AbstractApplicationModule[PasswordResetModelCommand, PasswordResetModelEvent, PasswordResetAggregate, PasswordResetModelState] {
 
-  override lazy val logic: DomainLogic[PasswordResetModelCommand, PasswordResetModelEvent, PasswordResetAggregate, PasswordResetModelState] =
-    new PasswordResetModelLogicHandler(sideEffects)
-  override lazy val transactionScopeCalculator: CommandToTransactionScope[PasswordResetModelCommand, PasswordResetAggregate, PasswordResetModelState] =
-    new PasswordResetCommandToTransactionScope()
+object PasswordResetApplication {
+  def createApplication(infrastructure: PasswordResetApplicationInfrastructure)
+                       (implicit eventSourceExecutionContext: EventSourceExecutionContext): PasswordResetApplication =
+    new PasswordResetApplication(infrastructure)
+}
+
+trait PasswordResetApplicationInfrastructure {
 
   def sideEffects: PasswordResetModelSideEffects
+
+  def atomicProjection: VersionedEventStoreView[PasswordResetAggregate, PasswordResetModelState]
+
+  def storeStorage: AsyncEventStore[PasswordResetModelEvent, PasswordResetAggregate]
+
+}
+
+final class PasswordResetApplication(val infrastructure: PasswordResetApplicationInfrastructure)
+                                    (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
+  extends AbstractApplicationModule[PasswordResetModelCommand,
+    PasswordResetModelEvent,
+    PasswordResetAggregate,
+    PasswordResetModelState] {
+
+  override lazy val logic: DomainLogic[PasswordResetModelCommand,
+    PasswordResetModelEvent,
+    PasswordResetAggregate,
+    PasswordResetModelState] = new PasswordResetModelLogicHandler(infrastructure.sideEffects)
+
+  override lazy val transactionScopeCalculator: CommandToTransactionScope[PasswordResetModelCommand,
+    PasswordResetAggregate,
+    PasswordResetModelState] = new PasswordResetCommandToTransactionScope()
+
+  override lazy val atomicProjection: VersionedEventStoreView[PasswordResetAggregate,
+    PasswordResetModelState] = infrastructure.atomicProjection
+
+  override lazy val storeStorage: AsyncEventStore[PasswordResetModelEvent,
+    PasswordResetAggregate] = infrastructure.storeStorage
 }

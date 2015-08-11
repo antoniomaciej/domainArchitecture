@@ -26,7 +26,7 @@
 
 package eu.pmsoft.mcomponents.model.user.registry
 
-import eu.pmsoft.domain.model.{UserPassword, UserLogin, UserID}
+import eu.pmsoft.domain.model.{UserID, UserLogin, UserPassword}
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.model.security.roles.RoleID
 
@@ -48,12 +48,6 @@ object UserRegistrationModel {
   val loginAndPasswordMismatch = EventSourceModelError("login and password do not match",
     EventSourceCommandError(loginAndPasswordMismatchErrorCode))
 }
-
-
-
-
-
-
 
 
 //Model entities

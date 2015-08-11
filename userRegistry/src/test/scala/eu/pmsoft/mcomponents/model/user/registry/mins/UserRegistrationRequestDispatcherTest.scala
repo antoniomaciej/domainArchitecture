@@ -27,20 +27,22 @@
 package eu.pmsoft.mcomponents.model.user.registry.mins
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel.CommandResultConfirmed
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel.CommandResultConfirmed
 import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
+import eu.pmsoft.mcomponents.minstance.ReqResDataModel
 import eu.pmsoft.mcomponents.model.user.registry._
-import eu.pmsoft.mcomponents.reqres.ReqResDataModel
+import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, Mocked}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class UserRegistrationRequestDispatcherTest extends ComponentSpec {
+class UserRegistrationRequestDispatcherTest extends BaseEventSourceSpec {
 
   import ReqResDataModel._
   import UserRegistrationApplicationDefinitions._
 
   it should "return a critical error if user is not found after successful registration command" in {
-    val registrationStateMock = new AtomicEventStoreProjectionView[UserRegistrationState] {
+    val registrationStateMock = new AtomicEventStoreView[UserRegistrationState] {
       override def atLeastOn(storeVersion: EventStoreVersion): Future[UserRegistrationState] =
         Future.successful(new UserRegistrationState {
           override def uidExists(uid: UserID): Boolean = Mocked.shouldNotBeCalled
@@ -64,7 +66,9 @@ class UserRegistrationRequestDispatcherTest extends ComponentSpec {
         )
     }
 
-    val dispatcher = new UserRegistrationRequestDispatcher(registrationStateMock, commandHandler)(ExecutionContext.global)
+    implicit val configuration = EventSourcingConfiguration(ExecutionContext.Implicits.global,LocalBindingInfrastructure.create())
+    implicit val executionContext = EventSourceExecutionContextProvider.create()
+    val dispatcher = new UserRegistrationRequestDispatcher(registrationStateMock, commandHandler)
     val result = dispatcher.registerUser(RegisterUserRequest(UserLogin("any"), UserPassword("any"))).futureValue
     result should be_-\/(UserRegistrationRequestModel.criticalUserNotFoundAfterSuccessRegistration.toResponseError)
   }

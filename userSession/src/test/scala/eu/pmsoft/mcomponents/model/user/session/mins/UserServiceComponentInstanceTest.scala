@@ -27,22 +27,25 @@
 package eu.pmsoft.mcomponents.model.user.session.mins
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceDataModel.CommandResultConfirmed
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel.CommandResultConfirmed
 import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
+import eu.pmsoft.mcomponents.minstance.ReqResDataModel
 import eu.pmsoft.mcomponents.model.user.registry.mins._
 import eu.pmsoft.mcomponents.model.user.session._
-import eu.pmsoft.mcomponents.reqres.ReqResDataModel
+import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, Mocked}
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class UserServiceComponentInstanceTest extends ComponentSpec {
+class UserServiceComponentInstanceTest extends BaseEventSourceSpec {
 
   import ReqResDataModel._
   import UserSessionApplicationDefinitions._
 
+
   it should "return a critical error if user is not found after successful registration command" in {
-    val userSessionStateMock = new OrderedEventStoreProjectionView[UserSessionSSOState] {
+    //given
+    val userSessionStateMock = new OrderedEventStoreView[UserSessionSSOState] {
       override def atLeastOn(storeVersion: EventStoreVersion): Future[UserSessionSSOState] =
         Future.successful(new UserSessionSSOState {
           override def findAllUserSessions(): Stream[UserSession] = Mocked.shouldNotBeCalled
@@ -66,8 +69,13 @@ class UserServiceComponentInstanceTest extends ComponentSpec {
       override def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]] = Mocked.shouldNotBeCalled
     }
 
+    val configuration = EventSourcingConfiguration(scala.concurrent.ExecutionContext.global,LocalBindingInfrastructure.create())
+    implicit val eventSourceExecutionContext = EventSourceExecutionContextProvider.create()(configuration)
     val dispatcher = new UserServiceComponentInstance(userRegistrationMock, commandHandler, userSessionStateMock)
+
+    //when
     val result = dispatcher.loginUser(UserLoginRequest(UserLogin("any"), UserPassword("any"))).futureValue
+    //then
     result should be_-\/(UserSessionModel.criticalSessionNotFoundAfterSuccessCommand.toResponseError)
 
   }

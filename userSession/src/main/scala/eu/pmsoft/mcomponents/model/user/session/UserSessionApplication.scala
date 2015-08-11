@@ -28,15 +28,40 @@ package eu.pmsoft.mcomponents.model.user.session
 
 import eu.pmsoft.mcomponents.eventsourcing._
 
-abstract class UserSessionApplication
-  extends AbstractApplicationModule[UserSessionCommand, UserSessionEvent, UserSessionAggregate, UserSessionSSOState] {
+object UserSessionApplication {
+  def createApplication(infrastructureProvider: UserSessionApplicationInfrastructure)
+                       (implicit eventSourceExecutionContext: EventSourceExecutionContext): UserSessionApplication =
+    new UserSessionApplication(infrastructureProvider)
+}
 
-  override lazy val logic: DomainLogic[UserSessionCommand, UserSessionEvent, UserSessionAggregate, UserSessionSSOState] =
-    new UserSessionHandlerLogic(sideEffects)
-  override lazy val transactionScopeCalculator: CommandToTransactionScope[UserSessionCommand, UserSessionAggregate, UserSessionSSOState] =
-    new UserSessionCommandToTransactionScope()
-
+trait UserSessionApplicationInfrastructure {
   def sideEffects: UserSessionSideEffect
+
+  def atomicProjection: VersionedEventStoreView[UserSessionAggregate, UserSessionSSOState]
+
+  def storeStorage: AsyncEventStore[UserSessionEvent, UserSessionAggregate]
+
+}
+
+final class UserSessionApplication(infrastructureProvider: UserSessionApplicationInfrastructure)
+                                  (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
+  extends AbstractApplicationModule[UserSessionCommand,
+    UserSessionEvent,
+    UserSessionAggregate,
+    UserSessionSSOState] {
+
+  override lazy val logic: DomainLogic[UserSessionCommand,
+    UserSessionEvent,
+    UserSessionAggregate,
+    UserSessionSSOState] = new UserSessionHandlerLogic(infrastructureProvider.sideEffects)
+
+  override lazy val transactionScopeCalculator: CommandToTransactionScope[UserSessionCommand,
+    UserSessionAggregate,
+    UserSessionSSOState] = new UserSessionCommandToTransactionScope()
+
+  override lazy val atomicProjection: VersionedEventStoreView[UserSessionAggregate, UserSessionSSOState] = infrastructureProvider.atomicProjection
+
+  override lazy val storeStorage: AsyncEventStore[UserSessionEvent, UserSessionAggregate] = infrastructureProvider.storeStorage
 }
 
 
