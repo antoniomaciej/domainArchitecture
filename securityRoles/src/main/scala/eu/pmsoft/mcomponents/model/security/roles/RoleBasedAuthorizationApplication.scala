@@ -50,19 +50,11 @@ trait RoleBasedAuthorizationEventStoreInfrastructure {
 
 final class RoleBasedAuthorizationApplication(val infrastructure: RoleBasedAuthorizationEventStoreInfrastructure)
                                              (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
-  extends AbstractApplicationModule[RoleBasedAuthorizationModelCommand,
-    RoleBasedAuthorizationEvent,
-    RoleBasedAuthorizationAggregate,
-    RoleBasedAuthorizationState] {
+  extends AbstractApplicationModule[RoleBasedAuthorizationDomain] {
 
-  override lazy val logic: DomainLogic[RoleBasedAuthorizationModelCommand,
-    RoleBasedAuthorizationEvent,
-    RoleBasedAuthorizationAggregate,
-    RoleBasedAuthorizationState] = new RoleBasedAuthorizationHandlerLogic(infrastructure.sideEffects)
+  override lazy val logic: DomainLogic[RoleBasedAuthorizationDomain] = new RoleBasedAuthorizationHandlerLogic(infrastructure.sideEffects)
 
-  override lazy val transactionScopeCalculator: CommandToTransactionScope[RoleBasedAuthorizationModelCommand,
-    RoleBasedAuthorizationAggregate,
-    RoleBasedAuthorizationState] = new RoleBaseAuthorizationCommandToTransactionScope()
+  override lazy val transactionScopeCalculator: CommandToTransactionScope[RoleBasedAuthorizationDomain] = new RoleBaseAuthorizationCommandToTransactionScope()
 
   override lazy val atomicProjection: VersionedEventStoreView[RoleBasedAuthorizationAggregate,
     RoleBasedAuthorizationState] = infrastructure.atomicProjection

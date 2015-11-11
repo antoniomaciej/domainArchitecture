@@ -75,16 +75,16 @@ class DomainLogicAsyncEventCommandHandlerTest extends BaseEventSourceSpec {
   }
 
   private def createMockedDomainLogicForRollback(eventStore: AsyncEventStore[RollbackTestEvent, RollbackTestAggregateId]) = {
-    val logic: DomainLogic[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] =
-      new DomainLogic[RollbackTestCommand, RollbackTestEvent, RollbackTestAggregateId, RollbackTestState] {
+    val logic: DomainLogic[RollBackDomain] =
+      new DomainLogic[RollBackDomain] {
         override def executeCommand(command: RollbackTestCommand, transactionScope: Map[RollbackTestAggregateId, Long])
                                    (implicit state: RollbackTestState): CommandToEventsResult[RollbackTestEvent] =
           scalaz.\/-(List(RollbackTestEvent()))
       }
 
 
-    val transactionScopeCalculator: CommandToTransactionScope[RollbackTestCommand, RollbackTestAggregateId, RollbackTestState] =
-      new CommandToTransactionScope[RollbackTestCommand, RollbackTestAggregateId, RollbackTestState] {
+    val transactionScopeCalculator: CommandToTransactionScope[RollBackDomain] =
+      new CommandToTransactionScope[RollBackDomain] {
         override def calculateTransactionScope(command: RollbackTestCommand, state: RollbackTestState): CommandToAggregateResult[RollbackTestAggregateId] =
           scalaz.\/-(Set(RollbackTestAggregateId()))
       }
@@ -103,12 +103,17 @@ class DomainLogicAsyncEventCommandHandlerTest extends BaseEventSourceSpec {
     implicit val eventSourceExecutionContext: EventSourceExecutionContext =
       EventSourceExecutionContextProvider.create()(EventSourcingConfiguration(ExecutionContext.global, LocalBindingInfrastructure.create()))
 
-    new DomainLogicAsyncEventCommandHandler[RollbackTestCommand,
-      RollbackTestEvent,
-      RollbackTestAggregateId,
-      RollbackTestState](logic, transactionScopeCalculator, atomicProjection, storeStorage)
+    new DomainLogicAsyncEventCommandHandler[RollBackDomain](logic, transactionScopeCalculator, atomicProjection, storeStorage)
   }
 
+
+}
+
+final class RollBackDomain extends DomainSpecification {
+  type Command = RollbackTestCommand
+  type Event = RollbackTestEvent
+  type Aggregate = RollbackTestAggregateId
+  type State  = RollbackTestState
 
 }
 

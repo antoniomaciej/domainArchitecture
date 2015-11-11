@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry
 
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
-import eu.pmsoft.mcomponents.eventsourcing.{CommandToTransactionScope, DomainLogic}
+import eu.pmsoft.mcomponents.eventsourcing.{DomainSpecification, CommandToTransactionScope, DomainLogic}
 
 import scalaz._
 
@@ -35,6 +35,13 @@ trait TestUserRegistrationModule {
 
 }
 
+
+final class TheTestDomain extends DomainSpecification {
+  type Command = TheTestCommand
+  type Event = TheTestEvent
+  type Aggregate = TheTestAggregate
+  type State = TheTestState
+}
 
 /**
  * Projection that should be changes atomically with relation to the handled commands.
@@ -57,7 +64,7 @@ trait TestSideEffects {
 }
 
 final class TestUserRegistrationCommandToTransactionScope
-  extends CommandToTransactionScope[TheTestCommand, TheTestAggregate, TheTestState] {
+  extends CommandToTransactionScope[TheTestDomain] {
   override def calculateTransactionScope(command: TheTestCommand, state: TheTestState):
   CommandToAggregateResult[TheTestAggregate] =
     command match {
@@ -68,7 +75,7 @@ final class TestUserRegistrationCommandToTransactionScope
 }
 
 final class TestTestUserRegistrationHandlerLogic(val sideEffects: TestSideEffects) extends
-DomainLogic[TheTestCommand, TheTestEvent, TheTestAggregate, TheTestState] {
+DomainLogic[TheTestDomain] {
 
   override def executeCommand(command: TheTestCommand,
                               transactionScope: Map[TheTestAggregate, Long])

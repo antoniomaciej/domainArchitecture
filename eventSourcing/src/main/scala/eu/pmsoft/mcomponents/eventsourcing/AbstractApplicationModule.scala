@@ -32,9 +32,9 @@ import scala.concurrent.{Future, Promise}
 import scalaz._
 import scalaz.std.scalaFuture._
 
-trait AbstractApplicationModule[C, E, A, S] extends AbstractApplicationContract[C, E, A, S] with EventSourceExecutionContextProvided {
+trait AbstractApplicationModule[D <: DomainSpecification] extends AbstractApplicationContract[D] with EventSourceExecutionContextProvided {
 
-  lazy val commandHandler: AsyncEventCommandHandler[C] = new DomainLogicAsyncEventCommandHandler[C, E, A, S](
+  lazy val commandHandler: AsyncEventCommandHandler[D] = new DomainLogicAsyncEventCommandHandler[D](
     logic,
     transactionScopeCalculator,
     atomicProjection,
@@ -44,25 +44,25 @@ trait AbstractApplicationModule[C, E, A, S] extends AbstractApplicationContract[
 }
 
 
-final class DomainLogicAsyncEventCommandHandler[C, E, A, S](val logic: DomainLogic[C, E, A, S],
-                                                            val transactionScopeCalculator: CommandToTransactionScope[C, A, S],
-                                                            val atomicProjection: VersionedEventStoreView[A, S],
-                                                            val storeStorage: AsyncEventStore[E, A])
+final class DomainLogicAsyncEventCommandHandler[D <: DomainSpecification](val logic: DomainLogic[D],
+                                                            val transactionScopeCalculator: CommandToTransactionScope[D],
+                                                            val atomicProjection: VersionedEventStoreView[D#Aggregate, D#State],
+                                                            val storeStorage: AsyncEventStore[D#Event, D#Aggregate])
                                                            (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
-  extends DomainLogicSpecification[C, E, A, S] with AsyncEventCommandHandler[C] with EventSourceExecutionContextProvided {
+  extends DomainLogicSpecification[D] with AsyncEventCommandHandler[D] with EventSourceExecutionContextProvided {
 
-  private def applyCommand(command: C, transactionState: VersionedProjection[A, S]) =
+  private def applyCommand(command: D#Command, transactionState: VersionedProjection[D#Aggregate, D#State]) =
     Future.successful(logic.executeCommand(command, transactionState.transactionScopeVersion)(transactionState.projection))
 
-  private def calculateTransactionScopeVersion(transactionScope: Set[A]):
-  Future[EventSourceCommandFailure \/ VersionedProjection[A, S]] =
+  private def calculateTransactionScopeVersion(transactionScope: Set[D#Aggregate]):
+  Future[EventSourceCommandFailure \/ VersionedProjection[D#Aggregate, D#State]] =
     atomicProjection.projection(transactionScope).map(\/-(_))
 
   private def extractLastSnapshot():
-  Future[EventSourceCommandFailure \/ S] =
+  Future[EventSourceCommandFailure \/ D#State] =
     atomicProjection.lastSnapshot().map(\/-(_))
 
-  final def execute(command: C): Future[CommandResultConfirmed] = {
+  final def execute(command: D#Command): Future[CommandResultConfirmed] = {
     def singleTry(): Future[CommandResult] = {
       (for {
         lastSnapshot <- EitherT(extractLastSnapshot())

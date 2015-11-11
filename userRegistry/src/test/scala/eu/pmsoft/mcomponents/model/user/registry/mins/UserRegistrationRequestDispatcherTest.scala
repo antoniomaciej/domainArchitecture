@@ -59,7 +59,7 @@ class UserRegistrationRequestDispatcherTest extends BaseEventSourceSpec {
       override def lastSnapshot(): Future[UserRegistrationState] = Mocked.shouldNotBeCalled
     }
 
-    val commandHandler = new AsyncEventCommandHandler[UserRegistrationCommand] {
+    val commandHandler = new AsyncEventCommandHandler[UserRegistrationDomain] {
       override def execute(command: UserRegistrationCommand): Future[CommandResultConfirmed] =
         Future.successful(
           scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion(0L)))

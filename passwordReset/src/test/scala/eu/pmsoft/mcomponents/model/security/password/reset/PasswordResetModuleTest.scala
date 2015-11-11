@@ -31,8 +31,7 @@ import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
 import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 
 abstract class PasswordResetModuleTest extends BaseEventSourceSpec with
-GeneratedCommandSpecification[PasswordResetModelCommand, PasswordResetModelEvent,
-  PasswordResetModelState, PasswordResetAggregate, PasswordResetApplication] {
+GeneratedCommandSpecification[PasswordResetDomain, PasswordResetApplication] {
 
   def infrastructure(): PasswordResetApplicationInfrastructure
 

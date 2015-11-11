@@ -37,6 +37,13 @@ object PasswordResetModule {
 
 }
 
+final class PasswordResetDomain extends DomainSpecification {
+  type Command = PasswordResetModelCommand
+  type Event = PasswordResetModelEvent
+  type Aggregate = PasswordResetAggregate
+  type State = PasswordResetModelState
+}
+
 trait PasswordResetModelState {
 
   def findFlowByUserID(userId: UserID): Option[PasswordResetFlowStatus]
@@ -58,7 +65,7 @@ trait PasswordResetModelSideEffects {
 import eu.pmsoft.mcomponents.model.security.password.reset.PasswordResetModel._
 
 final class PasswordResetCommandToTransactionScope
-  extends CommandToTransactionScope[PasswordResetModelCommand, PasswordResetAggregate, PasswordResetModelState] {
+  extends CommandToTransactionScope[PasswordResetDomain] {
 
   override def calculateTransactionScope(command: PasswordResetModelCommand, state: PasswordResetModelState):
   CommandToAggregateResult[PasswordResetAggregate] = command match {
@@ -76,7 +83,7 @@ final class PasswordResetCommandToTransactionScope
 }
 
 final class PasswordResetModelLogicHandler(val sideEffects: PasswordResetModelSideEffects)
-  extends DomainLogic[PasswordResetModelCommand, PasswordResetModelEvent, PasswordResetAggregate, PasswordResetModelState]
+  extends DomainLogic[PasswordResetDomain]
   with PasswordResetModelValidations
   with PasswordResetModelTransactionExtractor {
 
@@ -87,12 +94,12 @@ final class PasswordResetModelLogicHandler(val sideEffects: PasswordResetModelSi
     case InitializePasswordResetFlow(userId, sessionToken) => for {
       sessionTokenValid <- validateSessionToken(sessionToken)
     } yield state.findFlowByUserID(userId) match {
-        case None => List(PasswordResetFlowCreated(userId, sessionToken, sideEffects.generatePasswordResetToken(sessionToken)))
-        case Some(previousProcess) => List(
-          PasswordResetFlowCancelled(userId, previousProcess.passwordResetToken),
-          PasswordResetFlowCreated(userId, sessionToken, sideEffects.generatePasswordResetToken(sessionToken))
-        )
-      }
+      case None => List(PasswordResetFlowCreated(userId, sessionToken, sideEffects.generatePasswordResetToken(sessionToken)))
+      case Some(previousProcess) => List(
+        PasswordResetFlowCancelled(userId, previousProcess.passwordResetToken),
+        PasswordResetFlowCreated(userId, sessionToken, sideEffects.generatePasswordResetToken(sessionToken))
+      )
+    }
     case CancelPasswordResetFlowByUser(userId) => for {
       passwordResetToken <- extractPasswordResetTokenForUser(userId)
       userId <- extractUserFromAggregated(transactionScope)

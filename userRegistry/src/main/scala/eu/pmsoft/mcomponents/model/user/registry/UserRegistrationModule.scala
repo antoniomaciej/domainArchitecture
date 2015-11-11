@@ -28,7 +28,7 @@ package eu.pmsoft.mcomponents.model.user.registry
 
 import eu.pmsoft.domain.model.{UserID, UserLogin}
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
-import eu.pmsoft.mcomponents.eventsourcing.{CommandToTransactionScope, DomainLogic, EventSourceCommandFailed}
+import eu.pmsoft.mcomponents.eventsourcing.{CommandToTransactionScope, DomainLogic, DomainSpecification, EventSourceCommandFailed}
 import org.apache.commons.validator.routines.EmailValidator
 
 import scalaz._
@@ -37,10 +37,16 @@ trait UserRegistrationModule {
 
 }
 
+final class UserRegistrationDomain extends DomainSpecification {
+  type Command = UserRegistrationCommand
+  type Event = UserRegistrationEvent
+  type Aggregate = UserRegistrationAggregate
+  type State = UserRegistrationState
+}
 
 /**
- * Projection that should be changes atomically with relation to the handled commands.
- */
+  * Projection that should be changes atomically with relation to the handled commands.
+  */
 trait UserRegistrationState {
   def uidExists(uid: UserID): Boolean
 
@@ -59,7 +65,7 @@ trait UserRegistrationLocalSideEffects {
 }
 
 final class UserRegistrationCommandToTransactionScope
-  extends CommandToTransactionScope[UserRegistrationCommand, UserRegistrationAggregate, UserRegistrationState] {
+  extends CommandToTransactionScope[UserRegistrationDomain] {
   override def calculateTransactionScope(command: UserRegistrationCommand, state: UserRegistrationState):
   CommandToAggregateResult[UserRegistrationAggregate] =
     command match {
@@ -71,9 +77,7 @@ final class UserRegistrationCommandToTransactionScope
 
 }
 
-final class UserRegistrationHandlerLogic(val sideEffects: UserRegistrationLocalSideEffects) extends
-DomainLogic[UserRegistrationCommand, UserRegistrationEvent, UserRegistrationAggregate, UserRegistrationState] with
-UserRegistrationValidations {
+final class UserRegistrationHandlerLogic(val sideEffects: UserRegistrationLocalSideEffects) extends DomainLogic[UserRegistrationDomain] with UserRegistrationValidations {
 
   override def executeCommand(command: UserRegistrationCommand,
                               transactionScope: Map[UserRegistrationAggregate, Long])
@@ -82,11 +86,11 @@ UserRegistrationValidations {
     case UpdateActiveUserStatus(uid, active) => for {
       user <- validUidExtractUser(uid)
     } yield if (user.activeStatus == active) {
-        //Do not activate if status match the state
-        List()
-      } else {
-        List(UserActiveStatusUpdated(uid, active))
-      }
+      //Do not activate if status match the state
+      List()
+    } else {
+      List(UserActiveStatusUpdated(uid, active))
+    }
 
     case AddUser(loginEmail, passwordHash) => for {
       login <- availableLogin(loginEmail)

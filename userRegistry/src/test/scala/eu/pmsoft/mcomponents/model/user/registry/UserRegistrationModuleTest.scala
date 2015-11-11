@@ -31,8 +31,7 @@ import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
 import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 
 abstract class UserRegistrationModuleTest extends BaseEventSourceSpec with
-GeneratedCommandSpecification[UserRegistrationCommand, UserRegistrationEvent,
-  UserRegistrationState, UserRegistrationAggregate, UserRegistrationApplication] {
+GeneratedCommandSpecification[UserRegistrationDomain, UserRegistrationApplication] {
 
   def infrastructure(): UserRegistrationApplicationInfrastructure
 

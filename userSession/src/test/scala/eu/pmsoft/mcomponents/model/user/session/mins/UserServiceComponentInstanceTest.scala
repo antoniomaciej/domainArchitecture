@@ -56,7 +56,7 @@ class UserServiceComponentInstanceTest extends BaseEventSourceSpec {
         })
     }
 
-    val commandHandler = new AsyncEventCommandHandler[UserSessionCommand] {
+    val commandHandler = new AsyncEventCommandHandler[UserSessionSSODomain] {
       override def execute(command: UserSessionCommand): Future[CommandResultConfirmed] =
         Future.successful(
           scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion(0L)))

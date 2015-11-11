@@ -57,7 +57,7 @@ trait PasswordResetApiInternalInjector {
   lazy val dispatcher = wire[PasswordResetApiDispatcher]
 }
 
-class PasswordResetApiDispatcher(val commandHandler: AsyncEventCommandHandler[PasswordResetModelCommand],
+class PasswordResetApiDispatcher(val commandHandler: AsyncEventCommandHandler[PasswordResetDomain],
                                  val projection: AtomicEventStoreView[PasswordResetModelState])
                                 (implicit val executionContext: ExecutionContext) extends PasswordResetApi {
 

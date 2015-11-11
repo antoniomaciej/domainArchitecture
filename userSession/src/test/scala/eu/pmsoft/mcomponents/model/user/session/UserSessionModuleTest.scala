@@ -31,8 +31,7 @@ import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
 import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 
 abstract class UserSessionModuleTest extends BaseEventSourceSpec with
-GeneratedCommandSpecification[UserSessionCommand, UserSessionEvent,
-  UserSessionSSOState, UserSessionAggregate, UserSessionApplication] {
+GeneratedCommandSpecification[UserSessionSSODomain, UserSessionApplication] {
 
   def infrastructure(): UserSessionApplicationInfrastructure
 

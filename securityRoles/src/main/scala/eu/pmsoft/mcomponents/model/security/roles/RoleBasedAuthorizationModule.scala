@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.model.security.roles
 
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
-import eu.pmsoft.mcomponents.eventsourcing.{CommandToTransactionScope, DomainLogic, EventSourceCommandFailed}
+import eu.pmsoft.mcomponents.eventsourcing.{DomainSpecification, CommandToTransactionScope, DomainLogic, EventSourceCommandFailed}
 
 import scalaz._
 
@@ -35,6 +35,12 @@ trait RoleBasedAuthorizationModule {
 
 }
 
+final class RoleBasedAuthorizationDomain extends DomainSpecification {
+  type Command = RoleBasedAuthorizationModelCommand
+  type Event = RoleBasedAuthorizationEvent
+  type Aggregate = RoleBasedAuthorizationAggregate
+  type State = RoleBasedAuthorizationState
+}
 
 trait RoleBasedAuthorizationState {
   //Roles
@@ -68,7 +74,7 @@ trait RoleBasedAuthorizationLocalSideEffects {
 }
 
 final class RoleBaseAuthorizationCommandToTransactionScope
-  extends CommandToTransactionScope[RoleBasedAuthorizationModelCommand, RoleBasedAuthorizationAggregate, RoleBasedAuthorizationState] {
+  extends CommandToTransactionScope[RoleBasedAuthorizationDomain] {
 
   override def calculateTransactionScope(command: RoleBasedAuthorizationModelCommand, state: RoleBasedAuthorizationState):
   CommandToAggregateResult[RoleBasedAuthorizationAggregate] = command match {
@@ -84,7 +90,7 @@ final class RoleBaseAuthorizationCommandToTransactionScope
 }
 
 final class RoleBasedAuthorizationHandlerLogic(val sideEffects: RoleBasedAuthorizationLocalSideEffects)
-  extends DomainLogic[RoleBasedAuthorizationModelCommand, RoleBasedAuthorizationEvent, RoleBasedAuthorizationAggregate, RoleBasedAuthorizationState]
+  extends DomainLogic[RoleBasedAuthorizationDomain]
   with RoleBasedAuthorizationValidations {
 
   override def executeCommand(command: RoleBasedAuthorizationModelCommand,

@@ -58,12 +58,13 @@ trait UserRegistrationInternalInjector {
   lazy val commandHandler = module.commandHandler
 
   lazy val projection = module.atomicProjection
+
   lazy val app = wire[UserRegistrationRequestDispatcher]
 
 }
 
 class UserRegistrationRequestDispatcher(val registrationState: AtomicEventStoreView[UserRegistrationState],
-                                        val commandHandler: AsyncEventCommandHandler[UserRegistrationCommand])
+                                        val commandHandler: AsyncEventCommandHandler[UserRegistrationDomain])
                                        (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
   extends UserRegistrationApi with EventSourceExecutionContextProvided {
 

@@ -48,7 +48,7 @@ with PropertyChecks with ScalaFutures with AppendedClues with ParallelTestExecut
 
 }
 
-trait GeneratedCommandSpecification[C, E, S, A, M <: AbstractApplicationContract[C, E, A, S]] {
+trait GeneratedCommandSpecification[D <: DomainSpecification, M <: AbstractApplicationContract[D]] {
   self: BaseEventSourceSpec =>
 
   /**
@@ -66,9 +66,9 @@ trait GeneratedCommandSpecification[C, E, S, A, M <: AbstractApplicationContract
 
   def createEmptyModule(): M
 
-  def asyncCommandHandler(contextModule: M): AsyncEventCommandHandler[C] = contextModule.commandHandler
+  def asyncCommandHandler(contextModule: M): AsyncEventCommandHandler[D] = contextModule.commandHandler
 
-  def stateProjection(contextModule: M): AtomicEventStoreView[S] = contextModule.atomicProjection
+  def stateProjection(contextModule: M): AtomicEventStoreView[D#State] = contextModule.atomicProjection
 
   private def genModule: Gen[M] = Gen.wrap(Gen.const(createEmptyModule()))
 
@@ -79,11 +79,11 @@ trait GeneratedCommandSpecification[C, E, S, A, M <: AbstractApplicationContract
     } yield previousResults :+ nextResult
   }
 
-  def buildGenerator(state: AtomicEventStoreView[S]): CommandGenerator[C]
+  def buildGenerator(state: AtomicEventStoreView[D#State]): CommandGenerator[D#Command]
 
-  def validateState(state: S): Unit
+  def validateState(state: D#State): Unit
 
-  def postCommandValidation(state: S, command: C): Unit
+  def postCommandValidation(state: D#State, command: D#Command): Unit
 
   it should "accept any list of valid commands " in {
     forAll(genModule) {
@@ -101,7 +101,7 @@ trait GeneratedCommandSpecification[C, E, S, A, M <: AbstractApplicationContract
             validateState(stateProjection(module).lastSnapshot().futureValue)
 
             forAll(generator.generateSingleCommands) {
-              command: C =>
+              command: D#Command =>
                 commandsHistory = command :: commandsHistory
                 withClue(s"CommandsHistory: $commandsHistory \n") {
 
@@ -136,7 +136,7 @@ trait GeneratedCommandSpecification[C, E, S, A, M <: AbstractApplicationContract
           validateState(stateProjection(module).lastSnapshot().futureValue)
 
           forAll(generator.generateSingleCommands) {
-            command: C =>
+            command: D#Command =>
               def executeSingleCommand(): Unit = {
                 val resultsFuture = asyncCommandHandler(module).execute(command)
                 whenReady(resultsFuture) { results =>

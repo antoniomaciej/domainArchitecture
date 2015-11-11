@@ -46,19 +46,11 @@ trait UserRegistrationApplicationInfrastructure {
 
 final class UserRegistrationApplication(val infrastructure: UserRegistrationApplicationInfrastructure)
                                        (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
-  extends AbstractApplicationModule[UserRegistrationCommand,
-    UserRegistrationEvent,
-    UserRegistrationAggregate,
-    UserRegistrationState] {
+  extends AbstractApplicationModule[UserRegistrationDomain] {
 
-  override lazy val logic: DomainLogic[UserRegistrationCommand,
-    UserRegistrationEvent,
-    UserRegistrationAggregate,
-    UserRegistrationState] = new UserRegistrationHandlerLogic(infrastructure.sideEffects)
+  override lazy val logic: DomainLogic[UserRegistrationDomain] = new UserRegistrationHandlerLogic(infrastructure.sideEffects)
 
-  override lazy val transactionScopeCalculator: CommandToTransactionScope[UserRegistrationCommand,
-    UserRegistrationAggregate,
-    UserRegistrationState] = new UserRegistrationCommandToTransactionScope()
+  override lazy val transactionScopeCalculator: CommandToTransactionScope[UserRegistrationDomain] = new UserRegistrationCommandToTransactionScope()
 
   override lazy val atomicProjection: VersionedEventStoreView[UserRegistrationAggregate,
     UserRegistrationState] = infrastructure.atomicProjection

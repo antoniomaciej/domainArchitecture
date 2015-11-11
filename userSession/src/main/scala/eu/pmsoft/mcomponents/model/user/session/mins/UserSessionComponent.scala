@@ -73,7 +73,7 @@ trait UserSessionInternalInjector {
 
 
 class UserServiceComponentInstance(val userRegistration: UserRegistrationApi,
-                                   val commandHandler: AsyncEventCommandHandler[UserSessionCommand],
+                                   val commandHandler: AsyncEventCommandHandler[UserSessionSSODomain],
                                    val userSessionProjection: OrderedEventStoreView[UserSessionSSOState])
                                   (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
   extends UserSessionApi with EventSourceExecutionContextProvided {

@@ -31,8 +31,7 @@ import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry._
 import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 
 abstract class TestUserRegistrationModuleTest extends BaseEventSourceSpec with
-GeneratedCommandSpecification[TheTestCommand, TheTestEvent,
-  TheTestState, TheTestAggregate, TestUserRegistrationApplication] {
+GeneratedCommandSpecification[TheTestDomain, TestUserRegistrationApplication] {
 
   def infrastructure(): TheTestInfrastructure
 

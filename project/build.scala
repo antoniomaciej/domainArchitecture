@@ -29,7 +29,7 @@ import sbt._
 
 object domainArchitecture extends Build {
 
-  lazy val Organization = "eu.pmsoft.scala"
+  lazy val Organization = "eu.pmsoft"
   lazy val Name = "domainArchitecture"
   lazy val Version = "0.0.1-SNAPSHOT"
 

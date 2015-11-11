@@ -47,19 +47,11 @@ trait PasswordResetApplicationInfrastructure {
 
 final class PasswordResetApplication(val infrastructure: PasswordResetApplicationInfrastructure)
                                     (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
-  extends AbstractApplicationModule[PasswordResetModelCommand,
-    PasswordResetModelEvent,
-    PasswordResetAggregate,
-    PasswordResetModelState] {
+  extends AbstractApplicationModule[PasswordResetDomain] {
 
-  override lazy val logic: DomainLogic[PasswordResetModelCommand,
-    PasswordResetModelEvent,
-    PasswordResetAggregate,
-    PasswordResetModelState] = new PasswordResetModelLogicHandler(infrastructure.sideEffects)
+  override lazy val logic: DomainLogic[PasswordResetDomain] = new PasswordResetModelLogicHandler(infrastructure.sideEffects)
 
-  override lazy val transactionScopeCalculator: CommandToTransactionScope[PasswordResetModelCommand,
-    PasswordResetAggregate,
-    PasswordResetModelState] = new PasswordResetCommandToTransactionScope()
+  override lazy val transactionScopeCalculator: CommandToTransactionScope[PasswordResetDomain] = new PasswordResetCommandToTransactionScope()
 
   override lazy val atomicProjection: VersionedEventStoreView[PasswordResetAggregate,
     PasswordResetModelState] = infrastructure.atomicProjection

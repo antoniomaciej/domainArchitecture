@@ -45,19 +45,11 @@ trait TheTestInfrastructure {
 
 final class TestUserRegistrationApplication(val infrastructure: TheTestInfrastructure)
                                            (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
-  extends AbstractApplicationModule[TheTestCommand,
-    TheTestEvent,
-    TheTestAggregate,
-    TheTestState] {
+  extends AbstractApplicationModule[TheTestDomain] {
 
-  override lazy val logic: DomainLogic[TheTestCommand,
-    TheTestEvent,
-    TheTestAggregate,
-    TheTestState] = new TestTestUserRegistrationHandlerLogic(infrastructure.sideEffects)
+  override lazy val logic: DomainLogic[TheTestDomain] = new TestTestUserRegistrationHandlerLogic(infrastructure.sideEffects)
 
-  override lazy val transactionScopeCalculator: CommandToTransactionScope[TheTestCommand,
-    TheTestAggregate,
-    TheTestState] = new TestUserRegistrationCommandToTransactionScope()
+  override lazy val transactionScopeCalculator: CommandToTransactionScope[TheTestDomain] = new TestUserRegistrationCommandToTransactionScope()
 
   override lazy val atomicProjection: VersionedEventStoreView[TheTestAggregate,
     TheTestState] = infrastructure.atomicProjection

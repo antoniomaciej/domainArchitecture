@@ -33,11 +33,15 @@ import scala.concurrent.{ExecutionContext, Future}
 import scalaz.\/-
 
 
+class TestLogicDomainSpecification extends DomainSpecification {
+  type Command = TheCommand
+  type Event = TheEvent
+  type Aggregate = TheAggregate
+  type State = TheState
+}
+
 class OnTestLogicGeneratedCommandSpecification extends BaseEventSourceSpec
-with GeneratedCommandSpecification[TheCommand,
-  TheEvent,
-  TheState,
-  TheAggregate,
+with GeneratedCommandSpecification[TestLogicDomainSpecification,
   TheApplicationContract] {
 
   override def bindingInfrastructure: BindingInfrastructure = Mocked.shouldNotBeCalled
@@ -83,11 +87,11 @@ case class FailureState() extends TheState {
   override def ok: Boolean = false
 }
 
-class TheApplicationContract extends AbstractApplicationContract[TheCommand, TheEvent, TheAggregate, TheState] {
+class TheApplicationContract extends AbstractApplicationContract[TestLogicDomainSpecification] {
   override implicit def eventSourceExecutionContext: EventSourceExecutionContext = Mocked.shouldNotBeCalled
 
-  override def commandHandler: AsyncEventCommandHandler[TheCommand] =
-    new AsyncEventCommandHandler[TheCommand] {
+  override def commandHandler: AsyncEventCommandHandler[TestLogicDomainSpecification] =
+    new AsyncEventCommandHandler[TestLogicDomainSpecification] {
       override def execute(command: TheCommand): Future[CommandResultConfirmed] =
         Future.successful(\/-(EventSourceCommandConfirmation(EventStoreVersion(0L))))
     }
@@ -106,14 +110,14 @@ class TheApplicationContract extends AbstractApplicationContract[TheCommand, The
 
   override def storeStorage: AsyncEventStore[TheEvent, TheAggregate] = Mocked.shouldNotBeCalled
 
-  override def transactionScopeCalculator: CommandToTransactionScope[TheCommand, TheAggregate, TheState] =
-    new CommandToTransactionScope[TheCommand, TheAggregate, TheState] {
+  override def transactionScopeCalculator: CommandToTransactionScope[TestLogicDomainSpecification] =
+    new CommandToTransactionScope[TestLogicDomainSpecification] {
       override def calculateTransactionScope(command: TheCommand, state: TheState): CommandToAggregateResult[TheAggregate] =
         \/-(Set[TheAggregate]())
     }
 
-  override def logic: DomainLogic[TheCommand, TheEvent, TheAggregate, TheState] =
-    new DomainLogic[TheCommand, TheEvent, TheAggregate, TheState] {
+  override def logic: DomainLogic[TestLogicDomainSpecification] =
+    new DomainLogic[TestLogicDomainSpecification] {
       override def executeCommand(command: TheCommand, transactionScope: Map[TheAggregate, Long])
                                  (implicit state: TheState): CommandToEventsResult[TheEvent] = command match {
         case CommandOne() => \/-(List(EventOne()))

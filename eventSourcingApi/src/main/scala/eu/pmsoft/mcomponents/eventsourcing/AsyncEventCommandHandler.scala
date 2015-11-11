@@ -30,40 +30,46 @@ import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-
-trait DomainLogic[C, E, A, S] {
-  def executeCommand(command: C, transactionScope: Map[A, Long])(implicit state: S): CommandToEventsResult[E]
+trait DomainSpecification {
+  type Command
+  type Event
+  type Aggregate
+  type State
 }
 
-trait CommandToTransactionScope[C, A, S] {
-  def calculateTransactionScope(command: C, state: S): CommandToAggregateResult[A]
+trait DomainLogic[D <: DomainSpecification] {
+  def executeCommand(command: D#Command, transactionScope: Map[D#Aggregate, Long])(implicit state: D#State): CommandToEventsResult[D#Event]
 }
 
-trait AsyncEventHandlingModule[C, E, S] {
+trait CommandToTransactionScope[D <: DomainSpecification] {
+  def calculateTransactionScope(command: D#Command, state: D#State): CommandToAggregateResult[D#Aggregate]
+}
+
+trait AsyncEventHandlingModule[D <: DomainSpecification] {
 
   implicit def executionContext: ExecutionContext
 
-  def commandHandler: AsyncEventCommandHandler[C]
+  def commandHandler: AsyncEventCommandHandler[D]
 
-  def state: AtomicEventStoreView[S]
-
-}
-
-trait AsyncEventCommandHandler[C] {
-
-  def execute(command: C): Future[CommandResultConfirmed]
+  def state: AtomicEventStoreView[D#State]
 
 }
 
-trait DomainLogicSpecification[C, E, A, S] {
+trait AsyncEventCommandHandler[D <: DomainSpecification] {
 
-  def logic: DomainLogic[C, E, A, S]
+  def execute(command: D#Command): Future[CommandResultConfirmed]
 
-  def atomicProjection: VersionedEventStoreView[A, S]
+}
 
-  def storeStorage: AsyncEventStore[E, A]
+trait DomainLogicSpecification[D <: DomainSpecification] {
 
-  def transactionScopeCalculator: CommandToTransactionScope[C, A, S]
+  def logic: DomainLogic[D]
+
+  def atomicProjection: VersionedEventStoreView[D#Aggregate, D#State]
+
+  def storeStorage: AsyncEventStore[D#Event, D#Aggregate]
+
+  def transactionScopeCalculator: CommandToTransactionScope[D]
 
   implicit def executionContext: ExecutionContext
 

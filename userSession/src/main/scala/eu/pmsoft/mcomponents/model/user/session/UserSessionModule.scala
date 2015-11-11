@@ -29,12 +29,20 @@ package eu.pmsoft.mcomponents.model.user.session
 import eu.pmsoft.domain.model.{SessionToken, UserID, UserSession}
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
 import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.model.user.session.UserSessionAggregate
 import eu.pmsoft.mcomponents.model.user.session.UserSessionModel._
 
 import scalaz.{-\/, \/-}
 
 trait UserSessionModule {
 
+}
+
+final class UserSessionSSODomain extends DomainSpecification {
+  type Command = UserSessionCommand
+  type Event = UserSessionEvent
+  type Aggregate = UserSessionAggregate
+  type State = UserSessionSSOState
 }
 
 trait UserSessionSSOState {
@@ -52,7 +60,7 @@ trait UserSessionSideEffect {
 
 }
 
-final class UserSessionCommandToTransactionScope extends CommandToTransactionScope[UserSessionCommand, UserSessionAggregate, UserSessionSSOState] {
+final class UserSessionCommandToTransactionScope extends CommandToTransactionScope[UserSessionSSODomain] {
   override def calculateTransactionScope(command: UserSessionCommand, state: UserSessionSSOState): CommandToAggregateResult[UserSessionAggregate] =
     command match {
       case CreateUserSession(userId) => \/-(Set(UserSessionUserIDAggregate(userId)))
@@ -65,7 +73,7 @@ final class UserSessionCommandToTransactionScope extends CommandToTransactionSco
 }
 
 final class UserSessionHandlerLogic(val sideEffects: UserSessionSideEffect) extends
-DomainLogic[UserSessionCommand, UserSessionEvent, UserSessionAggregate, UserSessionSSOState] with
+DomainLogic[UserSessionSSODomain] with
 UserSessionValidations with UserSessionExtractors {
 
   override def executeCommand(command: UserSessionCommand,

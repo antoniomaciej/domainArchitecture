@@ -45,19 +45,11 @@ trait UserSessionApplicationInfrastructure {
 
 final class UserSessionApplication(infrastructureProvider: UserSessionApplicationInfrastructure)
                                   (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
-  extends AbstractApplicationModule[UserSessionCommand,
-    UserSessionEvent,
-    UserSessionAggregate,
-    UserSessionSSOState] {
+  extends AbstractApplicationModule[UserSessionSSODomain] {
 
-  override lazy val logic: DomainLogic[UserSessionCommand,
-    UserSessionEvent,
-    UserSessionAggregate,
-    UserSessionSSOState] = new UserSessionHandlerLogic(infrastructureProvider.sideEffects)
+  override lazy val logic: DomainLogic[UserSessionSSODomain] = new UserSessionHandlerLogic(infrastructureProvider.sideEffects)
 
-  override lazy val transactionScopeCalculator: CommandToTransactionScope[UserSessionCommand,
-    UserSessionAggregate,
-    UserSessionSSOState] = new UserSessionCommandToTransactionScope()
+  override lazy val transactionScopeCalculator: CommandToTransactionScope[UserSessionSSODomain] = new UserSessionCommandToTransactionScope()
 
   override lazy val atomicProjection: VersionedEventStoreView[UserSessionAggregate, UserSessionSSOState] = infrastructureProvider.atomicProjection
 

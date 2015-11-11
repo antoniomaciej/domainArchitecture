@@ -60,7 +60,7 @@ trait RoleBasedAuthorizationInternalInjector {
 }
 
 
-class RoleBasedAuthorizationRequestDispatcher(val commandHandler: AsyncEventCommandHandler[RoleBasedAuthorizationModelCommand],
+class RoleBasedAuthorizationRequestDispatcher(val commandHandler: AsyncEventCommandHandler[RoleBasedAuthorizationDomain],
                                               val projection: AtomicEventStoreView[RoleBasedAuthorizationState])
                                              (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
   extends RoleBasedAuthorizationApi with RoleBasedAuthorizationExtractorFromProjection with EventSourceExecutionContextProvided {

@@ -25,10 +25,10 @@
 
 package eu.pmsoft.mcomponents.eventsourcing
 
-trait AbstractApplicationContract[C, E, A, S] extends DomainLogicSpecification[C, E, A, S] {
+trait AbstractApplicationContract[D <: DomainSpecification] extends DomainLogicSpecification[D] {
 
   implicit def eventSourceExecutionContext: EventSourceExecutionContext
 
-  def commandHandler: AsyncEventCommandHandler[C]
+  def commandHandler: AsyncEventCommandHandler[D]
 
 }

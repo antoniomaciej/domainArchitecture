@@ -30,15 +30,14 @@ import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEven
 import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
 
 abstract class RoleBasedAuthorizationModuleTest extends BaseEventSourceSpec with
-GeneratedCommandSpecification[RoleBasedAuthorizationModelCommand, RoleBasedAuthorizationEvent,
-  RoleBasedAuthorizationState, RoleBasedAuthorizationAggregate, RoleBasedAuthorizationApplication] {
+GeneratedCommandSpecification[RoleBasedAuthorizationDomain, RoleBasedAuthorizationApplication] {
 
   def infrastructure(): RoleBasedAuthorizationEventStoreInfrastructure
 
   override def createEmptyModule(): RoleBasedAuthorizationApplication = RoleBasedAuthorizationApplication.createApplication(infrastructure())
 
   override def asyncCommandHandler(contextModule: RoleBasedAuthorizationApplication)
-  : AsyncEventCommandHandler[RoleBasedAuthorizationModelCommand] = contextModule.commandHandler
+  : AsyncEventCommandHandler[RoleBasedAuthorizationDomain] = contextModule.commandHandler
 
   override def stateProjection(contextModule: RoleBasedAuthorizationApplication)
   : AtomicEventStoreView[RoleBasedAuthorizationState] = contextModule.atomicProjection
