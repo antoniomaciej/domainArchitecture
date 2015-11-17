@@ -26,22 +26,22 @@
 
 package eu.pmsoft.mcomponents.model.user.registry.mins
 
-import eu.pmsoft.domain.model.{UserLogin, UserPassword}
+import eu.pmsoft.domain.model.{ UserLogin, UserPassword }
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
-import eu.pmsoft.mcomponents.eventsourcing.{EventSourceExecutionContextProvider, EventSourcingConfiguration}
-import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
+import eu.pmsoft.mcomponents.eventsourcing.{ DomainCommandApi, EventSourceExecutionContextProvider, EventSourcingConfiguration }
+import eu.pmsoft.mcomponents.minstance.{ ApiContract, MicroComponentRegistry }
 import eu.pmsoft.mcomponents.model.user.registry._
-import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationInMemoryInfrastructure
-import eu.pmsoft.mcomponents.test.BaseEventSourceSpec
+import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationDomainModule
+import eu.pmsoft.mcomponents.test.BaseEventSourceComponentTestSpec
 
-class UserRegistrationComponentTest extends BaseEventSourceSpec {
-
+class UserRegistrationComponentTest extends BaseEventSourceComponentTestSpec {
 
   it should "fail to register a invalid email login" in {
     //given
     val registry = componentsInitialization()
     val userRegistrationApi = registry.bindComponent(
-      ApiContract(classOf[UserRegistrationApi])).futureValue
+      ApiContract(classOf[UserRegistrationApi])
+    ).futureValue
     //when then
     userRegistrationApi.registerUser(RegisterUserRequest(
       UserLogin("testLogin@invalid"), UserPassword("testPassword")
@@ -52,14 +52,15 @@ class UserRegistrationComponentTest extends BaseEventSourceSpec {
     //given
     val registry = componentsInitialization()
     val userRegistrationApi = registry.bindComponent(
-      ApiContract(classOf[UserRegistrationApi])).futureValue
+      ApiContract(classOf[UserRegistrationApi])
+    ).futureValue
 
     //when used not registered
     //then find fail
     userRegistrationApi.findRegisteredUser(SearchForUserIdRequest(
       UserLogin("testLogin@domain.com"),
-      UserPassword("testPassword"))
-    ).futureValue shouldBe -\/
+      UserPassword("testPassword")
+    )).futureValue shouldBe -\/
 
     //when used registered
     userRegistrationApi.registerUser(RegisterUserRequest(
@@ -68,8 +69,8 @@ class UserRegistrationComponentTest extends BaseEventSourceSpec {
     //then find works
     userRegistrationApi.findRegisteredUser(SearchForUserIdRequest(
       UserLogin("testLogin@domain.com"),
-      UserPassword("testPassword"))
-    ).futureValue shouldBe \/-
+      UserPassword("testPassword")
+    )).futureValue shouldBe \/-
 
   }
 
@@ -77,14 +78,16 @@ class UserRegistrationComponentTest extends BaseEventSourceSpec {
 
     import scala.concurrent.ExecutionContext.Implicits.global
     val registry = MicroComponentRegistry.create()
-    val configuration: EventSourcingConfiguration = EventSourcingConfiguration(global,LocalBindingInfrastructure.create())
-    implicit val eventSourceExecutionContext = EventSourceExecutionContextProvider.create()(configuration)
-    val applicationInstance = UserRegistrationApplication.createApplication(UserRegistrationInMemoryInfrastructure.createInfrastructure())
+    val configurationProvided: EventSourcingConfiguration = EventSourcingConfiguration(global, LocalBindingInfrastructure.create())
+    implicit val eventSourceExecutionContext = EventSourceExecutionContextProvider.create()(configurationProvided)
+
+    val domainApi: DomainCommandApi[UserRegistrationDomain] = eventSourceExecutionContext.assemblyDomainApplication(new UserRegistrationDomainModule())
 
     val userRegistration = new UserRegistrationComponent {
 
-      override lazy val application: UserRegistrationApplication = applicationInstance
+      override def application: DomainCommandApi[UserRegistrationDomain] = domainApi
 
+      override implicit def configuration: EventSourcingConfiguration = configurationProvided
     }
 
     registry.registerComponent(userRegistration)

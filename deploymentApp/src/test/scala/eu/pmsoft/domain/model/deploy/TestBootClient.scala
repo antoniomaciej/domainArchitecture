@@ -29,16 +29,16 @@ import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.io.IO
 import akka.pattern.ask
-import eu.pmsoft.domain.model.{SessionToken, UserID}
-import eu.pmsoft.mcomponents.model.security.password.reset.mins.{InitializePasswordResetFlowRequest, InitializePasswordResetFlowResponse}
+import eu.pmsoft.domain.model.{ SessionToken, UserID }
+import eu.pmsoft.mcomponents.model.security.password.reset.mins.{ InitializePasswordResetFlowRequest, InitializePasswordResetFlowResponse }
 import spray.can.Http
 import spray.client.pipelining._
 import spray.http.BasicHttpCredentials
-import spray.httpx.encoding.{Deflate, Gzip}
+import spray.httpx.encoding.{ Deflate, Gzip }
 import spray.util._
 
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.util.{ Failure, Success }
 
 object TestBootClient extends App {
   implicit val system = ActorSystem("simple-spray-client")
@@ -54,11 +54,12 @@ object TestBootClient extends App {
 
   val pipeline = (
     addHeader("X-My-Special-Header", "fancy-value")
-      ~> addCredentials(BasicHttpCredentials("bob", "secret"))
-      ~> encode(Gzip)
-      ~> sendReceive
-      ~> decode(Deflate)
-      ~> unmarshal[InitializePasswordResetFlowResponse])
+    ~> addCredentials(BasicHttpCredentials("bob", "secret"))
+    ~> encode(Gzip)
+    ~> sendReceive
+    ~> decode(Deflate)
+    ~> unmarshal[InitializePasswordResetFlowResponse]
+  )
 
   val responseFuture = pipeline {
     Post("http://localhost:8080/password/init", InitializePasswordResetFlowRequest(UserID(0L), SessionToken("xxx")))

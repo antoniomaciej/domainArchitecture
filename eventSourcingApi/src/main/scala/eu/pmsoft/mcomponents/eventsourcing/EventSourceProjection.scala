@@ -25,26 +25,10 @@
 
 package eu.pmsoft.mcomponents.eventsourcing
 
-import scala.concurrent.Future
-
 trait EventSourceProjection[E] {
 
   def projectEvent(event: E, storeVersion: EventStoreVersion): Unit
 
   def lastSnapshotVersion(): EventStoreVersion
 }
-
-trait OrderedEventStoreView[+P] {
-  def atLeastOn(storeVersion: EventStoreVersion): Future[P]
-}
-
-trait AtomicEventStoreView[+P] extends OrderedEventStoreView[P] {
-  def lastSnapshot(): Future[P]
-}
-
-trait VersionedEventStoreView[A, +P] extends AtomicEventStoreView[P] {
-  def projection(transactionScope: Set[A]): Future[VersionedProjection[A, P]]
-}
-
-case class VersionedProjection[A, +P](transactionScopeVersion: Map[A, Long], projection: P)
 

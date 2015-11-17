@@ -32,43 +32,51 @@ import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
 import eu.pmsoft.mcomponents.minstance.ReqResDataModel
 import eu.pmsoft.mcomponents.model.user.registry._
-import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, Mocked}
+import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationDomainModule
+import eu.pmsoft.mcomponents.test.{ BaseEventSourceComponentTestSpec, BaseEventSourceSpec, Mocked }
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
-class UserRegistrationRequestDispatcherTest extends BaseEventSourceSpec {
+class UserRegistrationRequestDispatcherTest extends BaseEventSourceComponentTestSpec {
 
   import ReqResDataModel._
   import UserRegistrationApplicationDefinitions._
 
   it should "return a critical error if user is not found after successful registration command" in {
-    val registrationStateMock = new AtomicEventStoreView[UserRegistrationState] {
-      override def atLeastOn(storeVersion: EventStoreVersion): Future[UserRegistrationState] =
-        Future.successful(new UserRegistrationState {
-          override def uidExists(uid: UserID): Boolean = Mocked.shouldNotBeCalled
+    implicit val executionContext = ExecutionContext.Implicits.global
+    //    implicit val configuration = EventSourcingConfiguration(ExecutionContext.Implicits.global,LocalBindingInfrastructure.create())
+    //    implicit val eventStoreExecutionContext = EventSourceExecutionContextProvider.create()
+    //    val commandApi = eventStoreExecutionContext.assemblyDomainApplication(new UserRegistrationDomainXXX())
+    val ccc = new DomainCommandApi[UserRegistrationDomain] {
 
-          override def getUserByLogin(login: UserLogin): Option[User] = None
+      override def commandHandler: AsyncEventCommandHandler[UserRegistrationDomain] = new AsyncEventCommandHandler[UserRegistrationDomain] {
+        override def execute(command: UserRegistrationCommand): Future[CommandResultConfirmed] =
+          Future.successful(
+            scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion(0L)))
+          )
+      }
 
-          override def getAllUid: Stream[UserID] = Mocked.shouldNotBeCalled
+      override def atomicProjection: VersionedEventStoreView[UserRegistrationAggregate, UserRegistrationState] =
+        new VersionedEventStoreView[UserRegistrationAggregate, UserRegistrationState] {
+          override def projection(transactionScope: Set[UserRegistrationAggregate]): Future[VersionedProjection[UserRegistrationAggregate, UserRegistrationState]] = Mocked.shouldNotBeCalled
 
-          override def getUserByID(uid: UserID): Option[User] = Mocked.shouldNotBeCalled
+          override def lastSnapshot(): Future[UserRegistrationState] = Mocked.shouldNotBeCalled
 
-          override def loginExists(login: UserLogin): Boolean = Mocked.shouldNotBeCalled
-        })
+          override def atLeastOn(storeVersion: EventStoreVersion): Future[UserRegistrationState] =
+            Future.successful(new UserRegistrationState {
+              override def uidExists(uid: UserID): Boolean = Mocked.shouldNotBeCalled
 
-      override def lastSnapshot(): Future[UserRegistrationState] = Mocked.shouldNotBeCalled
+              override def getUserByLogin(login: UserLogin): Option[User] = None
+
+              override def getAllUid: Stream[UserID] = Mocked.shouldNotBeCalled
+
+              override def getUserByID(uid: UserID): Option[User] = Mocked.shouldNotBeCalled
+
+              override def loginExists(login: UserLogin): Boolean = Mocked.shouldNotBeCalled
+            })
+        }
     }
-
-    val commandHandler = new AsyncEventCommandHandler[UserRegistrationDomain] {
-      override def execute(command: UserRegistrationCommand): Future[CommandResultConfirmed] =
-        Future.successful(
-          scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion(0L)))
-        )
-    }
-
-    implicit val configuration = EventSourcingConfiguration(ExecutionContext.Implicits.global,LocalBindingInfrastructure.create())
-    implicit val executionContext = EventSourceExecutionContextProvider.create()
-    val dispatcher = new UserRegistrationRequestDispatcher(registrationStateMock, commandHandler)
+    val dispatcher = new UserRegistrationRequestDispatcher(ccc)
     val result = dispatcher.registerUser(RegisterUserRequest(UserLogin("any"), UserPassword("any"))).futureValue
     result should be_-\/(UserRegistrationRequestModel.criticalUserNotFoundAfterSuccessRegistration.toResponseError)
   }

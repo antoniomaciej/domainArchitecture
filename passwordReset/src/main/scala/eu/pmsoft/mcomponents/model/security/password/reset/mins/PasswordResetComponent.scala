@@ -26,13 +26,12 @@
 
 package eu.pmsoft.mcomponents.model.security.password.reset.mins
 
-import com.softwaremill.macwire._
-import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreView}
+import eu.pmsoft.mcomponents.eventsourcing.DomainCommandApi
 import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
 import eu.pmsoft.mcomponents.minstance._
 import eu.pmsoft.mcomponents.model.security.password.reset._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scalaz.Scalaz._
 import scalaz._
 
@@ -40,44 +39,29 @@ trait PasswordResetComponent extends MicroComponent[PasswordResetApi] {
   override def providedContact: MicroComponentContract[PasswordResetApi] =
     MicroComponentModel.contractFor(PasswordResetApi.version, classOf[PasswordResetApi])
 
-  def application: PasswordResetApplication
+  def application: DomainCommandApi[PasswordResetDomain]
 
-  override lazy val app: Future[PasswordResetApi] = Future.successful(new PasswordResetApiInternalInjector {
-    override def module: PasswordResetApplication = application
-  }.dispatcher)
+  override lazy val app: Future[PasswordResetApi] = Future.successful(new PasswordResetApiDispatcher(application))
 }
 
-trait PasswordResetApiInternalInjector {
-  def module: PasswordResetApplication
-
-  private implicit lazy val internalExecutionContext: ExecutionContext = module.executionContext
-
-  lazy val commandHandler = module.commandHandler
-  lazy val projection = module.atomicProjection
-  lazy val dispatcher = wire[PasswordResetApiDispatcher]
-}
-
-class PasswordResetApiDispatcher(val commandHandler: AsyncEventCommandHandler[PasswordResetDomain],
-                                 val projection: AtomicEventStoreView[PasswordResetModelState])
-                                (implicit val executionContext: ExecutionContext) extends PasswordResetApi {
+class PasswordResetApiDispatcher(val cmdApi: DomainCommandApi[PasswordResetDomain])(implicit val executionContext: ExecutionContext) extends PasswordResetApi {
 
   import PasswordResetApiDefinitions._
 
-  override def initializeFlow(req: InitializePasswordResetFlowRequest)
-  : Future[RequestResult[InitializePasswordResetFlowResponse]] = (for {
-    cmdConfirmation <- EitherT(commandHandler.execute(
+  override def initializeFlow(req: InitializePasswordResetFlowRequest): Future[RequestResult[InitializePasswordResetFlowResponse]] = (for {
+    cmdConfirmation <- EitherT(cmdApi.commandHandler.execute(
       InitializePasswordResetFlow(req.userId, req.sessionToken)
     ).map(_.asResponse))
   } yield InitializePasswordResetFlowResponse(cmdConfirmation)).run
 
   override def cancelFlow(req: CancelPasswordResetFlowRequest): Future[RequestResult[CancelPasswordResetFlowResponse]] = (for {
-    cmdConfirmation <- EitherT(commandHandler.execute(
+    cmdConfirmation <- EitherT(cmdApi.commandHandler.execute(
       CancelPasswordResetFlowByToken(req.passwordResetToken)
     ).map(_.asResponse))
   } yield CancelPasswordResetFlowResponse(cmdConfirmation)).run
 
   override def confirmFlow(req: ConfirmPasswordResetFlowRequest): Future[RequestResult[ConfirmPasswordResetFlowResponse]] = (for {
-    cmdConfirmation <- EitherT(commandHandler.execute(
+    cmdConfirmation <- EitherT(cmdApi.commandHandler.execute(
       ConfirmPasswordResetFlow(req.sessionToken, req.passwordResetToken, req.newPassword)
     ).map(_.asResponse))
   } yield ConfirmPasswordResetFlowResponse(cmdConfirmation)).run

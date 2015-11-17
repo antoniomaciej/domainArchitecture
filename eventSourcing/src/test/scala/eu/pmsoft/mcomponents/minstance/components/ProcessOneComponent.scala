@@ -26,7 +26,7 @@
 
 package eu.pmsoft.mcomponents.minstance.components
 
-import eu.pmsoft.mcomponents.minstance.{ApiVersion, MicroComponent, MicroComponentContract, MicroComponentModel}
+import eu.pmsoft.mcomponents.minstance.{ ApiVersion, MicroComponent, MicroComponentContract, MicroComponentModel }
 
 import scala.concurrent.Future
 
@@ -38,7 +38,6 @@ trait ProcessOneComponent extends MicroComponent[ProcessOneComponentApi] {
     MicroComponentModel.contractFor(ProcessOneComponentApi.version, classOf[ProcessOneComponentApi])
 
 }
-
 
 object ProcessOneComponentApi {
 

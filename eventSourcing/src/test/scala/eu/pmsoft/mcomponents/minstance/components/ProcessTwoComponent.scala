@@ -26,7 +26,7 @@
 
 package eu.pmsoft.mcomponents.minstance.components
 
-import eu.pmsoft.mcomponents.minstance.{ApiVersion, MicroComponent, MicroComponentContract, MicroComponentModel}
+import eu.pmsoft.mcomponents.minstance.{ ApiVersion, MicroComponent, MicroComponentContract, MicroComponentModel }
 
 import scala.concurrent.Future
 
@@ -39,7 +39,6 @@ trait ProcessTwoComponent extends MicroComponent[ProcessTwoComponentApi] {
 
 }
 
-
 object ProcessTwoComponentApi {
   val version = ApiVersion(0, 0, 1)
 }
@@ -48,7 +47,6 @@ trait ProcessTwoComponentApi {
 
   def calculateOnTwo(): Future[String]
 }
-
 
 class ProcessTwoComponentImplementation extends ProcessTwoComponentApi {
   override def calculateOnTwo(): Future[String] = Future.successful("TWO")

@@ -28,17 +28,11 @@ package eu.pmsoft.mcomponents.model.user.session
 
 import eu.pmsoft.domain.model._
 import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
-import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
+import eu.pmsoft.mcomponents.test.{ BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
 
-abstract class UserSessionModuleTest extends BaseEventSourceSpec with
-GeneratedCommandSpecification[UserSessionSSODomain, UserSessionApplication] {
+abstract class UserSessionModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[UserSessionSSODomain] {
 
-  def infrastructure(): UserSessionApplicationInfrastructure
-
-  override def createEmptyModule(): UserSessionApplication = UserSessionApplication.createApplication(infrastructure())
-
-  override def buildGenerator(state: AtomicEventStoreView[UserSessionSSOState]):
-  CommandGenerator[UserSessionCommand] = new UserSessionGenerators(state)
+  override def buildGenerator(state: AtomicEventStoreView[UserSessionSSOState]): CommandGenerator[UserSessionCommand] = new UserSessionGenerators(state)
 
   override def validateState(state: UserSessionSSOState): Unit = {
     findInconsistentSessionByToken(state) shouldBe empty withClue ": Session exist but can not be found by token"

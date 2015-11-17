@@ -32,42 +32,55 @@ import eu.pmsoft.mcomponents.eventsourcing._
 object PasswordResetModel {
 
   val invalidSessionTokenErrorCode = 100L
-  val invalidSessionToken = EventSourceModelError("invalid session token",
-    EventSourceCommandError(invalidSessionTokenErrorCode))
+  val invalidSessionToken = EventSourceModelError(
+    "invalid session token",
+    EventSourceCommandError(invalidSessionTokenErrorCode)
+  )
 
   val invalidTokenPairErrorCode = 101L
-  val invalidTokenPair = EventSourceModelError("invalid tokens pair",
-    EventSourceCommandError(invalidTokenPairErrorCode))
+  val invalidTokenPair = EventSourceModelError(
+    "invalid tokens pair",
+    EventSourceCommandError(invalidTokenPairErrorCode)
+  )
 
   val invalidPasswordErrorCode = 102L
-  val invalidPassword = EventSourceModelError("invalid password",
-    EventSourceCommandError(invalidPasswordErrorCode))
+  val invalidPassword = EventSourceModelError(
+    "invalid password",
+    EventSourceCommandError(invalidPasswordErrorCode)
+  )
 
   val invalidPasswordResetTokenErrorCode = 103L
-  val invalidPasswordResetToken = EventSourceModelError("invalid password reset token",
-    EventSourceCommandError(invalidPasswordResetTokenErrorCode))
+  val invalidPasswordResetToken = EventSourceModelError(
+    "invalid password reset token",
+    EventSourceCommandError(invalidPasswordResetTokenErrorCode)
+  )
 
   val notFoundPasswordResetTokenErrorCode = 104L
-  val notFoundPasswordResetToken = EventSourceModelError("password token for usedId not found during process cancellation",
-    EventSourceCommandError(notFoundPasswordResetTokenErrorCode))
-
+  val notFoundPasswordResetToken = EventSourceModelError(
+    "password token for usedId not found during process cancellation",
+    EventSourceCommandError(notFoundPasswordResetTokenErrorCode)
+  )
 
   val criticalUserIdNotFoundInTransactionScopeErrorCode = 110L
-  val criticalUserIdNotFoundInTransactionScope = EventSourceModelError("Critical: UserID can not by found in transaction scope",
-    EventSourceCommandError(criticalUserIdNotFoundInTransactionScopeErrorCode))
+  val criticalUserIdNotFoundInTransactionScope = EventSourceModelError(
+    "Critical: UserID can not by found in transaction scope",
+    EventSourceCommandError(criticalUserIdNotFoundInTransactionScopeErrorCode)
+  )
 
   val criticalTwoUserIdInTransactionScopeErrorCode = 111L
-  val criticalTwoUserIdInTransactionScope = EventSourceModelError("Critical: UserID can not by found in transaction scope",
-    EventSourceCommandError(criticalTwoUserIdInTransactionScopeErrorCode))
-
+  val criticalTwoUserIdInTransactionScope = EventSourceModelError(
+    "Critical: UserID can not by found in transaction scope",
+    EventSourceCommandError(criticalTwoUserIdInTransactionScopeErrorCode)
+  )
 
 }
 
 //model
-case class PasswordResetFlowStatus(userId: UserID,
-                                   sessionToken: SessionToken,
-                                   passwordResetToken: PasswordResetToken)
-
+case class PasswordResetFlowStatus(
+  userId:             UserID,
+  sessionToken:       SessionToken,
+  passwordResetToken: PasswordResetToken
+)
 
 case class PasswordResetToken(val token: String) extends AnyVal
 
@@ -79,30 +92,37 @@ case class UserIdFlowAggregate(userID: UserID) extends PasswordResetAggregate
 //commands
 sealed trait PasswordResetModelCommand
 
-case class InitializePasswordResetFlow(userId: UserID,
-                                       sessionToken: SessionToken) extends PasswordResetModelCommand
+case class InitializePasswordResetFlow(
+  userId:       UserID,
+  sessionToken: SessionToken
+) extends PasswordResetModelCommand
 
 case class CancelPasswordResetFlowByUser(userId: UserID) extends PasswordResetModelCommand
 
 case class CancelPasswordResetFlowByToken(passwordResetToken: PasswordResetToken) extends PasswordResetModelCommand
 
-case class ConfirmPasswordResetFlow(sessionToken: SessionToken,
-                                    passwordResetToken: PasswordResetToken,
-                                    newPassword: UserPassword
-                                     ) extends PasswordResetModelCommand
+case class ConfirmPasswordResetFlow(
+  sessionToken:       SessionToken,
+  passwordResetToken: PasswordResetToken,
+  newPassword:        UserPassword
+) extends PasswordResetModelCommand
 
 //events
 sealed trait PasswordResetModelEvent
 
-case class PasswordResetFlowCreated(userId: UserID,
-                                    sessionToken: SessionToken,
-                                    passwordResetToken: PasswordResetToken) extends PasswordResetModelEvent
+case class PasswordResetFlowCreated(
+  userId:             UserID,
+  sessionToken:       SessionToken,
+  passwordResetToken: PasswordResetToken
+) extends PasswordResetModelEvent
 
-case class PasswordResetFlowCancelled(userId: UserID,
-                                      passwordResetToken: PasswordResetToken) extends PasswordResetModelEvent
+case class PasswordResetFlowCancelled(
+  userId:             UserID,
+  passwordResetToken: PasswordResetToken
+) extends PasswordResetModelEvent
 
-case class PasswordResetFlowConfirmed(userId: UserID,
-                                      newPassword: UserPassword) extends PasswordResetModelEvent
-
-
+case class PasswordResetFlowConfirmed(
+  userId:      UserID,
+  newPassword: UserPassword
+) extends PasswordResetModelEvent
 

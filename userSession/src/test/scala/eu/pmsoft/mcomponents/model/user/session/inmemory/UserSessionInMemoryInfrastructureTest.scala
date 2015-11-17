@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.model.user.session.inmemory
 
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
-import eu.pmsoft.mcomponents.eventsourcing.{BindingInfrastructure, EventSourceExecutionContext, EventSourceExecutionContextProvider}
+import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.model.user.session._
 
 class UserSessionInMemoryInfrastructureTest extends UserSessionModuleTest {
@@ -36,6 +36,5 @@ class UserSessionInMemoryInfrastructureTest extends UserSessionModuleTest {
 
   implicit def eventSourceExecutionContext: EventSourceExecutionContext = EventSourceExecutionContextProvider.create()
 
-  override def infrastructure(): UserSessionApplicationInfrastructure = UserSessionInMemoryInfrastructure.createInfrastructure()
-
+  override def implementationModule(): DomainModule[UserSessionSSODomain] = new UserSessionDomainModule()
 }

@@ -33,20 +33,9 @@ object domainArchitecture extends Build {
   lazy val Name = "domainArchitecture"
   lazy val Version = "0.0.1-SNAPSHOT"
 
-  lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
-    organization := Organization,
-    version := Version,
-    concurrentRestrictions in Global += Tags.limit(Tags.Test, 8),
-    scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature"),
-    resolvers += Classpaths.typesafeReleases,
-    publishArtifact in(Test, packageBin) := true,
-    publishArtifact in(Test, packageDoc) := true,
-    publishArtifact in(Test, packageSrc) := true
-  )
-
-
   lazy val eventSourcingApi = (project in file("eventSourcingApi")).
     settings(commonSettings: _*).
+    settings(testDependencies: _*).
     settings(dependencies: _*)
 
   lazy val eventSourcingTest = (project in file("eventSourcingTest")).
@@ -115,6 +104,8 @@ object domainArchitecture extends Build {
   lazy val dependencies = Seq(
     libraryDependencies ++= Seq(
       "org.jasypt" % "jasypt" % "1.9.2",
+      "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+      "ch.qos.logback" % "logback-classic" % "1.1.3",
       "com.softwaremill.macwire" %% "runtime" % "1.0.5",
       "com.softwaremill.macwire" %% "macros" % "1.0.5",
       "commons-validator" % "commons-validator" % "1.4.1",
@@ -131,7 +122,8 @@ object domainArchitecture extends Build {
     libraryDependencies ++= Seq(
       "org.typelevel" %% "scalaz-scalatest" % "0.2.2",
       "org.scalatest" %% "scalatest" % "2.2.0",
-      "org.scalacheck" %% "scalacheck" % "1.12.4"
+      "org.scalacheck" %% "scalacheck" % "1.12.4",
+      "org.scalamock" %% "scalamock-scalatest-support" % "3.2.2"
     )
   )
 
@@ -141,6 +133,11 @@ object domainArchitecture extends Build {
   lazy val deploymentDependencies = Seq(
     libraryDependencies ++= Seq(
       "org.json4s" %% "json4s-native" % "3.2.10",
+      "org.scalikejdbc" %% "scalikejdbc" % "2.3.0",
+      "org.scalikejdbc" %% "scalikejdbc-config" % "2.3.0",
+      "org.scalikejdbc" %% "scalikejdbc-test" % "2.3.0" % "test",
+      "com.h2database" % "h2" % "1.4.190" % "test",
+      "com.mchange" % "c3p0" % "0.9.5.1",
       "com.typesafe.akka" %% "akka-actor" % akkaVersion,
       "io.spray" %% "spray-can" % sprayVersion,
       "io.spray" %% "spray-routing-shapeless2" % sprayVersion,
@@ -151,4 +148,47 @@ object domainArchitecture extends Build {
     )
   )
 
+
+  lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
+    organization := Organization,
+    version := Version,
+    concurrentRestrictions in Global += Tags.limit(Tags.Test, 1),
+    scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature"),
+    resolvers += Classpaths.typesafeReleases,
+    publishArtifact in(Test, packageBin) := true,
+    publishArtifact in(Test, packageDoc) := true,
+    publishArtifact in(Test, packageSrc) := true
+  ) ++ Format.settings
+
+}
+
+
+object Format {
+
+  import com.typesafe.sbt.SbtScalariform._
+
+  lazy val settings = scalariformSettings ++ Seq(
+    ScalariformKeys.preferences := formattingPreferences
+  )
+
+  lazy val formattingPreferences = {
+    import scalariform.formatter.preferences._
+    FormattingPreferences().
+      setPreference(AlignParameters, true).
+      setPreference(AlignSingleLineCaseStatements, true).
+      setPreference(CompactControlReadability, true).
+      setPreference(CompactStringConcatenation, true).
+      setPreference(DoubleIndentClassDeclaration, true).
+      setPreference(FormatXml, true).
+      setPreference(IndentLocalDefs, true).
+      setPreference(IndentPackageBlocks, true).
+      setPreference(IndentSpaces, 2).
+      setPreference(MultilineScaladocCommentsStartOnFirstLine, true).
+      setPreference(PreserveSpaceBeforeArguments, false).
+      setPreference(PreserveDanglingCloseParenthesis, false).
+      setPreference(RewriteArrowSymbols, false).
+      setPreference(SpaceBeforeColon, false).
+      setPreference(SpaceInsideBrackets, false).
+      setPreference(SpacesWithinPatternBinders, true)
+  }
 }

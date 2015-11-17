@@ -30,65 +30,46 @@ import com.softwaremill.macwire._
 import eu.pmsoft.domain.model.UserLogin
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
-import eu.pmsoft.mcomponents.minstance.{MicroComponent, MicroComponentContract, MicroComponentModel}
+import eu.pmsoft.mcomponents.minstance.{ MicroComponent, MicroComponentContract, MicroComponentModel }
 import eu.pmsoft.mcomponents.model.user.registry._
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 import scalaz._
 import scalaz.std.scalaFuture._
-
 
 trait UserRegistrationComponent extends MicroComponent[UserRegistrationApi] {
   override def providedContact: MicroComponentContract[UserRegistrationApi] =
     MicroComponentModel.contractFor(UserRegistrationApi.version, classOf[UserRegistrationApi])
 
-  def application: UserRegistrationApplication
+  def application: DomainCommandApi[UserRegistrationDomain]
 
-  override lazy val app: Future[UserRegistrationApi] = Future.successful(new UserRegistrationInternalInjector {
-
-    override lazy val module: UserRegistrationApplication = application
-  }.app)
+  override lazy val app: Future[UserRegistrationApi] = Future.successful(new UserRegistrationRequestDispatcher(application))
 }
 
-trait UserRegistrationInternalInjector {
-  def module: UserRegistrationApplication
-
-  private implicit lazy val eventSourceExecutionContext: EventSourceExecutionContext = module.eventSourceExecutionContext
-
-  lazy val commandHandler = module.commandHandler
-
-  lazy val projection = module.atomicProjection
-
-  lazy val app = wire[UserRegistrationRequestDispatcher]
-
-}
-
-class UserRegistrationRequestDispatcher(val registrationState: AtomicEventStoreView[UserRegistrationState],
-                                        val commandHandler: AsyncEventCommandHandler[UserRegistrationDomain])
-                                       (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
-  extends UserRegistrationApi with EventSourceExecutionContextProvided {
+class UserRegistrationRequestDispatcher(val commandApi: DomainCommandApi[UserRegistrationDomain])(implicit val executionContext: ExecutionContext)
+    extends UserRegistrationApi {
 
   import UserRegistrationApplicationDefinitions._
 
   override def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]] =
-    registrationState.lastSnapshot().map { state =>
+    commandApi.atomicProjection.lastSnapshot().map { state =>
       state.getUserByLogin(searchForUser.login).filter(_.passwordHash == searchForUser.passwordHash) match {
         case Some(user) => \/-(SearchForUserIdResponse(user.uid))
-        case None => -\/(UserRegistrationRequestModel.userIdNotFound.toResponseError)
+        case None       => -\/(UserRegistrationRequestModel.userIdNotFound.toResponseError)
       }
     }
 
   override def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]] =
     (for {
-      cmdResult <- EitherT(commandHandler.execute(AddUser(registrationRequest.login, registrationRequest.passwordHash)).map(_.asResponse))
+      cmdResult <- EitherT(commandApi.commandHandler.execute(AddUser(registrationRequest.login, registrationRequest.passwordHash)).map(_.asResponse))
       response <- EitherT(findCreatedUser(cmdResult, registrationRequest.login))
     } yield response).run
 
   private def findCreatedUser(cmdResult: EventSourceCommandConfirmation, login: UserLogin): Future[RequestResult[RegisterUserResponse]] =
-    registrationState.atLeastOn(cmdResult.storeVersion).map { state =>
+    commandApi.atomicProjection.atLeastOn(cmdResult.storeVersion).map { state =>
       state.getUserByLogin(login) match {
         case Some(user) => \/-(RegisterUserResponse(user.uid))
-        case None => -\/(UserRegistrationRequestModel.criticalUserNotFoundAfterSuccessRegistration.toResponseError)
+        case None       => -\/(UserRegistrationRequestModel.criticalUserNotFoundAfterSuccessRegistration.toResponseError)
       }
     }
 

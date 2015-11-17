@@ -26,12 +26,11 @@
 
 package eu.pmsoft.mcomponents.model.user.session.mins
 
-import eu.pmsoft.domain.model.{SessionToken, UserLogin, UserPassword}
+import eu.pmsoft.domain.model.{ SessionToken, UserLogin, UserPassword }
 import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
 import eu.pmsoft.mcomponents.minstance._
 
 import scala.concurrent.Future
-
 
 object UserSessionApi {
   val version = ApiVersion(0, 0, 1)

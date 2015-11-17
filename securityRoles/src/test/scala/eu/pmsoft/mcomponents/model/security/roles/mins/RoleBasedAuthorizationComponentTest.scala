@@ -27,14 +27,13 @@
 package eu.pmsoft.mcomponents.model.security.roles.mins
 
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
-import eu.pmsoft.mcomponents.eventsourcing.{EventSourceExecutionContextProvider, EventSourcingConfiguration}
-import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
+import eu.pmsoft.mcomponents.eventsourcing.{ DomainCommandApi, EventSourceExecutionContextProvider, EventSourcingConfiguration }
+import eu.pmsoft.mcomponents.minstance.{ ApiContract, MicroComponentRegistry }
 import eu.pmsoft.mcomponents.model.security.roles._
-import eu.pmsoft.mcomponents.model.security.roles.inmemory.RoleBasedAuthorizationInMemoryInfrastructure
-import eu.pmsoft.mcomponents.test.BaseEventSourceSpec
+import eu.pmsoft.mcomponents.model.security.roles.inmemory._
+import eu.pmsoft.mcomponents.test.{ BaseEventSourceComponentTestSpec, BaseEventSourceSpec }
 
-
-class RoleBasedAuthorizationComponentTest extends BaseEventSourceSpec {
+class RoleBasedAuthorizationComponentTest extends BaseEventSourceComponentTestSpec {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -49,12 +48,12 @@ class RoleBasedAuthorizationComponentTest extends BaseEventSourceSpec {
     api.deletePermissionFromRole(DeletePermissionsFromRoleRequest(roleID, Set(p1))).futureValue shouldBe \/-
     checkRoleToPermission(Map(roleID -> Set(p2)))
 
-    def checkRoleToPermission(expected: Map[RoleID, Set[PermissionID]]): Unit = {
-      val roleToPermissionRes = api.getRolesPermissions(GetRolesPermissionsRequest(Set(roleID))).futureValue
-      roleToPermissionRes shouldBe \/-
-      val roleToPermission = roleToPermissionRes.toOption.get
-      roleToPermission.permissions should contain theSameElementsAs expected
-    }
+      def checkRoleToPermission(expected: Map[RoleID, Set[PermissionID]]): Unit = {
+        val roleToPermissionRes = api.getRolesPermissions(GetRolesPermissionsRequest(Set(roleID))).futureValue
+        roleToPermissionRes shouldBe \/-
+        val roleToPermission = roleToPermissionRes.toOption.get
+        roleToPermission.permissions should contain theSameElementsAs expected
+      }
 
   }
   it should "create roles" in {
@@ -73,14 +72,14 @@ class RoleBasedAuthorizationComponentTest extends BaseEventSourceSpec {
     api.createRole(CreateRoleRequest("test2")).futureValue shouldBe \/-
     api.createRole(CreateRoleRequest("test3")).futureValue shouldBe \/-
 
-    def loadAndCheck(expectedRoleNames: Set[String]): Set[AccessRole] = {
-      val loaded = api.getRoles(GetRolesRequest()).futureValue
-      loaded shouldBe \/-
-      val roles = loaded.toOption.get.roles
-      val rolesNames = roles.map(_.roleName)
-      rolesNames should contain theSameElementsAs expectedRoleNames
-      roles
-    }
+      def loadAndCheck(expectedRoleNames: Set[String]): Set[AccessRole] = {
+        val loaded = api.getRoles(GetRolesRequest()).futureValue
+        loaded shouldBe \/-
+        val roles = loaded.toOption.get.roles
+        val rolesNames = roles.map(_.roleName)
+        rolesNames should contain theSameElementsAs expectedRoleNames
+        roles
+      }
     val roles = loadAndCheck(Set("test1", "test2", "test3"))
     val selected = roles.find(_.roleName == "test1").get
 
@@ -89,7 +88,6 @@ class RoleBasedAuthorizationComponentTest extends BaseEventSourceSpec {
 
     api.deleteRole(DeleteRoleRequest(selected.roleId)).futureValue shouldBe \/-
     loadAndCheck(Set("test2", "test3"))
-
 
   }
 
@@ -104,13 +102,13 @@ class RoleBasedAuthorizationComponentTest extends BaseEventSourceSpec {
     api.createPermission(CreatePermissionRequest("code2", "description2")).futureValue shouldBe \/-
     api.createPermission(CreatePermissionRequest("code3", "description3")).futureValue shouldBe \/-
 
-    def loadAndCheck(expectedPermissions: Set[(String, String)]): Set[Permission] = {
-      val loaded = api.getPermissions(GetPermissionsRequest()).futureValue
-      loaded shouldBe \/-
-      val permissions = loaded.toOption.get.permissions
-      permissions.map(p => (p.code, p.description)) should contain theSameElementsAs expectedPermissions
-      permissions
-    }
+      def loadAndCheck(expectedPermissions: Set[(String, String)]): Set[Permission] = {
+        val loaded = api.getPermissions(GetPermissionsRequest()).futureValue
+        loaded shouldBe \/-
+        val permissions = loaded.toOption.get.permissions
+        permissions.map(p => (p.code, p.description)) should contain theSameElementsAs expectedPermissions
+        permissions
+      }
     val permissions = loadAndCheck(Set(("code1", "description1"), ("code2", "description2"), ("code3", "description3")))
 
     val selected = permissions.find(_.code == "code1").get
@@ -130,14 +128,16 @@ class RoleBasedAuthorizationComponentTest extends BaseEventSourceSpec {
       bindingInfrastructure
     )
     implicit val eventExecutionContext = EventSourceExecutionContextProvider.create()
-    val applicationInstance = RoleBasedAuthorizationApplication.createApplication(
-      RoleBasedAuthorizationInMemoryInfrastructure.createInfrastructure()
-    )
+
+    val domainApi: DomainCommandApi[RoleBasedAuthorizationDomain] = eventExecutionContext.assemblyDomainApplication(new RoleBasedAuthorizationDomainModule())
 
     val registry = MicroComponentRegistry.create()
 
     val roleAuth = new RoleBasedAuthorizationComponent {
-      override lazy val application: RoleBasedAuthorizationApplication = applicationInstance
+
+      override def application: DomainCommandApi[RoleBasedAuthorizationDomain] = domainApi
+
+      override implicit def configuration: EventSourcingConfiguration = eventSourceConfiguration
     }
 
     registry.registerComponent(roleAuth)

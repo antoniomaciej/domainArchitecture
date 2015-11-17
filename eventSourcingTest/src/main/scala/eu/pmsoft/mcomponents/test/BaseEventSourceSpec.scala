@@ -33,13 +33,15 @@ import org.scalacheck.Gen
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.prop.PropertyChecks
-import org.scalatest.time.{Millis, Seconds, Span}
+import org.scalatest.time.{ Millis, Seconds, Span }
 import org.typelevel.scalatest.DisjunctionMatchers
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
-abstract class BaseEventSourceSpec extends FlatSpec with Matchers
-with PropertyChecks with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
+abstract class BaseEventSourceSpec extends BaseEventSourceComponentTestSpec
+
+abstract class BaseEventSourceComponentTestSpec extends FlatSpec with Matchers
+    with PropertyChecks with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
 
   val longInterval = 150
   val longTimeout = 4
@@ -48,11 +50,10 @@ with PropertyChecks with ScalaFutures with AppendedClues with ParallelTestExecut
 
 }
 
-trait GeneratedCommandSpecification[D <: DomainSpecification, M <: AbstractApplicationContract[D]] {
+trait GeneratedCommandSpecification[D <: DomainSpecification] {
   self: BaseEventSourceSpec =>
 
-  /**
-   * Default executor for event tests
+  /** Default executor for event tests
    */
   private implicit lazy val synchronousExecutionContext = ExecutionContext.fromExecutor(new Executor {
     def execute(task: Runnable) = task.run()
@@ -60,23 +61,22 @@ trait GeneratedCommandSpecification[D <: DomainSpecification, M <: AbstractAppli
 
   implicit lazy val eventSourcingConfiguration = EventSourcingConfiguration(synchronousExecutionContext, bindingInfrastructure)
 
-  def bindingInfrastructure : BindingInfrastructure
+  def bindingInfrastructure: BindingInfrastructure
 
   implicit def eventSourceExecutionContext: EventSourceExecutionContext
 
-  def createEmptyModule(): M
+  def implementationModule(): DomainModule[D]
 
-  def asyncCommandHandler(contextModule: M): AsyncEventCommandHandler[D] = contextModule.commandHandler
+  def createEmptyDomainModel(): DomainCommandApi[D] = eventSourceExecutionContext.assemblyDomainApplication(implementationModule())
 
-  def stateProjection(contextModule: M): AtomicEventStoreView[D#State] = contextModule.atomicProjection
-
-  private def genModule: Gen[M] = Gen.wrap(Gen.const(createEmptyModule()))
+  private def genModule: Gen[DomainCommandApi[D]] = Gen.wrap(Gen.const(createEmptyDomainModel()))
 
   def serial[T, B](l: Iterable[T])(fn: T => Future[B]): Future[List[B]] = (Future(List[B]()) /: l) {
-    (previousFuture, nextValue) => for {
-      previousResults <- previousFuture
-      nextResult <- fn(nextValue)
-    } yield previousResults :+ nextResult
+    (previousFuture, nextValue) =>
+      for {
+        previousResults <- previousFuture
+        nextResult <- fn(nextValue)
+      } yield previousResults :+ nextResult
   }
 
   def buildGenerator(state: AtomicEventStoreView[D#State]): CommandGenerator[D#Command]
@@ -85,34 +85,43 @@ trait GeneratedCommandSpecification[D <: DomainSpecification, M <: AbstractAppli
 
   def postCommandValidation(state: D#State, command: D#Command): Unit
 
+  it should "provide a eventStore singleton " in {
+    val domainImplementation = implementationModule()
+    domainImplementation.eventStore should be(domainImplementation.eventStore)
+  }
+  it should "provide a side effect singleton " in {
+    val domainImplementation = implementationModule()
+    domainImplementation.sideEffects should be(domainImplementation.sideEffects)
+  }
+
   it should "accept any list of valid commands " in {
     forAll(genModule) {
-      module: M =>
+      commandApi: DomainCommandApi[D] =>
 
-        val generator = buildGenerator(stateProjection(module))
+        val generator = buildGenerator(commandApi.atomicProjection)
         val warmUpCommands = generator.generateWarmUpCommands.sample.get
         var commandsHistory = warmUpCommands
         withClue(s"WarmUpCommands: $warmUpCommands \n") {
-          val warmUpResult = serial(warmUpCommands)(asyncCommandHandler(module).execute)
+          val warmUpResult = serial(warmUpCommands)(commandApi.commandHandler.execute)
           whenReady(warmUpResult) { results =>
             val firstFailure = results.find(_.isLeft)
             firstFailure shouldBe empty withClue ": Failure on warm up commands"
 
-            validateState(stateProjection(module).lastSnapshot().futureValue)
+            validateState(commandApi.atomicProjection.lastSnapshot().futureValue)
 
             forAll(generator.generateSingleCommands) {
               command: D#Command =>
                 commandsHistory = command :: commandsHistory
                 withClue(s"CommandsHistory: $commandsHistory \n") {
 
-                  val resultsFuture = asyncCommandHandler(module).execute(command)
+                  val resultsFuture = commandApi.commandHandler.execute(command)
 
                   whenReady(resultsFuture) { results =>
                     withClue(s"last command result:$results \n") {
 
                       results shouldBe \/-
-                      validateState(stateProjection(module).lastSnapshot().futureValue)
-                      postCommandValidation(stateProjection(module).lastSnapshot().futureValue, command)
+                      validateState(commandApi.atomicProjection.lastSnapshot().futureValue)
+                      postCommandValidation(commandApi.atomicProjection.lastSnapshot().futureValue, command)
                     }
                   }
                 }
@@ -124,28 +133,28 @@ trait GeneratedCommandSpecification[D <: DomainSpecification, M <: AbstractAppli
 
   it should "Run duplicated events without exceptions and with valid state" in {
     forAll(genModule) {
-      module: M =>
-        val generator = buildGenerator(stateProjection(module))
+      commandApi: DomainCommandApi[D] =>
+        val generator = buildGenerator(commandApi.atomicProjection)
         val warmUpCommands = generator.generateWarmUpCommands.sample.get
         var commandsHistory = warmUpCommands
-        val warmUpResult = serial(warmUpCommands)(asyncCommandHandler(module).execute)
+        val warmUpResult = serial(warmUpCommands)(commandApi.commandHandler.execute)
         whenReady(warmUpResult) { results =>
           val firstFailure = results.find(_.isLeft)
           firstFailure shouldBe empty withClue ": Failure on warm up commands"
 
-          validateState(stateProjection(module).lastSnapshot().futureValue)
+          validateState(commandApi.atomicProjection.lastSnapshot().futureValue)
 
           forAll(generator.generateSingleCommands) {
             command: D#Command =>
-              def executeSingleCommand(): Unit = {
-                val resultsFuture = asyncCommandHandler(module).execute(command)
-                whenReady(resultsFuture) { results =>
-                  withClue(s"last command result:$results \n") {
-                    validateState(stateProjection(module).lastSnapshot().futureValue)
-                    postCommandValidation(stateProjection(module).lastSnapshot().futureValue, command)
+                def executeSingleCommand(): Unit = {
+                  val resultsFuture = commandApi.commandHandler.execute(command)
+                  whenReady(resultsFuture) { results =>
+                    withClue(s"last command result:$results \n") {
+                      validateState(commandApi.atomicProjection.lastSnapshot().futureValue)
+                      postCommandValidation(commandApi.atomicProjection.lastSnapshot().futureValue, command)
+                    }
                   }
                 }
-              }
               // Execute two times the same command
               commandsHistory = command :: commandsHistory
               withClue(s"CommandsHistory: $commandsHistory \n") {
@@ -166,6 +175,5 @@ trait CommandGenerator[C] extends ScalaFutures {
   def generateSingleCommands: Gen[C]
 
   def generateWarmUpCommands: Gen[List[C]]
-
 
 }

@@ -29,39 +29,20 @@ package eu.pmsoft.mcomponents.model.user.session.mins
 import eu.pmsoft.domain.model._
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel.CommandResultConfirmed
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
 import eu.pmsoft.mcomponents.minstance.ReqResDataModel
 import eu.pmsoft.mcomponents.model.user.registry.mins._
 import eu.pmsoft.mcomponents.model.user.session._
-import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, Mocked}
+import eu.pmsoft.mcomponents.test.{ BaseEventSourceComponentTestSpec, Mocked }
 
 import scala.concurrent.Future
 
-class UserServiceComponentInstanceTest extends BaseEventSourceSpec {
+class UserServiceComponentInstanceTest extends BaseEventSourceComponentTestSpec {
 
   import ReqResDataModel._
   import UserSessionApplicationDefinitions._
 
-
   it should "return a critical error if user is not found after successful registration command" in {
     //given
-    val userSessionStateMock = new OrderedEventStoreView[UserSessionSSOState] {
-      override def atLeastOn(storeVersion: EventStoreVersion): Future[UserSessionSSOState] =
-        Future.successful(new UserSessionSSOState {
-          override def findAllUserSessions(): Stream[UserSession] = Mocked.shouldNotBeCalled
-
-          override def findUserSession(userId: UserID): Option[UserSession] = None
-
-          override def findUserSession(sessionToken: SessionToken): Option[UserSession] = Mocked.shouldNotBeCalled
-        })
-    }
-
-    val commandHandler = new AsyncEventCommandHandler[UserSessionSSODomain] {
-      override def execute(command: UserSessionCommand): Future[CommandResultConfirmed] =
-        Future.successful(
-          scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion(0L)))
-        )
-    }
     val userRegistrationMock = new UserRegistrationApi {
       override def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]] =
         Future.successful(scalaz.\/-(SearchForUserIdResponse(UserID(0L))))
@@ -69,9 +50,35 @@ class UserServiceComponentInstanceTest extends BaseEventSourceSpec {
       override def registerUser(registrationRequest: RegisterUserRequest): Future[RequestResult[RegisterUserResponse]] = Mocked.shouldNotBeCalled
     }
 
-    val configuration = EventSourcingConfiguration(scala.concurrent.ExecutionContext.global,LocalBindingInfrastructure.create())
-    implicit val eventSourceExecutionContext = EventSourceExecutionContextProvider.create()(configuration)
-    val dispatcher = new UserServiceComponentInstance(userRegistrationMock, commandHandler, userSessionStateMock)
+    implicit val executionContext = scala.concurrent.ExecutionContext.global
+
+    val commandApi: DomainCommandApi[UserSessionSSODomain] = new DomainCommandApi[UserSessionSSODomain] {
+      override def commandHandler: AsyncEventCommandHandler[UserSessionSSODomain] = new AsyncEventCommandHandler[UserSessionSSODomain] {
+        override def execute(command: UserSessionCommand): Future[CommandResultConfirmed] =
+          Future.successful(
+            scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion(0L)))
+          )
+      }
+
+      override def atomicProjection: VersionedEventStoreView[UserSessionAggregate, UserSessionSSOState] =
+        new VersionedEventStoreView[UserSessionAggregate, UserSessionSSOState] {
+          override def projection(transactionScope: Set[UserSessionAggregate]): Future[VersionedProjection[UserSessionAggregate, UserSessionSSOState]] = Mocked.shouldNotBeCalled
+
+          override def lastSnapshot(): Future[UserSessionSSOState] = Mocked.shouldNotBeCalled
+
+          override def atLeastOn(storeVersion: EventStoreVersion): Future[UserSessionSSOState] =
+            Future.successful(new UserSessionSSOState {
+              override def findAllUserSessions(): Stream[UserSession] = Mocked.shouldNotBeCalled
+
+              override def findUserSession(userId: UserID): Option[UserSession] = None
+
+              override def findUserSession(sessionToken: SessionToken): Option[UserSession] = Mocked.shouldNotBeCalled
+            })
+
+        }
+    }
+
+    val dispatcher = new UserServiceComponentInstance(userRegistrationMock, commandApi)
 
     //when
     val result = dispatcher.loginUser(UserLoginRequest(UserLogin("any"), UserPassword("any"))).futureValue

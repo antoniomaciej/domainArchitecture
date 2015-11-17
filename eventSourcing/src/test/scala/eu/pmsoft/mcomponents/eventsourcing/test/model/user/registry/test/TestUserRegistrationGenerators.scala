@@ -31,8 +31,7 @@ import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry._
 import eu.pmsoft.mcomponents.test.CommandGenerator
 import org.scalacheck._
 
-class TestUserRegistrationGenerators(val state: AtomicEventStoreView[TheTestState]) extends
-CommandGenerator[TheTestCommand] {
+class TestUserRegistrationGenerators(val state: AtomicEventStoreView[TheTestState]) extends CommandGenerator[TheTestCommand] {
   override def generateSingleCommands: Gen[TheTestCommand] = oneOrTwo
 
   override def generateWarmUpCommands: Gen[List[TheTestCommand]] = Gen.nonEmptyListOf(oneOrTwo)

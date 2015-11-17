@@ -26,14 +26,13 @@
 
 package eu.pmsoft.mcomponents.model.user.session.mins
 
-import com.softwaremill.macwire._
-import eu.pmsoft.domain.model.{UserID, UserSession}
+import eu.pmsoft.domain.model.{ UserID, UserSession }
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.minstance.{MicroComponent, MicroComponentContract, MicroComponentModel}
-import eu.pmsoft.mcomponents.model.user.registry.mins.{SearchForUserIdRequest, UserRegistrationApi}
+import eu.pmsoft.mcomponents.minstance.{ MicroComponent, MicroComponentContract, MicroComponentModel }
+import eu.pmsoft.mcomponents.model.user.registry.mins.{ SearchForUserIdRequest, UserRegistrationApi }
 import eu.pmsoft.mcomponents.model.user.session._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scalaz._
 import scalaz.std.scalaFuture._
 
@@ -43,61 +42,37 @@ trait UserSessionComponent extends MicroComponent[UserSessionApi] {
 
   def userRegistrationService: Future[UserRegistrationApi]
 
-  def application: UserSessionApplication
-
-  final implicit def executionContext: ExecutionContext = application.executionContext
+  def application: DomainCommandApi[UserSessionSSODomain]
 
   override lazy val app: Future[UserSessionApi] = for {
     userRegistrationRef <- userRegistrationService
-  } yield new UserSessionInternalInjector {
-
-      override lazy val userRegistration: UserRegistrationApi = userRegistrationRef
-
-      override lazy val module: UserSessionApplication = application
-    }.app
+  } yield new UserServiceComponentInstance(userRegistrationRef, application)
 
 }
 
-trait UserSessionInternalInjector {
-  def userRegistration: UserRegistrationApi
-
-  def module: UserSessionApplication
-
-  private implicit lazy val eventSourceExecutionContext = module.eventSourceExecutionContext
-
-  lazy val commandHandler = module.commandHandler
-  lazy val projection: OrderedEventStoreView[UserSessionSSOState] = module.atomicProjection
-  lazy val app = wire[UserServiceComponentInstance]
-
-}
-
-
-class UserServiceComponentInstance(val userRegistration: UserRegistrationApi,
-                                   val commandHandler: AsyncEventCommandHandler[UserSessionSSODomain],
-                                   val userSessionProjection: OrderedEventStoreView[UserSessionSSOState])
-                                  (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
-  extends UserSessionApi with EventSourceExecutionContextProvided {
+class UserServiceComponentInstance(
+  val userRegistration:  UserRegistrationApi,
+  val sessionCommandApi: DomainCommandApi[UserSessionSSODomain]
+)(implicit val executionContext: ExecutionContext)
+    extends UserSessionApi {
 
   import UserSessionApplicationDefinitions._
   import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
 
   override def loginUser(loginRequest: UserLoginRequest): Future[RequestResult[UserLoginResponse]] = (for {
     userIdRes <- EitherT(userRegistration.findRegisteredUser(SearchForUserIdRequest(loginRequest.login, loginRequest.passwordHash)))
-    cmdResult <- EitherT(commandHandler.execute(CreateUserSession(userIdRes.userId)).map(_.asResponse))
+    cmdResult <- EitherT(sessionCommandApi.commandHandler.execute(CreateUserSession(userIdRes.userId)).map(_.asResponse))
     userSession <- EitherT(findUserSession(cmdResult, userIdRes.userId))
     res <- EitherT(createResponseFromSession(userSession))
   } yield res).run
 
-  def findUserSession(cmdResult: EventSourceCommandConfirmation, userId: UserID):
-  Future[RequestResult[UserSession]] = userSessionProjection
-    .atLeastOn(cmdResult.storeVersion).map { state =>
+  def findUserSession(cmdResult: EventSourceCommandConfirmation, userId: UserID): Future[RequestResult[UserSession]] = sessionCommandApi.atomicProjection.atLeastOn(cmdResult.storeVersion).map { state =>
     state.findUserSession(userId) match {
       case Some(session) => \/-(session)
-      case None => -\/(UserSessionModel.criticalSessionNotFoundAfterSuccessCommand.toResponseError)
+      case None          => -\/(UserSessionModel.criticalSessionNotFoundAfterSuccessCommand.toResponseError)
     }
   }
 
-  def createResponseFromSession(userSession: UserSession):
-  Future[RequestResult[UserLoginResponse]] = Future.successful(\/-(UserLoginResponse(userSession.sessionToken)))
+  def createResponseFromSession(userSession: UserSession): Future[RequestResult[UserLoginResponse]] = Future.successful(\/-(UserLoginResponse(userSession.sessionToken)))
 
 }

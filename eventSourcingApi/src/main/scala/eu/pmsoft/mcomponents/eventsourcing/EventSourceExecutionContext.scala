@@ -25,26 +25,16 @@
 
 package eu.pmsoft.mcomponents.eventsourcing
 
-import eu.pmsoft.mcomponents.eventsourcing.inmemory.EventStoreWithProjectionInMemoryLogic
-
 import scala.concurrent.ExecutionContext
-import scalaz.\/
 
-trait EventSourceExecutionContext extends EventSourceInitializationCycle {
-  def registerProjection[E,A](projection: EventSourceProjection[E], eventStoreReference: EventStoreReference[E,A])
+trait EventSourceExecutionContext extends EventSourcingConfigurationContext {
 
-  //TODO make event store creation independent of the backend implementation
-  def createInMemoryEventStore[E, A, S](logic: EventStoreWithProjectionInMemoryLogic[E, A, S],
-                                        identificationInfo: EventStoreIdentification[E, A]): EventStore[E, A] with VersionedEventStoreView[A, S]
-
-  def componentsSummary(): ExecutionContextStatus
-
-  def executionContext: ExecutionContext
+  def assemblyDomainApplication[D <: DomainSpecification](domainImplementation: DomainModule[D]): DomainCommandApi[D]
 
 }
 
-trait EventSourceInitializationCycle {
-  //TODO refactor initialization model, check akka, spray examples and look for different approaches
-  def init: Seq[EventSourceInitializationError] \/ EventSourceInitializationConfirmation
+trait EventSourcingConfigurationContext {
+  implicit def configuration: EventSourcingConfiguration
 }
 
+case class EventSourcingConfiguration(executionContext: ExecutionContext, bindingInfrastructure: BindingInfrastructure)

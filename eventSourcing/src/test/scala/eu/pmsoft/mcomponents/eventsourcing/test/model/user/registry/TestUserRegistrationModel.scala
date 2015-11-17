@@ -31,8 +31,10 @@ import eu.pmsoft.mcomponents.eventsourcing._
 object TestUserRegistrationModel {
 
   val invalidErrorCode = 4001L
-  val invalidErrorTest = EventSourceModelError("error message",
-    EventSourceCommandError(invalidErrorCode))
+  val invalidErrorTest = EventSourceModelError(
+    "error message",
+    EventSourceCommandError(invalidErrorCode)
+  )
 
 }
 
@@ -52,7 +54,6 @@ sealed trait TheTestCommand
 case class TestCommandOne() extends TheTestCommand
 
 case class TestCommandTwo(createTwo: Boolean) extends TheTestCommand
-
 
 //UserRegistrationModel events
 

@@ -25,7 +25,7 @@
 
 package eu.pmsoft.mcomponents.eventsourcing.atomic
 
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{ FlatSpec, Matchers }
 import org.typelevel.scalatest.DisjunctionMatchers
 
 import scalaz.\/
@@ -42,7 +42,8 @@ class AtomicTest extends FlatSpec with Matchers with DisjunctionMatchers {
   def checkCondition(state: AtomicTestState): String \/ AtomicTestState =
     if (state.passCondition) {
       scalaz.\/-(state)
-    } else {
+    }
+    else {
       scalaz.-\/("condition not passed")
     }
 

@@ -25,7 +25,10 @@
  */
 package eu.pmsoft.mcomponents.minstance
 
-import scala.concurrent.{ExecutionContext, Future}
+import com.typesafe.scalalogging.LazyLogging
+import eu.pmsoft.mcomponents.eventsourcing.atomic.Atomic
+
+import scala.concurrent.{ Promise, ExecutionContext, Future }
 import scalaz._
 
 object MicroComponentRegistry {
@@ -42,9 +45,74 @@ trait MicroComponentRegistry {
 
   def lookupComponent[T](apiContract: ApiContract[T]): Future[MicroComponentRegistrationError \/ T]
 
-  /**
-   * Initialize all instance registered.
-   * @return the number of registered instances
+  /** Initialize all instance registered.
+   *  @return the number of registered instances
    */
   def initializeInstances(): Future[MicroComponentRegistrationError \/ MicroComponentRegistrationConfirmation]
 }
+
+//Internal implementation
+private class LocalMicroComponentRegistry(implicit val executionContext: ExecutionContext) extends MicroComponentRegistry with LazyLogging {
+
+  val initializedState = Promise[InMemoryComponentRegistry]()
+  private val stateRef = Atomic(InMemoryComponentRegistry())
+
+  override def registerComponent(component: MicroComponent[_]): MicroComponentRegistrationError \/ ComponentRegistered = {
+      def addToRegistry(state: InMemoryComponentRegistry): InMemoryComponentRegistry = state.copy(components = state.components + component)
+      def checkThatCanRegister(state: InMemoryComponentRegistry): MicroComponentRegistrationError \/ InMemoryComponentRegistry = {
+        if (state.initialized) {
+          -\/(RegisterAlreadyInitialized())
+        }
+        else {
+          state.components.find(_.providedContact == component.providedContact) match {
+            case Some(existing) => -\/(ComponentAlreadyRegistered())
+            case None           => \/-(state)
+          }
+        }
+      }
+    stateRef.updateAndGetWithCondition(addToRegistry, checkThatCanRegister)
+      .map(state => ComponentRegistered())
+  }
+
+  override def initializeInstances(): Future[MicroComponentRegistrationError \/ MicroComponentRegistrationConfirmation] = {
+      def checkThatNotInitialized(state: InMemoryComponentRegistry): MicroComponentRegistrationError \/ InMemoryComponentRegistry =
+        if (state.initialized) {
+          -\/(RegisterAlreadyInitialized())
+        }
+        else if (state.components.isEmpty) {
+          -\/(RegisterIsEmpty())
+        }
+        else {
+          \/-(state)
+        }
+
+      def init(state: InMemoryComponentRegistry): InMemoryComponentRegistry = state.copy(initialized = true)
+
+    stateRef.updateAndGetWithCondition(init, checkThatNotInitialized) match {
+      case e @ -\/(_) => Future.successful(e)
+      case i @ \/-(initState) =>
+        logger.info(s"initializingState $initState")
+        initializedState.success(initState)
+        Future.successful(\/-(ComponentRegistered()))
+    }
+  }
+
+  override def bindComponent[T](apiContract: ApiContract[T]): Future[T] =
+    lookupComponent(apiContract).flatMap {
+      case -\/(error)    => Future.failed(new IllegalStateException(s"$error"))
+      case \/-(instance) => Future.successful(instance)
+    }
+
+  override def lookupComponent[T](apiContract: ApiContract[T]): Future[MicroComponentRegistrationError \/ T] = {
+    initializedState.future.flatMap(extractDependency(_, apiContract))
+  }
+
+  private def extractDependency[T](state: InMemoryComponentRegistry, apiContract: ApiContract[T]): Future[MicroComponentRegistrationError \/ T] = {
+    state.components.find(_.providedContact.contract == apiContract) match {
+      case Some(component) => component.app.map(instance => \/-(instance.asInstanceOf[T]))
+      case None            => Future.successful(-\/(ComponentNotFound(s"component for api $apiContract not found")))
+    }
+  }
+}
+
+private case class InMemoryComponentRegistry(components: Set[MicroComponent[_]] = Set(), initialized: Boolean = false)

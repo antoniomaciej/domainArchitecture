@@ -26,10 +26,10 @@
 
 package eu.pmsoft.mcomponents.model.security.password.reset.mins
 
-import eu.pmsoft.domain.model.{SessionToken, UserID, UserPassword}
+import eu.pmsoft.domain.model.{ SessionToken, UserID, UserPassword }
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandConfirmation
 import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
-import eu.pmsoft.mcomponents.minstance.{ApiVersion, RequestErrorDomain}
+import eu.pmsoft.mcomponents.minstance.{ ApiVersion, RequestErrorDomain }
 import eu.pmsoft.mcomponents.model.security.password.reset.PasswordResetToken
 
 import scala.concurrent.Future
@@ -42,10 +42,6 @@ object PasswordResetApiDefinitions {
   implicit val requestErrorDomain = RequestErrorDomain("PasswordResetDomain")
 }
 
-object PasswordResetApiModel {
-
-}
-
 trait PasswordResetApi {
 
   def initializeFlow(req: InitializePasswordResetFlowRequest): Future[RequestResult[InitializePasswordResetFlowResponse]]
@@ -55,8 +51,10 @@ trait PasswordResetApi {
   def confirmFlow(req: ConfirmPasswordResetFlowRequest): Future[RequestResult[ConfirmPasswordResetFlowResponse]]
 }
 
-case class InitializePasswordResetFlowRequest(userId: UserID,
-                                              sessionToken: SessionToken)
+case class InitializePasswordResetFlowRequest(
+  userId:       UserID,
+  sessionToken: SessionToken
+)
 
 // reset password should be send by a email from a projection
 case class InitializePasswordResetFlowResponse(confirmation: EventSourceCommandConfirmation)
@@ -65,9 +63,11 @@ case class CancelPasswordResetFlowRequest(passwordResetToken: PasswordResetToken
 
 case class CancelPasswordResetFlowResponse(confirmation: EventSourceCommandConfirmation)
 
-case class ConfirmPasswordResetFlowRequest(sessionToken: SessionToken,
-                                           passwordResetToken: PasswordResetToken,
-                                           newPassword: UserPassword)
+case class ConfirmPasswordResetFlowRequest(
+  sessionToken:       SessionToken,
+  passwordResetToken: PasswordResetToken,
+  newPassword:        UserPassword
+)
 
 case class ConfirmPasswordResetFlowResponse(confirmation: EventSourceCommandConfirmation)
 

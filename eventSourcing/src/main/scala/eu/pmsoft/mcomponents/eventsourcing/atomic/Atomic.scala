@@ -29,7 +29,7 @@ package eu.pmsoft.mcomponents.eventsourcing.atomic
 import java.util.concurrent.atomic._
 
 import scala.annotation.tailrec
-import scalaz.{-\/, \/, \/-}
+import scalaz.{ -\/, \/, \/- }
 
 object Atomic {
   def apply[A](init: A): Atomic[A] = new Impl(new AtomicReference(init))
@@ -42,12 +42,13 @@ object Atomic {
     @tailrec private final def transformWithConditionImpl[E](fun: A => A, cond: A => E \/ A): E \/ A = {
       val v = state.get()
       cond(v) match {
-        case e@ -\/(_) => e
+        case e @ -\/(_) => e
         case \/-(valid) =>
           val newValue = fun(v)
           if (state.compareAndSet(v, newValue)) {
             \/-(newValue)
-          } else {
+          }
+          else {
             transformWithConditionImpl(fun, cond)
           }
       }

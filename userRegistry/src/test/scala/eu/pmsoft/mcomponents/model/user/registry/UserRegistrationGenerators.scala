@@ -37,8 +37,7 @@ import org.scalacheck._
 
 import scala.language.postfixOps
 
-class UserRegistrationGenerators(val state: AtomicEventStoreView[UserRegistrationState]) extends
-CommandGenerator[UserRegistrationCommand] {
+class UserRegistrationGenerators(val state: AtomicEventStoreView[UserRegistrationState]) extends CommandGenerator[UserRegistrationCommand] {
   private lazy val minimumTextLen = 5
   private lazy val maximumTextLen = 30
   private lazy val passwordLen = 20
@@ -87,6 +86,6 @@ CommandGenerator[UserRegistrationCommand] {
 
   override def generateWarmUpCommands: Gen[List[UserRegistrationCommand]] = Gen.nonEmptyListOf[UserRegistrationCommand](genAddUser)
 
-  private def nextUserName = "userName" + userNameCounter.getAndAdd(1)
+  private def nextUserName = s"userName${userNameCounter.getAndAdd(1)}"
 
 }

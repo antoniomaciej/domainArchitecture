@@ -25,10 +25,16 @@
 
 package eu.pmsoft.domain.model.deploy
 
-import spray.http.MediaTypes
+import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
+import eu.pmsoft.mcomponents.minstance.ResponseError
+import spray.http._
+import spray.httpx.marshalling.ToResponseMarshaller
 import spray.routing
 import spray.routing._
+import spray.util.LoggingContext
 
+import scala.concurrent.{ ExecutionContext, Future }
+import scalaz.{ -\/, \/- }
 
 trait ApiDirectives {
   self: Directives =>
@@ -36,6 +42,19 @@ trait ApiDirectives {
   def postJson(route: Route): routing.Route = post {
     respondWithMediaType(MediaTypes.`application/json`) {
       route
+    }
+  }
+
+  implicit def exceptionHandler(implicit log: LoggingContext): ExceptionHandler = ExceptionHandler {
+    case e: Exception => complete(StatusCodes.InternalServerError)
+  }
+
+  def completeApi[T](requestResultFuture: Future[RequestResult[T]])(implicit marshaller: ToResponseMarshaller[T], executionContext: ExecutionContext, errorMarshaller: ToResponseMarshaller[(StatusCode, ResponseError)]): Route = {
+    onSuccess(requestResultFuture) { requestResult =>
+      requestResult match {
+        case -\/(a) => complete(StatusCodes.BadRequest, a)
+        case \/-(b) => complete(b)
+      }
     }
   }
 

@@ -27,9 +27,8 @@
 package eu.pmsoft.mcomponents.test
 
 object Mocked {
-  /**
-   * Mark a method that should not be called during test execution
-   * @return
+  /** Mark a method that should not be called during test execution
+   *  @return
    */
   def shouldNotBeCalled: Nothing = throw new NotImplementedError
 }

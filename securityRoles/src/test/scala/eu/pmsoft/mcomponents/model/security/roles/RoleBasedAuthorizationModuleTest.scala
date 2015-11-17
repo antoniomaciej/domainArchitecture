@@ -26,69 +26,57 @@
 
 package eu.pmsoft.mcomponents.model.security.roles
 
-import eu.pmsoft.mcomponents.eventsourcing.{AsyncEventCommandHandler, AtomicEventStoreView}
-import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
+import eu.pmsoft.mcomponents.eventsourcing.{ AsyncEventCommandHandler, AtomicEventStoreView }
+import eu.pmsoft.mcomponents.test.{ BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
 
-abstract class RoleBasedAuthorizationModuleTest extends BaseEventSourceSpec with
-GeneratedCommandSpecification[RoleBasedAuthorizationDomain, RoleBasedAuthorizationApplication] {
-
-  def infrastructure(): RoleBasedAuthorizationEventStoreInfrastructure
-
-  override def createEmptyModule(): RoleBasedAuthorizationApplication = RoleBasedAuthorizationApplication.createApplication(infrastructure())
-
-  override def asyncCommandHandler(contextModule: RoleBasedAuthorizationApplication)
-  : AsyncEventCommandHandler[RoleBasedAuthorizationDomain] = contextModule.commandHandler
-
-  override def stateProjection(contextModule: RoleBasedAuthorizationApplication)
-  : AtomicEventStoreView[RoleBasedAuthorizationState] = contextModule.atomicProjection
+abstract class RoleBasedAuthorizationModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[RoleBasedAuthorizationDomain] {
 
   it should "not allow empty roles names" in {
-    val module = createEmptyModule()
-    asyncCommandHandler(module).execute(CreateRole("")).futureValue should be(-\/)
+    val module = createEmptyDomainModel()
+    module.commandHandler.execute(CreateRole("")).futureValue should be(-\/)
   }
   it should "not allow duplicated roles names" in {
-    val module = createEmptyModule()
-    asyncCommandHandler(module).execute(CreateRole("correct")).futureValue should be(\/-)
-    asyncCommandHandler(module).execute(CreateRole("correct")).futureValue should be(-\/)
+    val module = createEmptyDomainModel()
+    module.commandHandler.execute(CreateRole("correct")).futureValue should be(\/-)
+    module.commandHandler.execute(CreateRole("correct")).futureValue should be(-\/)
   }
   it should "fail when adding not existing permissions to role" in {
-    val module = createEmptyModule()
-    asyncCommandHandler(module).execute(CreateRole("test")).futureValue shouldBe \/-
-    val roleId = stateProjection(module).lastSnapshot().futureValue.allRoleId.head
-    asyncCommandHandler(module).execute(AddPermissionsToRole(Set(PermissionID(0L)), roleId)).futureValue shouldBe -\/
+    val module = createEmptyDomainModel()
+    module.commandHandler.execute(CreateRole("test")).futureValue shouldBe \/-
+    val roleId = module.atomicProjection.lastSnapshot().futureValue.allRoleId.head
+    module.commandHandler.execute(AddPermissionsToRole(Set(PermissionID(0L)), roleId)).futureValue shouldBe -\/
 
   }
   it should "not allow empty permission descriptions" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(CreatePermission("name", ""))) { result =>
+    val module = createEmptyDomainModel()
+    whenReady(module.commandHandler.execute(CreatePermission("name", ""))) { result =>
       result should be(-\/)
     }
   }
   it should "not allow empty permission names" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(CreatePermission("", "description"))) { result =>
+    val module = createEmptyDomainModel()
+    whenReady(module.commandHandler.execute(CreatePermission("", "description"))) { result =>
       result should be(-\/)
     }
   }
   it should "ignore deletion of permission X role relations that do not exists" in {
-    val module = createEmptyModule()
+    val module = createEmptyDomainModel()
     val initCommands = List(CreateRole("name"), CreatePermission("code", "description"))
 
-    val warmUpResult = serial(initCommands)(asyncCommandHandler(module).execute)
+    val warmUpResult = serial(initCommands)(module.commandHandler.execute)
     whenReady(warmUpResult) { initResults =>
       val firstFailure = initResults.find(_.isLeft)
       firstFailure shouldBe empty withClue ": Failure on warm up commands"
-      val permissionId = stateProjection(module).lastSnapshot().futureValue.allPermissionID.head
-      val roleId = stateProjection(module).lastSnapshot().futureValue.allRoleId.head
-      whenReady(asyncCommandHandler(module).execute(DeletePermissionsFromRole(Set(permissionId), roleId))) { result =>
+      val permissionId = module.atomicProjection.lastSnapshot().futureValue.allPermissionID.head
+      val roleId = module.atomicProjection.lastSnapshot().futureValue.allRoleId.head
+      whenReady(module.commandHandler.execute(DeletePermissionsFromRole(Set(permissionId), roleId))) { result =>
         result should be(\/-)
       }
     }
 
   }
 
-  override def buildGenerator(state: AtomicEventStoreView[RoleBasedAuthorizationState])
-  : CommandGenerator[RoleBasedAuthorizationModelCommand] = new RoleBasedAuthorizationGenerators(state)
+  override def buildGenerator(state: AtomicEventStoreView[RoleBasedAuthorizationState]): CommandGenerator[RoleBasedAuthorizationModelCommand] = new RoleBasedAuthorizationGenerators(state)
 
   override def postCommandValidation(state: RoleBasedAuthorizationState, command: RoleBasedAuthorizationModelCommand): Unit = command match {
 
@@ -111,20 +99,16 @@ GeneratedCommandSpecification[RoleBasedAuthorizationDomain, RoleBasedAuthorizati
     case AddPermissionsToRole(permissionSetId, roleID) =>
       withClue(": after add permission to role, the relation do not contains the role") {
         permissionSetId.foreach(permissionId =>
-          state.getPermissionsForRole(roleID) should contain(permissionId)
-        )
+          state.getPermissionsForRole(roleID) should contain(permissionId))
         permissionSetId.foreach(permissionId =>
-          assert(state.isPermissionInRole(roleID, permissionId))
-        )
+          assert(state.isPermissionInRole(roleID, permissionId)))
       }
     case DeletePermissionsFromRole(permissionSetId, roleID) =>
       withClue(": after delete of permission to role, the relation is not updated") {
         permissionSetId.foreach(permissionId =>
-          state.getPermissionsForRole(roleID) should not contain permissionId
-        )
+          state.getPermissionsForRole(roleID) should not contain permissionId)
         permissionSetId.foreach(permissionId =>
-          assert(!state.isPermissionInRole(roleID, permissionId))
-        )
+          assert(!state.isPermissionInRole(roleID, permissionId)))
 
       }
     case UpdatePermissionDescription(permissionId, description) =>
@@ -159,6 +143,5 @@ GeneratedCommandSpecification[RoleBasedAuthorizationDomain, RoleBasedAuthorizati
       .filter(permissionId => !state.permissionIdExists(permissionId))
       .toList
   }
-
 
 }

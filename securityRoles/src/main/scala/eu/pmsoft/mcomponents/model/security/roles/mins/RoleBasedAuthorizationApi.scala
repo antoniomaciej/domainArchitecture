@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.model.security.roles.mins
 
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.minstance.{ApiVersion, ReqResDataModel, RequestErrorDomain}
+import eu.pmsoft.mcomponents.minstance.{ ApiVersion, ReqResDataModel, RequestErrorDomain }
 import eu.pmsoft.mcomponents.model.security.roles._
 
 import scala.concurrent.Future
@@ -46,13 +46,16 @@ import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
 object RoleBasedAuthorizationRequestModel {
 
   val permissionNotFoundAfterInsertErrorCode = 6001L
-  val permissionNotFoundAfterInsert = EventSourceModelError("After a successful insert the permission is not accessible.",
-    EventSourceCommandError(permissionNotFoundAfterInsertErrorCode))
+  val permissionNotFoundAfterInsert = EventSourceModelError(
+    "After a successful insert the permission is not accessible.",
+    EventSourceCommandError(permissionNotFoundAfterInsertErrorCode)
+  )
 
   val roleNotFoundAfterInsertErrorCode = 6002L
-  val roleNotFoundAfterInsert = EventSourceModelError("After a successful insert the permission is not accessible.",
-    EventSourceCommandError(roleNotFoundAfterInsertErrorCode))
-
+  val roleNotFoundAfterInsert = EventSourceModelError(
+    "After a successful insert the permission is not accessible.",
+    EventSourceCommandError(roleNotFoundAfterInsertErrorCode)
+  )
 
 }
 
@@ -88,7 +91,6 @@ case class AddPermissionsToRoleResponse()
 case class DeletePermissionsFromRoleRequest(roleID: RoleID, permissionsToDelete: Set[PermissionID])
 
 case class DeletePermissionsFromRoleResponse()
-
 
 //Role
 case class CreateRoleRequest(roleName: String)

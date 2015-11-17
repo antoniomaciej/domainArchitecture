@@ -26,9 +26,9 @@
 
 package eu.pmsoft.mcomponents.minstance.components
 
-import eu.pmsoft.mcomponents.minstance.{ApiVersion, MicroComponent, MicroComponentContract, MicroComponentModel}
+import eu.pmsoft.mcomponents.minstance.{ ApiVersion, MicroComponent, MicroComponentContract, MicroComponentModel }
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
 trait FrontendComponent extends MicroComponent[FrontendComponentApi] {
   implicit def executionContext: ExecutionContext

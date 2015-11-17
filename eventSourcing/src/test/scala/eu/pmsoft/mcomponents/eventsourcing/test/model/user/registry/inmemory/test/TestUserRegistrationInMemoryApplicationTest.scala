@@ -26,11 +26,12 @@
 
 package eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.inmemory.test
 
+import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.{ EventStoreIdentification, EventStore }
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
-import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.TheTestInfrastructure
+import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry._
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.inmemory._
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.test.TestUserRegistrationModuleTest
-import eu.pmsoft.mcomponents.eventsourcing.{BindingInfrastructure, EventSourceExecutionContext, EventSourceExecutionContextProvider}
 
 class TestUserRegistrationInMemoryApplicationTest extends TestUserRegistrationModuleTest {
 
@@ -38,5 +39,5 @@ class TestUserRegistrationInMemoryApplicationTest extends TestUserRegistrationMo
 
   implicit def eventSourceExecutionContext: EventSourceExecutionContext = EventSourceExecutionContextProvider.create()
 
-  override def infrastructure(): TheTestInfrastructure = TestUserRegistrationInMemoryApplication.infrastructure()
+  override def implementationModule(): DomainModule[TheTestDomain] = new TestUserRegistrationInMemoryDomainModule()
 }

@@ -25,7 +25,7 @@
 
 package eu.pmsoft.mcomponents.eventsourcing.inmemory
 
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{ FlatSpec, Matchers }
 
 class LocalBindingInfrastructureTest extends FlatSpec with Matchers {
 

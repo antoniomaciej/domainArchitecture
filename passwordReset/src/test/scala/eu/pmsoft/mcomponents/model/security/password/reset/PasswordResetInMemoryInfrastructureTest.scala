@@ -26,9 +26,9 @@
 
 package eu.pmsoft.mcomponents.model.security.password.reset
 
+import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
-import eu.pmsoft.mcomponents.eventsourcing.{BindingInfrastructure, EventSourceExecutionContext, EventSourceExecutionContextProvider}
-import eu.pmsoft.mcomponents.model.security.password.reset.inmemory.PasswordResetInMemoryInfrastructure
+import eu.pmsoft.mcomponents.model.security.password.reset.inmemory.PasswordResetDomainModule
 
 class PasswordResetInMemoryInfrastructureTest extends PasswordResetModuleTest {
 
@@ -36,5 +36,5 @@ class PasswordResetInMemoryInfrastructureTest extends PasswordResetModuleTest {
 
   implicit def eventSourceExecutionContext: EventSourceExecutionContext = EventSourceExecutionContextProvider.create()
 
-  override def infrastructure(): PasswordResetApplicationInfrastructure = PasswordResetInMemoryInfrastructure.createInfrastructure()
+  override def implementationModule(): DomainModule[PasswordResetDomain] = new PasswordResetDomainModule()
 }

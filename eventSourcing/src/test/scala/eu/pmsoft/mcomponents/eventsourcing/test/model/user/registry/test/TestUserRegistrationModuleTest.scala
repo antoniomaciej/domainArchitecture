@@ -28,35 +28,32 @@ package eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry.test
 
 import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
 import eu.pmsoft.mcomponents.eventsourcing.test.model.user.registry._
-import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
+import eu.pmsoft.mcomponents.test.{ BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
 
-abstract class TestUserRegistrationModuleTest extends BaseEventSourceSpec with
-GeneratedCommandSpecification[TheTestDomain, TestUserRegistrationApplication] {
-
-  def infrastructure(): TheTestInfrastructure
+abstract class TestUserRegistrationModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[TheTestDomain] {
 
   override def buildGenerator(state: AtomicEventStoreView[TheTestState]): CommandGenerator[TheTestCommand] =
     new TestUserRegistrationGenerators(state)
-
-  override def createEmptyModule(): TestUserRegistrationApplication = new TestUserRegistrationApplication(infrastructure())
 
   override def postCommandValidation(state: TheTestState, command: TheTestCommand): Unit = command match {
     case TestCommandOne() => state.lastAdded() should be(1)
     case TestCommandTwo(createTwo) => if (createTwo) {
       state.lastAdded() should be(2)
-    } else {
+    }
+    else {
       state.lastAdded() should be(3)
     }
   }
 
   override def validateState(state: TheTestState): Unit = {
-    def countState(expected: Char)(counter: Int, char: Char) = {
-      if (char == expected) {
-        counter + 1
-      } else {
-        counter
+      def countState(expected: Char)(counter: Int, char: Char) = {
+        if (char == expected) {
+          counter + 1
+        }
+        else {
+          counter
+        }
       }
-    }
     state.history().foldLeft(0)(countState('1')) should be(state.countOne())
     state.history().foldLeft(0)(countState('2')) should be(state.countTwo())
     state.history().foldLeft(0)(countState('3')) should be(state.countThree())

@@ -28,30 +28,27 @@ package eu.pmsoft.mcomponents.model.security.password.reset
 
 import eu.pmsoft.domain.model._
 import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
-import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
+import eu.pmsoft.mcomponents.test.{ BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
 
-abstract class PasswordResetModuleTest extends BaseEventSourceSpec with
-GeneratedCommandSpecification[PasswordResetDomain, PasswordResetApplication] {
-
-  def infrastructure(): PasswordResetApplicationInfrastructure
+abstract class PasswordResetModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[PasswordResetDomain] {
 
   it should "reject invalid session tokens" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(InitializePasswordResetFlow(UserID(0), SessionToken("")))) { result =>
+    val module = createEmptyDomainModel()
+    whenReady(module.commandHandler.execute(InitializePasswordResetFlow(UserID(0), SessionToken("")))) { result =>
       result should be(-\/)
     }
   }
 
   it should "reject second password reset confirmation" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module)
+    val module = createEmptyDomainModel()
+    whenReady(module.commandHandler
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = stateProjection(module).lastSnapshot().futureValue.findFlowByUserID(UserID(0)).get
-      whenReady(asyncCommandHandler(module)
+      val process = module.atomicProjection.lastSnapshot().futureValue.findFlowByUserID(UserID(0)).get
+      whenReady(module.commandHandler
         .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("newPassword")))) { confirmationResult =>
         confirmationResult should be(\/-)
-        whenReady(asyncCommandHandler(module)
+        whenReady(module.commandHandler
           .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("newPassword2")))) { confirmationResultTwo =>
           confirmationResultTwo should be(-\/)
         }
@@ -60,41 +57,38 @@ GeneratedCommandSpecification[PasswordResetDomain, PasswordResetApplication] {
   }
 
   it should "reject confirmations with tokens pairs not matching security verification" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module)
+    val module = createEmptyDomainModel()
+    whenReady(module.commandHandler
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = stateProjection(module).lastSnapshot().futureValue.findFlowByUserID(UserID(0)).get
-      whenReady(asyncCommandHandler(module)
+      val process = module.atomicProjection.lastSnapshot().futureValue.findFlowByUserID(UserID(0)).get
+      whenReady(module.commandHandler
         .execute(
           ConfirmPasswordResetFlow(
             SessionToken("validButNotMatching"),
             process.passwordResetToken,
-            UserPassword("newPassword")))
-      ) { confirmationResult =>
+            UserPassword("newPassword")
+          )
+        )) { confirmationResult =>
         confirmationResult should be(-\/)
       }
     }
   }
 
   it should "reject confirmation with invalid password" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module)
+    val module = createEmptyDomainModel()
+    whenReady(module.commandHandler
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = stateProjection(module).lastSnapshot().futureValue.findFlowByUserID(UserID(0)).get
-      whenReady(asyncCommandHandler(module)
+      val process = module.atomicProjection.lastSnapshot().futureValue.findFlowByUserID(UserID(0)).get
+      whenReady(module.commandHandler
         .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("")))) { confirmationResult =>
         confirmationResult should be(-\/)
       }
     }
   }
 
-
-  override def createEmptyModule(): PasswordResetApplication = PasswordResetApplication.createApplication(infrastructure())
-
-  override def buildGenerator(state: AtomicEventStoreView[PasswordResetModelState]):
-  CommandGenerator[PasswordResetModelCommand] = new PasswordResetModelGenerator(state)
+  override def buildGenerator(state: AtomicEventStoreView[PasswordResetModelState]): CommandGenerator[PasswordResetModelCommand] = new PasswordResetModelGenerator(state)
 
   override def postCommandValidation(state: PasswordResetModelState, command: PasswordResetModelCommand): Unit =
     command match {

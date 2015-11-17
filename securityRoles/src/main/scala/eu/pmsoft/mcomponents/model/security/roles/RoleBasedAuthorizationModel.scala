@@ -28,40 +28,49 @@ package eu.pmsoft.mcomponents.model.security.roles
 
 import eu.pmsoft.mcomponents.eventsourcing._
 
-
 object RoleBasedAuthorizationModel {
 
   val invalidRoleNameErrorCode = 2001L
-  val invalidRoleName = EventSourceModelError("invalid role name",
-    EventSourceCommandError(invalidRoleNameErrorCode))
+  val invalidRoleName = EventSourceModelError(
+    "invalid role name",
+    EventSourceCommandError(invalidRoleNameErrorCode)
+  )
 
   val invalidRoleDescriptionErrorCode = 2002L
-  val invalidRoleDescription = EventSourceModelError("invalid role description",
-    EventSourceCommandError(invalidRoleDescriptionErrorCode))
+  val invalidRoleDescription = EventSourceModelError(
+    "invalid role description",
+    EventSourceCommandError(invalidRoleDescriptionErrorCode)
+  )
 
   val notExistingRoleIDErrorCode = 2003L
-  val notExistingRoleID = EventSourceModelError("roleId to not exist",
-    EventSourceCommandError(notExistingRoleIDErrorCode))
+  val notExistingRoleID = EventSourceModelError(
+    "roleId to not exist",
+    EventSourceCommandError(notExistingRoleIDErrorCode)
+  )
 
   val notExistingPermissionIDErrorCode = 2004L
-  val notExistingPermissionID = EventSourceModelError("permissionID do not exist",
-    EventSourceCommandError(notExistingPermissionIDErrorCode))
+  val notExistingPermissionID = EventSourceModelError(
+    "permissionID do not exist",
+    EventSourceCommandError(notExistingPermissionIDErrorCode)
+  )
 
   val invalidNameErrorCode = 2005L
-  val invalidName = EventSourceModelError("invalid name",
-    EventSourceCommandError(invalidNameErrorCode))
+  val invalidName = EventSourceModelError(
+    "invalid name",
+    EventSourceCommandError(invalidNameErrorCode)
+  )
 
   val nameForRoleUsedErrorCode = 2006L
-  val nameForRoleUsed = EventSourceModelError("a role with this name already exist",
-    EventSourceCommandError(nameForRoleUsedErrorCode))
-
+  val nameForRoleUsed = EventSourceModelError(
+    "a role with this name already exist",
+    EventSourceCommandError(nameForRoleUsedErrorCode)
+  )
 
 }
 
 case class RoleID(val id: Long) extends AnyVal
 
 case class PermissionID(val id: Long) extends AnyVal
-
 
 //Aggregated
 sealed trait RoleBasedAuthorizationAggregate
@@ -124,5 +133,4 @@ case class AccessPermissionDeleted(permissionId: PermissionID) extends RoleBased
 case class PermissionInRoleAdded(permissionId: PermissionID, roleID: RoleID) extends RoleBasedAuthorizationEvent
 
 case class PermissionInRoleDeleted(permissionId: PermissionID, roleID: RoleID) extends RoleBasedAuthorizationEvent
-
 

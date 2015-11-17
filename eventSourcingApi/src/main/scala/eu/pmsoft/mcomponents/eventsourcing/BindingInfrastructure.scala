@@ -25,12 +25,8 @@
 
 package eu.pmsoft.mcomponents.eventsourcing
 
-//TODO select implementation on base of the classpath information like slf4j???
-//TODO make inmemory implementation for test using  1) akka, 2) rxjava
-//TODO make network implementation in netty?? akka streams?? spray??
-//TODO abstract broker based implementation??
-//TODO make rabbitmq implementation??
-//TODO make zeromq implementation??
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreLoad
+
 trait BindingInfrastructure {
 
   def bind[E](projection: EventSourceProjection[E], eventStoreLoad: EventStoreLoad[E])

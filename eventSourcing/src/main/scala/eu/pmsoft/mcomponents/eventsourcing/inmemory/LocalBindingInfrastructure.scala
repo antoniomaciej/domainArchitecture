@@ -26,8 +26,9 @@
 package eu.pmsoft.mcomponents.eventsourcing.inmemory
 
 import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreLoad
 
-import scala.util.{Failure, Success}
+import scala.util.{ Failure, Success }
 
 object LocalBindingInfrastructure {
   def create(): BindingInfrastructure = new LocalBindingInfrastructure()
@@ -39,16 +40,16 @@ class LocalBindingInfrastructure extends BindingInfrastructure {
   }
 }
 
-
-class LocalProjectionEventStoreBinding[E](val projection: EventSourceProjection[E],
-                                          val eventStoreLoad: EventStoreLoad[E]) {
+class LocalProjectionEventStoreBinding[E](
+    val projection:     EventSourceProjection[E],
+    val eventStoreLoad: EventStoreLoad[E]
+) {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
   def startBinding(): Unit = {
-    def pushLoop(from: EventStoreVersion): Unit = {
-      eventStoreLoad.loadEvents(EventStoreRange(from,None)).onComplete {
-        _ match {
+      def pushLoop(from: EventStoreVersion): Unit = {
+        eventStoreLoad.loadEvents(EventStoreRange(from, None)).onComplete {
           case Failure(exception) => ???
           case Success(value) => {
             val last = value.foldLeft(from)((version, event) => {
@@ -59,16 +60,13 @@ class LocalProjectionEventStoreBinding[E](val projection: EventSourceProjection[
           }
         }
       }
-    }
 
     pushLoop(projection.lastSnapshotVersion().add(1))
-
 
   }
 
   def handleEvent(event: E, version: EventStoreVersion): Unit = {
     projection.projectEvent(event, version)
   }
-
 
 }

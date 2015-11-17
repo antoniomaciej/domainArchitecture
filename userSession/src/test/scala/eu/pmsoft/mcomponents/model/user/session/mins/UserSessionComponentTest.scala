@@ -26,30 +26,32 @@
 
 package eu.pmsoft.mcomponents.model.user.session.mins
 
-import eu.pmsoft.domain.model.{UserLogin, UserPassword}
+import eu.pmsoft.domain.model.{ UserLogin, UserPassword }
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
-import eu.pmsoft.mcomponents.eventsourcing.{EventSourceExecutionContextProvider, EventSourcingConfiguration}
-import eu.pmsoft.mcomponents.minstance.{ApiContract, MicroComponentRegistry}
-import eu.pmsoft.mcomponents.model.user.registry.UserRegistrationApplication
-import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationInMemoryInfrastructure
+import eu.pmsoft.mcomponents.eventsourcing.{ DomainCommandApi, EventSourceExecutionContextProvider, EventSourcingConfiguration }
+import eu.pmsoft.mcomponents.minstance.{ ApiContract, MicroComponentRegistry }
+import eu.pmsoft.mcomponents.model.user.registry.UserRegistrationDomain
+import eu.pmsoft.mcomponents.model.user.registry.inmemory.UserRegistrationDomainModule
 import eu.pmsoft.mcomponents.model.user.registry.mins._
-import eu.pmsoft.mcomponents.model.user.session.UserSessionApplication
-import eu.pmsoft.mcomponents.model.user.session.inmemory.UserSessionInMemoryInfrastructure
-import eu.pmsoft.mcomponents.test.BaseEventSourceSpec
+import eu.pmsoft.mcomponents.model.user.session.UserSessionSSODomain
+import eu.pmsoft.mcomponents.model.user.session.inmemory.UserSessionDomainModule
+import eu.pmsoft.mcomponents.test.BaseEventSourceComponentTestSpec
 
 import scala.concurrent.Future
 
-class UserSessionComponentTest extends BaseEventSourceSpec {
+class UserSessionComponentTest extends BaseEventSourceComponentTestSpec {
 
   it should "create sessions for a registered user" in {
 
     val registry = componentsInitialization()
 
     val userSessionApi = registry.bindComponent(
-      ApiContract(classOf[UserSessionApi])).futureValue
+      ApiContract(classOf[UserSessionApi])
+    ).futureValue
 
     val userRegistrationApi = registry.bindComponent(
-      ApiContract(classOf[UserRegistrationApi])).futureValue
+      ApiContract(classOf[UserRegistrationApi])
+    ).futureValue
 
     userSessionApi.loginUser(UserLoginRequest(
       UserLogin("testLogin@valid.com"), UserPassword("testPassword")
@@ -68,23 +70,24 @@ class UserSessionComponentTest extends BaseEventSourceSpec {
   def componentsInitialization(): MicroComponentRegistry = {
     import scala.concurrent.ExecutionContext.Implicits.global
     val registry = MicroComponentRegistry.create()
-    implicit val configuration = EventSourcingConfiguration(global,LocalBindingInfrastructure.create())
+    implicit val configurationProvided = EventSourcingConfiguration(global, LocalBindingInfrastructure.create())
     implicit val eventSourceExecutionContext = EventSourceExecutionContextProvider.create()
+    val sessionCommandApi: DomainCommandApi[UserSessionSSODomain] = eventSourceExecutionContext.assemblyDomainApplication(new UserSessionDomainModule())
+    val userCommandApi: DomainCommandApi[UserRegistrationDomain] = eventSourceExecutionContext.assemblyDomainApplication(new UserRegistrationDomainModule())
 
     val userSession = new UserSessionComponent {
       override lazy val userRegistrationService: Future[UserRegistrationApi] =
         registry.bindComponent(ApiContract(classOf[UserRegistrationApi]))
 
-      override lazy val application: UserSessionApplication =
-        UserSessionApplication.createApplication(UserSessionInMemoryInfrastructure.createInfrastructure())
+      override def application: DomainCommandApi[UserSessionSSODomain] = sessionCommandApi
 
+      override implicit def configuration: EventSourcingConfiguration = configurationProvided
     }
 
     val userRegistration = new UserRegistrationComponent {
+      override def application: DomainCommandApi[UserRegistrationDomain] = userCommandApi
 
-      override lazy val application: UserRegistrationApplication =
-        UserRegistrationApplication.createApplication(UserRegistrationInMemoryInfrastructure.createInfrastructure())
-
+      override implicit def configuration: EventSourcingConfiguration = configurationProvided
     }
 
     registry.registerComponent(userSession)

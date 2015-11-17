@@ -25,10 +25,10 @@
 
 package eu.pmsoft.mcomponents.minstance.components
 
-import scala.concurrent.ExecutionContext
+import eu.pmsoft.mcomponents.eventsourcing.EventSourcingConfiguration
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
 
 trait ImplicitProvidedExecutionContextForTest {
-
-  implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.global
-
+  implicit def configuration: EventSourcingConfiguration =
+    new EventSourcingConfiguration(scala.concurrent.ExecutionContext.global, LocalBindingInfrastructure.create())
 }

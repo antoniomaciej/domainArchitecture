@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.model.user.registry.inmemory
 
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
-import eu.pmsoft.mcomponents.eventsourcing.{BindingInfrastructure, EventSourceExecutionContext, EventSourceExecutionContextProvider}
+import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.model.user.registry._
 
 class UserRegistrationInMemoryInfrastructureTest extends UserRegistrationModuleTest {
@@ -36,5 +36,5 @@ class UserRegistrationInMemoryInfrastructureTest extends UserRegistrationModuleT
 
   implicit def eventSourceExecutionContext: EventSourceExecutionContext = EventSourceExecutionContextProvider.create()
 
-  override def infrastructure(): UserRegistrationApplicationInfrastructure = UserRegistrationInMemoryInfrastructure.createInfrastructure()
+  override def implementationModule(): DomainModule[UserRegistrationDomain] = new UserRegistrationDomainModule()
 }

@@ -26,7 +26,7 @@
 package eu.pmsoft.mcomponents.minstance
 
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.test.BaseEventSourceSpec
+import eu.pmsoft.mcomponents.test.{ BaseEventSourceComponentTestSpec, BaseEventSourceSpec }
 
 object TestServiceDomain {
   implicit val testDomain = RequestErrorDomain("testDomain")
@@ -35,7 +35,7 @@ object TestServiceDomain {
 import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
 import eu.pmsoft.mcomponents.minstance.TestServiceDomain._
 
-class ReqResDataModelTest extends BaseEventSourceSpec {
+class ReqResDataModelTest extends BaseEventSourceComponentTestSpec {
 
   it should "translate command results to responses - command failure case " in {
     //given

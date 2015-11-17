@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.model.user.session
 
 import eu.pmsoft.domain.model.UserID
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{ FlatSpec, Matchers }
 import org.typelevel.scalatest.DisjunctionMatchers
 
 class UserSessionExtractorsTest extends FlatSpec with Matchers with DisjunctionMatchers {

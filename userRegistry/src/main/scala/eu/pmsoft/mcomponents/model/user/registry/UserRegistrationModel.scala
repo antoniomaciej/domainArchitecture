@@ -26,37 +26,46 @@
 
 package eu.pmsoft.mcomponents.model.user.registry
 
-import eu.pmsoft.domain.model.{UserID, UserLogin, UserPassword}
+import eu.pmsoft.domain.model.{ UserID, UserLogin, UserPassword }
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.model.security.roles.RoleID
 
 object UserRegistrationModel {
 
   val invalidLoginErrorCode = 4001L
-  val invalidLogin = EventSourceModelError("invalid login",
-    EventSourceCommandError(invalidLoginErrorCode))
+  val invalidLogin = EventSourceModelError(
+    "invalid login",
+    EventSourceCommandError(invalidLoginErrorCode)
+  )
 
   val invalidEmailErrorCode = 4002L
-  val invalidEmail = EventSourceModelError("invalid email",
-    EventSourceCommandError(invalidEmailErrorCode))
+  val invalidEmail = EventSourceModelError(
+    "invalid email",
+    EventSourceCommandError(invalidEmailErrorCode)
+  )
 
   val notExistingUserIDErrorCode = 4003L
-  val notExistingUserID = EventSourceModelError("not existing userId",
-    EventSourceCommandError(notExistingUserIDErrorCode))
+  val notExistingUserID = EventSourceModelError(
+    "not existing userId",
+    EventSourceCommandError(notExistingUserIDErrorCode)
+  )
 
   val loginAndPasswordMismatchErrorCode = 4004L
-  val loginAndPasswordMismatch = EventSourceModelError("login and password do not match",
-    EventSourceCommandError(loginAndPasswordMismatchErrorCode))
+  val loginAndPasswordMismatch = EventSourceModelError(
+    "login and password do not match",
+    EventSourceCommandError(loginAndPasswordMismatchErrorCode)
+  )
 }
-
 
 //Model entities
 
-case class User(uid: UserID,
-                login: UserLogin,
-                passwordHash: UserPassword,
-                activeStatus: Boolean = false,
-                roles: Set[RoleID] = Set())
+case class User(
+  uid:          UserID,
+  login:        UserLogin,
+  passwordHash: UserPassword,
+  activeStatus: Boolean      = false,
+  roles:        Set[RoleID]  = Set()
+)
 
 //Aggregate
 sealed trait UserRegistrationAggregate
@@ -77,14 +86,15 @@ case class UpdateActiveUserStatus(uid: UserID, active: Boolean) extends UserRegi
 
 case class UpdateUserRoles(uid: UserID, roles: Set[RoleID]) extends UserRegistrationCommand
 
-
 //UserRegistrationModel events
 
 sealed trait UserRegistrationEvent
 
-case class UserCreated(uid: UserID,
-                       login: UserLogin,
-                       passwordHash: UserPassword) extends UserRegistrationEvent
+case class UserCreated(
+  uid:          UserID,
+  login:        UserLogin,
+  passwordHash: UserPassword
+) extends UserRegistrationEvent
 
 case class UserPasswordUpdated(userId: UserID, passwordHash: UserPassword) extends UserRegistrationEvent
 

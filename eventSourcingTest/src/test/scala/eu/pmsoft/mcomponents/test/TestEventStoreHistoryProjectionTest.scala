@@ -26,7 +26,7 @@
 package eu.pmsoft.mcomponents.test
 
 import eu.pmsoft.mcomponents.eventsourcing.EventStoreVersion
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{ FlatSpec, Matchers }
 
 class TestEventStoreHistoryProjectionTest extends FlatSpec with Matchers {
 
@@ -43,33 +43,37 @@ class TestEventStoreHistoryProjectionTest extends FlatSpec with Matchers {
   it should "record the projected events" in {
     //given
     val projection = new TestEventStoreHistoryProjection[TestEvent]()
-    def projectTestEvent(nr: Long): Unit = {
-      projection.projectEvent(TestEvent(nr), EventStoreVersion(nr))
-      projection.lastSnapshotVersion() should be(projection.version())
-    }
+      def projectTestEvent(nr: Long): Unit = {
+        projection.projectEvent(TestEvent(nr), EventStoreVersion(nr))
+        projection.lastSnapshotVersion() should be(projection.version())
+      }
+    val nrOfEventsToTest = 20
     //when
-    (1 to 20).foreach(index => projectTestEvent(index.toLong))
+    (1 to nrOfEventsToTest).foreach(index => projectTestEvent(index.toLong))
     //then
-    projection.events() should be((1 to 20).reverse.map(index => TestEvent(index.toLong)).toList)
-    projection.version() should be(EventStoreVersion(20L))
+    projection.events() should be((1 to nrOfEventsToTest).reverse.map(index => TestEvent(index.toLong)).toList)
+    projection.version() should be(EventStoreVersion(nrOfEventsToTest))
     projection.lastSnapshotVersion() should be(projection.version())
   }
   it should "throw exception when event version do not match" in {
     //given
     val projection = new TestEventStoreHistoryProjection[TestEvent]()
-    def projectTestEvent(nr: Long): Unit = {
-      projection.projectEvent(TestEvent(nr), EventStoreVersion(nr))
-      projection.lastSnapshotVersion() should be(projection.version())
-    }
+      def projectTestEvent(nr: Long): Unit = {
+        projection.projectEvent(TestEvent(nr), EventStoreVersion(nr))
+        projection.lastSnapshotVersion() should be(projection.version())
+      }
+    val nrOfEventsToTest = 20
     //and
-    (1 to 20).foreach(index => projectTestEvent(index.toLong))
+    (1 to nrOfEventsToTest).foreach(index => projectTestEvent(index.toLong))
     //when a incorrect event store version is projected, then throw IllegalStateException
     intercept[IllegalStateException] {
-      projectTestEvent(22L)
+      projectTestEvent(nrOfEventsToTest + 2)
+    }
+    intercept[IllegalStateException] {
+      projectTestEvent(nrOfEventsToTest - 2)
     }
   }
 }
 
 case class TestEvent(nr: Long)
-
 

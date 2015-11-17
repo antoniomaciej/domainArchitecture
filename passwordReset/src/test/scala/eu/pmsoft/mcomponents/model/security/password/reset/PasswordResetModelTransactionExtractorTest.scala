@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.model.security.password.reset
 
 import eu.pmsoft.domain.model._
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{ FlatSpec, Matchers }
 import org.typelevel.scalatest.DisjunctionMatchers
 
 class PasswordResetModelTransactionExtractorTest extends FlatSpec with Matchers with DisjunctionMatchers {

@@ -29,11 +29,21 @@ import akka.actor._
 import akka.io.IO
 import akka.pattern.ask
 import akka.util.Timeout
-import eu.pmsoft.mcomponents.model.security.password.reset.mins.PasswordResetApi
+import eu.pmsoft.domain.model.{ SessionToken, UserID }
+import eu.pmsoft.mcomponents.eventsourcing.{ EventStoreVersion, EventSourceCommandConfirmation }
+import eu.pmsoft.mcomponents.minstance.ReqResDataModel.RequestResult
+import eu.pmsoft.mcomponents.model.security.password.reset.mins._
+import eu.pmsoft.mcomponents.model.security.roles.mins.RoleBasedAuthorizationApi
+import eu.pmsoft.mcomponents.model.user.registry.mins.UserRegistrationApi
+import eu.pmsoft.mcomponents.model.user.session.mins.UserSessionApi
+import eu.pmsoft.mcomponents.test.Mocked
+import org.scalamock.MockFactoryBase
+import org.scalamock.scalatest.MockFactory
 import spray.can.Http
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ Future, ExecutionContext }
 import scala.concurrent.duration._
+import scalaz.\/-
 
 object Boot extends App {
   implicit val system = ActorSystem("deploymentApp")
@@ -49,7 +59,18 @@ class BindActorToRouting extends Actor with UserManagementService {
 
   override implicit def actorRefFactory: ActorContext = context
 
-  override lazy val api: PasswordResetApi = new MockApi()
+  override implicit def executionContext: ExecutionContext = context.dispatcher.prepare()
 
-  override implicit def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
+  override lazy val passwordResetApi: PasswordResetApi = new PasswordResetApi {
+    override def initializeFlow(req: InitializePasswordResetFlowRequest): Future[RequestResult[InitializePasswordResetFlowResponse]] =
+      Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion(0L)))))
+
+    override def cancelFlow(req: CancelPasswordResetFlowRequest): Future[RequestResult[CancelPasswordResetFlowResponse]] =
+      Mocked.shouldNotBeCalled
+
+    override def confirmFlow(req: ConfirmPasswordResetFlowRequest): Future[RequestResult[ConfirmPasswordResetFlowResponse]] =
+      Mocked.shouldNotBeCalled
+  }
+
 }
+

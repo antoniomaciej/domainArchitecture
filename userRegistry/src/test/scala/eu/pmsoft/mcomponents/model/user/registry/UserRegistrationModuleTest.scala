@@ -28,17 +28,14 @@ package eu.pmsoft.mcomponents.model.user.registry
 
 import eu.pmsoft.domain.model._
 import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
-import eu.pmsoft.mcomponents.test.{BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification}
+import eu.pmsoft.mcomponents.test.{ BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
 
-abstract class UserRegistrationModuleTest extends BaseEventSourceSpec with
-GeneratedCommandSpecification[UserRegistrationDomain, UserRegistrationApplication] {
-
-  def infrastructure(): UserRegistrationApplicationInfrastructure
+abstract class UserRegistrationModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[UserRegistrationDomain] {
 
   it should "not allow duplicated login names" in {
-    val module = createEmptyModule()
+    val module = createEmptyDomainModel()
     val commands = List(AddUser(UserLogin("test@mail.com"), UserPassword("password")), AddUser(UserLogin("test@mail.com"), UserPassword("anyOther")))
-    val serialExecutions = serial(commands)(asyncCommandHandler(module).execute)
+    val serialExecutions = serial(commands)(module.commandHandler.execute)
     whenReady(serialExecutions) { results =>
       results.size should be(2)
       results.head should be(\/-) withClue ": The first command should success"
@@ -47,37 +44,33 @@ GeneratedCommandSpecification[UserRegistrationDomain, UserRegistrationApplicatio
   }
 
   it should "not allow invalid emails as user login" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(AddUser(UserLogin("invalidEmail"), UserPassword("password")))) { result =>
+    val module = createEmptyDomainModel()
+    whenReady(module.commandHandler.execute(AddUser(UserLogin("invalidEmail"), UserPassword("password")))) { result =>
       result should be(-\/) withClue ": Validation should reject the AddUser command"
     }
   }
 
   it should "not allow empty emails as user login" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(AddUser(UserLogin(""), UserPassword("password")))) { result =>
+    val module = createEmptyDomainModel()
+    whenReady(module.commandHandler.execute(AddUser(UserLogin(""), UserPassword("password")))) { result =>
       result should be(-\/) withClue ": Validation should reject the AddUser command"
     }
   }
 
   it should "fail to update password for not existing users" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(UpdateUserPassword(UserID(0), UserPassword("AnyPassword")))) { result =>
+    val module = createEmptyDomainModel()
+    whenReady(module.commandHandler.execute(UpdateUserPassword(UserID(0), UserPassword("AnyPassword")))) { result =>
       result should be(-\/) withClue ": Validation should reject the non existing userID"
     }
   }
   it should "fail to update active status for not existing users" in {
-    val module = createEmptyModule()
-    whenReady(asyncCommandHandler(module).execute(UpdateActiveUserStatus(UserID(0), active = false))) { result =>
+    val module = createEmptyDomainModel()
+    whenReady(module.commandHandler.execute(UpdateActiveUserStatus(UserID(0), active = false))) { result =>
       result should be(-\/) withClue ": Validation should reject the non existing userID"
     }
   }
 
-
-  override def createEmptyModule(): UserRegistrationApplication = UserRegistrationApplication.createApplication(infrastructure())
-
-  override def buildGenerator(state: AtomicEventStoreView[UserRegistrationState]):
-  CommandGenerator[UserRegistrationCommand] = new UserRegistrationGenerators(state)
+  override def buildGenerator(state: AtomicEventStoreView[UserRegistrationState]): CommandGenerator[UserRegistrationCommand] = new UserRegistrationGenerators(state)
 
   def postCommandValidation(state: UserRegistrationState, command: UserRegistrationCommand): Unit = command match {
     case UpdateActiveUserStatus(uid, active) =>
@@ -121,6 +114,5 @@ GeneratedCommandSpecification[UserRegistrationDomain, UserRegistrationApplicatio
       .filter(user => state.loginExists(user.login))
       .toList
   }
-
 
 }

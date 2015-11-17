@@ -27,8 +27,8 @@
 package eu.pmsoft.mcomponents.model.security.roles
 
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
-import eu.pmsoft.mcomponents.eventsourcing.{BindingInfrastructure, EventSourceExecutionContext, EventSourceExecutionContextProvider}
-import eu.pmsoft.mcomponents.model.security.roles.inmemory.RoleBasedAuthorizationInMemoryInfrastructure
+import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.model.security.roles.inmemory.RoleBasedAuthorizationDomainModule
 
 class RoleBasedAuthorizationInMemoryInfrastructureTest extends RoleBasedAuthorizationModuleTest {
 
@@ -36,6 +36,5 @@ class RoleBasedAuthorizationInMemoryInfrastructureTest extends RoleBasedAuthoriz
 
   implicit def eventSourceExecutionContext: EventSourceExecutionContext = EventSourceExecutionContextProvider.create()
 
-  override def infrastructure(): RoleBasedAuthorizationEventStoreInfrastructure =
-    RoleBasedAuthorizationInMemoryInfrastructure.createInfrastructure()
+  override def implementationModule(): DomainModule[RoleBasedAuthorizationDomain] = new RoleBasedAuthorizationDomainModule()
 }

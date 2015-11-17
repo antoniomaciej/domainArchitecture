@@ -26,12 +26,11 @@
 
 package eu.pmsoft.mcomponents.minstance.components
 
-import eu.pmsoft.mcomponents.minstance.{ApiVersion, MicroComponent, MicroComponentContract, MicroComponentModel}
+import eu.pmsoft.mcomponents.minstance.{ ApiVersion, MicroComponent, MicroComponentContract, MicroComponentModel }
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
 trait BackendComponent extends MicroComponent[BackendComponentApi] {
-  implicit def executionContext: ExecutionContext
 
   override lazy val app = for {
     one <- processOne

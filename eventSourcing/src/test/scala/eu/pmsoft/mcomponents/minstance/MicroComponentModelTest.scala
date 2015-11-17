@@ -27,25 +27,24 @@
 package eu.pmsoft.mcomponents.minstance
 
 import eu.pmsoft.mcomponents.minstance.components._
-import eu.pmsoft.mcomponents.test.BaseEventSourceSpec
+import eu.pmsoft.mcomponents.test.{ BaseEventSourceComponentTestSpec, BaseEventSourceSpec }
 
 import scala.concurrent.Future
 
-/**
- * Test to try to find a dsl definition for components with dependencies.
+/** Test to try to find a dsl definition for components with dependencies.
  *
- * Components are:
- * FrontendComponent
- * BackendComponent
- * ProcessOneComponent
- * ProcessTwoComponent
+ *  Components are:
+ *  FrontendComponent
+ *  BackendComponent
+ *  ProcessOneComponent
+ *  ProcessTwoComponent
  *
  *
- * Dependencies are (A <- B : B is injected in A)
- * FrontendComponent <- BackendComponent
- * BackendComponent <- (ProcessOneComponent,ProcessTwoComponent)
+ *  Dependencies are (A <- B : B is injected in A)
+ *  FrontendComponent <- BackendComponent
+ *  BackendComponent <- (ProcessOneComponent,ProcessTwoComponent)
  */
-class MicroComponentModelTest extends BaseEventSourceSpec {
+class MicroComponentModelTest extends BaseEventSourceComponentTestSpec {
 
   it should "create components and inject dependencies as futures" in {
     import scala.concurrent.ExecutionContext.Implicits.global

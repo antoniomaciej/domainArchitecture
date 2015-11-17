@@ -26,13 +26,12 @@
 
 package eu.pmsoft.mcomponents.model.user.registry.mins
 
-import eu.pmsoft.domain.model.{UserID, UserLogin, UserPassword}
+import eu.pmsoft.domain.model.{ UserID, UserLogin, UserPassword }
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
 import eu.pmsoft.mcomponents.minstance._
 
 import scala.concurrent.Future
-
 
 object UserRegistrationApi {
   val version = ApiVersion(0, 0, 1)
@@ -51,16 +50,19 @@ trait UserRegistrationApi {
 
 }
 
-
 object UserRegistrationRequestModel {
 
   val userIdNotFoundErrorCode = 5001L
-  val userIdNotFound = EventSourceModelError("UserId not found. Login and password do not match any user.",
-    EventSourceCommandError(userIdNotFoundErrorCode))
+  val userIdNotFound = EventSourceModelError(
+    "UserId not found. Login and password do not match any user.",
+    EventSourceCommandError(userIdNotFoundErrorCode)
+  )
 
   val criticalUserNotFoundAfterSuccessRegistrationErrorCode = 5101L
-  val criticalUserNotFoundAfterSuccessRegistration = EventSourceModelError("UserId not found after a success registration command.",
-    EventSourceCommandError(criticalUserNotFoundAfterSuccessRegistrationErrorCode))
+  val criticalUserNotFoundAfterSuccessRegistration = EventSourceModelError(
+    "UserId not found after a success registration command.",
+    EventSourceCommandError(criticalUserNotFoundAfterSuccessRegistrationErrorCode)
+  )
 }
 
 //TODO how to avoid pass of password on this api??

@@ -33,7 +33,7 @@ import org.scalacheck.Gen
 import org.scalacheck.Gen._
 
 class PasswordResetModelGenerator(val state: AtomicEventStoreView[PasswordResetModelState])
-  extends CommandGenerator[PasswordResetModelCommand] {
+    extends CommandGenerator[PasswordResetModelCommand] {
 
   lazy val genInitializePasswordResetFlow = for {
     userId <- genNewUserId
@@ -87,7 +87,8 @@ class PasswordResetModelGenerator(val state: AtomicEventStoreView[PasswordResetM
     Gen.oneOf(state.lastSnapshot().futureValue.getExistingProcessUserId
       .map(
         state.lastSnapshot().futureValue
-          .findFlowByUserID(_).get)
+        .findFlowByUserID(_).get
+      )
       .toSeq)
   )
 }

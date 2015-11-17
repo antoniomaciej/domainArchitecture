@@ -25,48 +25,95 @@
 
 package eu.pmsoft.mcomponents.eventsourcing
 
-import eu.pmsoft.mcomponents.eventsourcing.inmemory.{AtomicEventStoreWithProjectionInMemory, EventStoreWithProjectionInMemoryLogic}
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.AsyncEventStore
 
 import scala.concurrent.ExecutionContext
-import scalaz.{\/-, -\/, \/}
+import scalaz.{ -\/, \/, \/- }
 
 object EventSourceExecutionContextProvider {
 
   def create()(implicit configuration: EventSourcingConfiguration): EventSourceExecutionContext = new EventSourceExecutionContextImpl()
 }
 
-
 //Implementation
-
 class EventSourceExecutionContextImpl()(implicit val configuration: EventSourcingConfiguration) extends EventSourceExecutionContext {
 
-  lazy val internalRegistry = EventStoreRegistry.create()
+  override def assemblyDomainApplication[D <: DomainSpecification](domainImplementation: DomainModule[D]): DomainCommandApi[D] = new DomainApplication(domainImplementation, this)
+}
 
-  override def init: Seq[EventSourceInitializationError] \/ EventSourceInitializationConfirmation = internalRegistry.init
+trait ExecutionContextFromConfiguration {
+  self: EventSourcingConfigurationContext =>
 
-  override def executionContext: ExecutionContext = configuration.executionContext
-
-  override def componentsSummary(): ExecutionContextStatus = internalRegistry.summary()
-
-  override def createInMemoryEventStore[E, A, S](logic: EventStoreWithProjectionInMemoryLogic[E, A, S],
-                                                 identificationInfo: EventStoreIdentification[E, A]): EventStore[E, A] with VersionedEventStoreView[A, S] = {
-    val store = new AtomicEventStoreWithProjectionInMemory(logic, identificationInfo)(this)
-    internalRegistry.registerEventStore(store)
-    store
-  }
-
-  override def registerProjection[E, A](projection: EventSourceProjection[E], eventStoreReference: EventStoreReference[E, A]): Unit =
-  internalRegistry.lookupEventStoreLoad(eventStoreReference) match {
-    case -\/(a) => ???
-    case \/-(eventStoreLoad) =>configuration.bindingInfrastructure.bind(projection, eventStoreLoad)
-  }
+  final implicit lazy val executionContext: ExecutionContext = configuration.executionContext
 
 }
 
+private class DomainApplication[D <: DomainSpecification](
+  val logic:                       DomainModule[D],
+  val eventSourceExecutionContext: EventSourceExecutionContext
+)
+    extends DomainCommandApi[D] {
 
-trait EventSourceExecutionContextProvided {
+  private lazy val eventStore = logic.eventStore
 
-  def eventSourceExecutionContext: EventSourceExecutionContext
+  lazy val commandHandler: AsyncEventCommandHandler[D] = new DomainLogicAsyncEventCommandHandler[D](
+    logic.logic,
+    logic.sideEffects,
+    eventStore
+  )(eventSourceExecutionContext)
 
-  final implicit def executionContext: ExecutionContext = eventSourceExecutionContext.executionContext
+  lazy val atomicProjection: VersionedEventStoreView[D#Aggregate, D#State] = eventStore
+}
+
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
+
+import scala.concurrent.{ Future, Promise }
+import scalaz._
+import scalaz.std.scalaFuture._
+
+private final class DomainLogicAsyncEventCommandHandler[D <: DomainSpecification](
+  val logic:       DomainLogic[D],
+  val sideEffects: D#SideEffects,
+  val eventStore:  AsyncEventStore[D] with VersionedEventStoreView[D#Aggregate, D#State]
+)(implicit val eventSourceExecutionContext: EventSourceExecutionContext)
+    extends AsyncEventCommandHandler[D] with EventSourcingConfigurationContext with ExecutionContextFromConfiguration {
+
+  override implicit def configuration: EventSourcingConfiguration = eventSourceExecutionContext.configuration
+
+  private def applyCommand(command: D#Command, transactionState: VersionedProjection[D#Aggregate, D#State]) =
+    Future.successful(logic.executeCommand(command, transactionState.transactionScopeVersion)(transactionState.projection, sideEffects))
+
+  private def calculateTransactionScopeVersion(transactionScope: Set[D#Aggregate]): Future[EventSourceCommandFailure \/ VersionedProjection[D#Aggregate, D#State]] =
+    eventStore.projection(transactionScope).map(\/-(_))
+
+  private def extractLastSnapshot(): Future[EventSourceCommandFailure \/ D#State] =
+    eventStore.lastSnapshot().map(\/-(_))
+
+  final def execute(command: D#Command): Future[CommandResultConfirmed] = {
+      def singleTry(): Future[CommandResult] = {
+        (for {
+          lastSnapshot <- EitherT(extractLastSnapshot())
+          transactionScope <- EitherT(Future.successful(logic.calculateTransactionScope(command, lastSnapshot)))
+          versionedProjection <- EitherT(calculateTransactionScopeVersion(transactionScope))
+          events <- EitherT(applyCommand(command, versionedProjection))
+          confirmation <- EitherT(eventStore.persistEvents(events, versionedProjection.transactionScopeVersion))
+        } yield confirmation).run
+      }
+    val p = Promise[CommandResultConfirmed]()
+
+      def executionLoop() {
+        singleTry() onComplete {
+          case util.Failure(exception) => p.failure(exception)
+          case util.Success(value) => value match {
+            case r @ \/-(b) => p.complete(util.Success(r))
+            case -\/(a) => a match {
+              case EventSourceCommandFailed(error) => p.complete(util.Success(-\/(EventSourceCommandFailed(error))))
+              case EventSourceCommandRollback()    => executionLoop()
+            }
+          }
+        }
+      }
+    executionLoop()
+    p.future
+  }
 }

@@ -27,7 +27,6 @@ package eu.pmsoft.mcomponents.eventsourcing
 
 import scalaz.\/
 
-
 //Event store commands execution model
 
 object EventSourceCommandEventModel {
@@ -44,42 +43,40 @@ object EventSourceCommandEventModel {
 
   type CommandResultConfirmed = EventSourceCommandFailed \/ EventSourceCommandConfirmation
 
-
 }
 
-
 //Commands/Events model
-/**
- * AnyVal type to define error codes after command execution
- * @param errorCode a numeric value that uniquely define the internal error
+/** AnyVal type to define error codes after command execution
+ *  @param errorCode a numeric value that uniquely define the internal error
  */
 case class EventSourceCommandError(val errorCode: Long) extends AnyVal
 
-/**
- * Define the possible failure after a command execution
+/** Define the possible failure after a command execution
  */
 sealed trait EventSourceCommandFailure
 
-/**
- * A command failure that indicates that the command can not be executed
- * and client must notified about unsuccessful execution of command.
- * @param error code that inform about the internal failure reason.
+/** A command failure that indicates that the command can not be executed
+ *  and client must notified about unsuccessful execution of command.
+ *  @param error code that inform about the internal failure reason.
  */
 case class EventSourceCommandFailed(error: EventSourceCommandError) extends EventSourceCommandFailure
 
-/**
- * Command execution has produced a transaction rollback because of concurrent command execution.
- * Command can be re-executed in the new event store state without client notification.
+/** Command execution has produced a transaction rollback because of concurrent command execution.
+ *  Command can be re-executed in the new event store state without client notification.
  */
 case class EventSourceCommandRollback() extends EventSourceCommandFailure
 
-
 case class EventStoreVersion(val storeVersion: Long) extends AnyVal {
-  def add(delta:Long) :EventStoreVersion = EventStoreVersion(storeVersion + delta)
+  def add(delta: Long): EventStoreVersion = EventStoreVersion(storeVersion + delta)
 }
 
+/** A event range [from,to). If to is None, then the range is [from,infinity).
+ *  @param from inclusive start event number
+ *  @param to exclusive end event number
+ */
 case class EventStoreRange(from: EventStoreVersion, to: Option[EventStoreVersion]) {
   assert(from.storeVersion > 0)
+  assert(from.storeVersion <= to.getOrElse(from).storeVersion)
 }
 
 case class EventSourceCommandConfirmation(storeVersion: EventStoreVersion)

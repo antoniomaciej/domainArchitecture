@@ -25,7 +25,7 @@
 
 package eu.pmsoft.mcomponents.test
 
-import eu.pmsoft.mcomponents.eventsourcing.{EventSourceProjection, EventStoreVersion}
+import eu.pmsoft.mcomponents.eventsourcing.{ EventSourceProjection, EventStoreVersion }
 
 class TestEventStoreHistoryProjection[E] extends EventSourceProjection[E] {
 
@@ -33,7 +33,7 @@ class TestEventStoreHistoryProjection[E] extends EventSourceProjection[E] {
 
   override def projectEvent(event: E, storeVersion: EventStoreVersion): Unit = {
     if (storeVersion.storeVersion != state.version.storeVersion + 1) {
-      throw new IllegalStateException("Mismatch of event store version. State:" + state)
+      throw new IllegalStateException(s"Mismatch of event store version. State:$state")
     }
     state = state.copy(events = event :: state.events, version = storeVersion)
   }
@@ -45,6 +45,8 @@ class TestEventStoreHistoryProjection[E] extends EventSourceProjection[E] {
   def version(): EventStoreVersion = state.version
 }
 
-case class HistoryProjectionState[E](events: List[E] = List[E](),
-                                     version: EventStoreVersion = EventStoreVersion(0L))
+case class HistoryProjectionState[E](
+  events:  List[E]           = List[E](),
+  version: EventStoreVersion = EventStoreVersion(0L)
+)
 

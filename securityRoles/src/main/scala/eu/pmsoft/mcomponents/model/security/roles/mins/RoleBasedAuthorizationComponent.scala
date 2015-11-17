@@ -31,7 +31,7 @@ import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.minstance._
 import eu.pmsoft.mcomponents.model.security.roles._
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 import scalaz.Scalaz._
 import scalaz._
 
@@ -39,117 +39,95 @@ trait RoleBasedAuthorizationComponent extends MicroComponent[RoleBasedAuthorizat
   override def providedContact: MicroComponentContract[RoleBasedAuthorizationApi] =
     MicroComponentModel.contractFor(RoleBasedAuthorizationApi.version, classOf[RoleBasedAuthorizationApi])
 
-  def application: RoleBasedAuthorizationApplication
+  def application: DomainCommandApi[RoleBasedAuthorizationDomain]
 
-  override lazy val app: Future[RoleBasedAuthorizationApi] = Future.successful(new RoleBasedAuthorizationInternalInjector {
-    override def module: RoleBasedAuthorizationApplication = application
-  }.dispatcher)
+  override lazy val app: Future[RoleBasedAuthorizationApi] = Future.successful(new RoleBasedAuthorizationRequestDispatcher(application))
 }
 
-trait RoleBasedAuthorizationInternalInjector {
-  def module: RoleBasedAuthorizationApplication
-
-  private implicit lazy val eventSourceExecutionContext: EventSourceExecutionContext = module.eventSourceExecutionContext
-
-  lazy val commandHandler = module.commandHandler
-
-  lazy val projection = module.atomicProjection
-
-  lazy val dispatcher = wire[RoleBasedAuthorizationRequestDispatcher]
-
-}
-
-
-class RoleBasedAuthorizationRequestDispatcher(val commandHandler: AsyncEventCommandHandler[RoleBasedAuthorizationDomain],
-                                              val projection: AtomicEventStoreView[RoleBasedAuthorizationState])
-                                             (implicit val eventSourceExecutionContext: EventSourceExecutionContext)
-  extends RoleBasedAuthorizationApi with RoleBasedAuthorizationExtractorFromProjection with EventSourceExecutionContextProvided {
+class RoleBasedAuthorizationRequestDispatcher(val commandApi: DomainCommandApi[RoleBasedAuthorizationDomain])(implicit val executionContext: ExecutionContext)
+    extends RoleBasedAuthorizationApi with RoleBasedAuthorizationExtractorFromProjection {
 
   import ReqResDataModel._
   import RoleBasedAuthorizationDefinitions._
 
   override def createRole(req: CreateRoleRequest): Future[RequestResult[CreateRoleResponse]] = (for {
-    cmdConfirmation <- EitherT(commandHandler.execute(CreateRole(req.roleName)).map(_.asResponse))
+    cmdConfirmation <- EitherT(commandApi.commandHandler.execute(CreateRole(req.roleName)).map(_.asResponse))
     response <- EitherT(findRoleByName(cmdConfirmation, req.roleName))
   } yield response).run
 
-
   override def getRoles(req: GetRolesRequest): Future[RequestResult[GetRolesResponse]] =
-    projection.lastSnapshot().map { state =>
+    commandApi.atomicProjection.lastSnapshot().map { state =>
       \/-(
         GetRolesResponse(state.allRoleId.map(state.roleById(_).get).toSet)
       )
     }
 
   override def getPermissions(req: GetPermissionsRequest): Future[RequestResult[GetPermissionsResponse]] =
-    projection.lastSnapshot().map { state =>
+    commandApi.atomicProjection.lastSnapshot().map { state =>
       \/-(
         GetPermissionsResponse(state.allPermissionID.map(state.permissionById(_).get).toSet)
       )
     }
 
-
   override def deleteRole(req: DeleteRoleRequest): Future[RequestResult[DeleteRoleResponse]] = (for {
-    cmdConfirmation <- EitherT(commandHandler.execute(DeleteRole(req.roleID)).map(_.asResponse))
+    cmdConfirmation <- EitherT(commandApi.commandHandler.execute(DeleteRole(req.roleID)).map(_.asResponse))
   } yield DeleteRoleResponse()).run
 
   override def updateRole(req: UpdateRoleNameRequest): Future[RequestResult[UpdateRoleNameResponse]] = (for {
-    cmdConfirmation <- EitherT(commandHandler.execute(UpdateRoleName(req.roleID, req.newRoleName)).map(_.asResponse))
+    cmdConfirmation <- EitherT(commandApi.commandHandler.execute(UpdateRoleName(req.roleID, req.newRoleName)).map(_.asResponse))
   } yield UpdateRoleNameResponse()).run
 
   override def updatePermission(req: UpdatePermissionDescriptionRequest): Future[RequestResult[UpdatePermissionDescriptionResponse]] = (for {
-    cmdConfirmation <- EitherT(commandHandler.execute(UpdatePermissionDescription(req.permissionId, req.description)).map(_.asResponse))
+    cmdConfirmation <- EitherT(commandApi.commandHandler.execute(UpdatePermissionDescription(req.permissionId, req.description)).map(_.asResponse))
   } yield UpdatePermissionDescriptionResponse()).run
 
   override def getRolesPermissions(req: GetRolesPermissionsRequest): Future[RequestResult[GetRolesPermissionsResponse]] =
-    projection.lastSnapshot().map { state =>
+    commandApi.atomicProjection.lastSnapshot().map { state =>
       \/-(
         GetRolesPermissionsResponse(req.roleID.map { roleId => roleId -> state.getPermissionsForRole(roleId) }.toMap)
       )
     }
 
   override def createPermission(req: CreatePermissionRequest): Future[RequestResult[CreatePermissionResponse]] = (for {
-    cmdConfirmation <- EitherT(commandHandler.execute(CreatePermission(req.code, req.description)).map(_.asResponse))
+    cmdConfirmation <- EitherT(commandApi.commandHandler.execute(CreatePermission(req.code, req.description)).map(_.asResponse))
     response <- EitherT(findPermissionByName(cmdConfirmation, req.code))
   } yield response).run
 
-
   override def deletePermission(req: DeletePermissionRequest): Future[RequestResult[DeletePermissionResponse]] = (for {
-    cmdConfirmation <- EitherT(commandHandler.execute(DeletePermission(req.permissionId)).map(_.asResponse))
+    cmdConfirmation <- EitherT(commandApi.commandHandler.execute(DeletePermission(req.permissionId)).map(_.asResponse))
   } yield DeletePermissionResponse()).run
 
   override def addPermissionToRole(req: AddPermissionsToRoleRequest): Future[RequestResult[AddPermissionsToRoleResponse]] = (for {
-    cmdConfirmation <- EitherT(commandHandler.execute(AddPermissionsToRole(req.permissionsToAdd, req.roleID)).map(_.asResponse))
+    cmdConfirmation <- EitherT(commandApi.commandHandler.execute(AddPermissionsToRole(req.permissionsToAdd, req.roleID)).map(_.asResponse))
   } yield AddPermissionsToRoleResponse()).run
 
   override def deletePermissionFromRole(req: DeletePermissionsFromRoleRequest): Future[RequestResult[DeletePermissionsFromRoleResponse]] = (for {
-    cmdConfirmation <- EitherT(commandHandler.execute(DeletePermissionsFromRole(req.permissionsToDelete, req.roleID)).map(_.asResponse))
+    cmdConfirmation <- EitherT(commandApi.commandHandler.execute(DeletePermissionsFromRole(req.permissionsToDelete, req.roleID)).map(_.asResponse))
   } yield DeletePermissionsFromRoleResponse()).run
 }
 
 trait RoleBasedAuthorizationExtractorFromProjection {
-  self: EventSourceExecutionContextProvided =>
 
   import ReqResDataModel._
   import RoleBasedAuthorizationDefinitions._
 
-  def projection: AtomicEventStoreView[RoleBasedAuthorizationState]
+  implicit def executionContext: ExecutionContext
 
-  def findPermissionByName(cmdResult: EventSourceCommandConfirmation, code: String):
-  Future[RequestResult[CreatePermissionResponse]] =
-    projection.atLeastOn(cmdResult.storeVersion).map { state =>
+  def commandApi: DomainCommandApi[RoleBasedAuthorizationDomain]
+
+  def findPermissionByName(cmdResult: EventSourceCommandConfirmation, code: String): Future[RequestResult[CreatePermissionResponse]] =
+    commandApi.atomicProjection.atLeastOn(cmdResult.storeVersion).map { state =>
       state.permissionByCode(code) match {
         case Some(permission) => \/-(CreatePermissionResponse(permission.permissionId))
-        case None => -\/(RoleBasedAuthorizationRequestModel.permissionNotFoundAfterInsert.toResponseError)
+        case None             => -\/(RoleBasedAuthorizationRequestModel.permissionNotFoundAfterInsert.toResponseError)
       }
     }
 
-  def findRoleByName(cmdResult: EventSourceCommandConfirmation, roleName: String):
-  Future[RequestResult[CreateRoleResponse]] =
-    projection.atLeastOn(cmdResult.storeVersion).map { state =>
+  def findRoleByName(cmdResult: EventSourceCommandConfirmation, roleName: String): Future[RequestResult[CreateRoleResponse]] =
+    commandApi.atomicProjection.atLeastOn(cmdResult.storeVersion).map { state =>
       state.roleByName(roleName) match {
         case Some(role) => \/-(CreateRoleResponse(role.roleId))
-        case None => -\/(RoleBasedAuthorizationRequestModel.roleNotFoundAfterInsert.toResponseError)
+        case None       => -\/(RoleBasedAuthorizationRequestModel.roleNotFoundAfterInsert.toResponseError)
       }
     }
 }

@@ -26,34 +26,18 @@
 package eu.pmsoft.domain.model.deploy
 
 import akka.event.Logging
-import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
 import eu.pmsoft.mcomponents.model.security.password.reset.mins._
-import spray.http.StatusCodes
-import spray.httpx.marshalling.ToResponseMarshaller
 import spray.routing._
-import spray.util.LoggingContext
 
 import scala.concurrent.ExecutionContext
-import scalaz.{-\/, \/-}
 
 trait UserManagementService extends HttpService with ApiDirectives {
 
-  import JsonConfiguration._
-
-  def api: PasswordResetApi
+  def passwordResetApi: PasswordResetApi
 
   implicit def executionContext: ExecutionContext
 
-  private implicit def exceptionHandler(implicit log: LoggingContext): ExceptionHandler = ExceptionHandler {
-    case e: Exception => complete(StatusCodes.InternalServerError)
-  }
-
-  private def completeApiCall[T](requestResult: RequestResult[T])(implicit marshaller: ToResponseMarshaller[T]): StandardRoute = {
-    requestResult match {
-      case -\/(a) => complete(StatusCodes.BadRequest, a)
-      case \/-(b) => complete(b)
-    }
-  }
+  import JsonConfiguration._
 
   val routingDefinition =
     decompressRequest() {
@@ -63,27 +47,21 @@ trait UserManagementService extends HttpService with ApiDirectives {
             path("init") {
               postJson {
                 entity(as[InitializePasswordResetFlowRequest]) { init =>
-                  onSuccess(api.initializeFlow(init)) { res =>
-                    completeApiCall(res)
-                  }
+                  completeApi(passwordResetApi.initializeFlow(init))
                 }
               }
             } ~
               path("cancel") {
                 postJson {
                   entity(as[CancelPasswordResetFlowRequest]) { cancel =>
-                    onSuccess(api.cancelFlow(cancel)) { res =>
-                      completeApiCall(res)
-                    }
+                    completeApi(passwordResetApi.cancelFlow(cancel))
                   }
                 }
               } ~
               path("confirm") {
                 postJson {
                   entity(as[ConfirmPasswordResetFlowRequest]) { confirm =>
-                    onSuccess(api.confirmFlow(confirm)) { res =>
-                      completeApiCall(res)
-                    }
+                    completeApi(passwordResetApi.confirmFlow(confirm))
                   }
                 }
               }
@@ -91,5 +69,4 @@ trait UserManagementService extends HttpService with ApiDirectives {
         }
       }
     }
-
 }

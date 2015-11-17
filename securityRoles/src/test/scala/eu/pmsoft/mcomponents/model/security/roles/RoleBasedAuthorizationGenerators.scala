@@ -31,8 +31,7 @@ import eu.pmsoft.mcomponents.test.CommandGenerator
 import org.scalacheck.Gen
 import org.scalacheck.Gen._
 
-class RoleBasedAuthorizationGenerators(val state: AtomicEventStoreView[RoleBasedAuthorizationState]) extends
-CommandGenerator[RoleBasedAuthorizationModelCommand] {
+class RoleBasedAuthorizationGenerators(val state: AtomicEventStoreView[RoleBasedAuthorizationState]) extends CommandGenerator[RoleBasedAuthorizationModelCommand] {
 
   lazy val roleAndPermission = for {
     addRole <- genCreateRole

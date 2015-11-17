@@ -26,33 +26,41 @@
 
 package eu.pmsoft.mcomponents.model.user.session
 
-import eu.pmsoft.domain.model.{SessionToken, UserID}
+import eu.pmsoft.domain.model.{ SessionToken, UserID }
 import eu.pmsoft.mcomponents.eventsourcing._
 
 object UserSessionModel {
 
   val notExistingSessionForTokenErrorCode = 3001L
-  val notExistingSessionForToken = EventSourceModelError("session do not exist for the given session token",
-    EventSourceCommandError(notExistingSessionForTokenErrorCode))
+  val notExistingSessionForToken = EventSourceModelError(
+    "session do not exist for the given session token",
+    EventSourceCommandError(notExistingSessionForTokenErrorCode)
+  )
 
   val notExistingSessionForUserErrorCode = 3002L
-  val notExistingSessionForUser = EventSourceModelError("session do not exist for the given user",
-    EventSourceCommandError(notExistingSessionForUserErrorCode))
-
+  val notExistingSessionForUser = EventSourceModelError(
+    "session do not exist for the given user",
+    EventSourceCommandError(notExistingSessionForUserErrorCode)
+  )
 
   val criticalUserIdNotInTransactionScopeErrorCode = 3010L
-  val criticalUserIdNotInTransactionScope = EventSourceModelError("Critical: UserId not found in transaction scope",
-    EventSourceCommandError(criticalUserIdNotInTransactionScopeErrorCode))
+  val criticalUserIdNotInTransactionScope = EventSourceModelError(
+    "Critical: UserId not found in transaction scope",
+    EventSourceCommandError(criticalUserIdNotInTransactionScopeErrorCode)
+  )
 
   val criticalDoubleUserIdInTransactionScopeErrorCode = 3011L
-  val criticalDoubleUserIdInTransactionScope = EventSourceModelError("Critical: two or more UserId found in transaction scope",
-    EventSourceCommandError(criticalDoubleUserIdInTransactionScopeErrorCode))
+  val criticalDoubleUserIdInTransactionScope = EventSourceModelError(
+    "Critical: two or more UserId found in transaction scope",
+    EventSourceCommandError(criticalDoubleUserIdInTransactionScopeErrorCode)
+  )
 
   val criticalSessionNotFoundAfterSuccessCommandErrorCode = 3012L
-  val criticalSessionNotFoundAfterSuccessCommand = EventSourceModelError("Critical: the user session was not found after login command success",
-    EventSourceCommandError(criticalSessionNotFoundAfterSuccessCommandErrorCode))
+  val criticalSessionNotFoundAfterSuccessCommand = EventSourceModelError(
+    "Critical: the user session was not found after login command success",
+    EventSourceCommandError(criticalSessionNotFoundAfterSuccessCommandErrorCode)
+  )
 }
-
 
 //aggregate
 sealed trait UserSessionAggregate

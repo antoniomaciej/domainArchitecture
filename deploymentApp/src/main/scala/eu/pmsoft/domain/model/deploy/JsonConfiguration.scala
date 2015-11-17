@@ -25,7 +25,7 @@
 
 package eu.pmsoft.domain.model.deploy
 
-import org.json4s.{DefaultFormats, Formats}
+import org.json4s.{ DefaultFormats, Formats }
 import spray.httpx.Json4sSupport
 
 object JsonConfiguration extends Json4sSupport {
