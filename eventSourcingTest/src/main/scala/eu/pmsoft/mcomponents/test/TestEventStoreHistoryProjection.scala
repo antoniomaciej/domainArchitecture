@@ -25,13 +25,14 @@
 
 package eu.pmsoft.mcomponents.test
 
-import eu.pmsoft.mcomponents.eventsourcing.{ EventSourceProjection, EventStoreVersion }
+import eu.pmsoft.mcomponents.eventsourcing.{ DomainSpecification, EventStoreVersion }
+import eu.pmsoft.mcomponents.eventsourcing.projection.EventSourceProjection
 
-class TestEventStoreHistoryProjection[E] extends EventSourceProjection[E] {
+class TestEventStoreHistoryProjection[D <: DomainSpecification] extends EventSourceProjection[D] {
 
-  var state = HistoryProjectionState[E]()
+  var state = HistoryProjectionState[D#Event]()
 
-  override def projectEvent(event: E, storeVersion: EventStoreVersion): Unit = {
+  override def projectEvent(event: D#Event, storeVersion: EventStoreVersion): Unit = {
     if (storeVersion.storeVersion != state.version.storeVersion + 1) {
       throw new IllegalStateException(s"Mismatch of event store version. State:$state")
     }
@@ -40,13 +41,13 @@ class TestEventStoreHistoryProjection[E] extends EventSourceProjection[E] {
 
   override def lastSnapshotVersion(): EventStoreVersion = state.version
 
-  def events(): List[E] = state.events
+  def events(): List[D#Event] = state.events
 
   def version(): EventStoreVersion = state.version
 }
 
 case class HistoryProjectionState[E](
   events:  List[E]           = List[E](),
-  version: EventStoreVersion = EventStoreVersion(0L)
+  version: EventStoreVersion = EventStoreVersion.zero
 )
 

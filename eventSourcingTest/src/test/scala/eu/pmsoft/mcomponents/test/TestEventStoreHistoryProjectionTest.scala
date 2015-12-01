@@ -32,34 +32,34 @@ class TestEventStoreHistoryProjectionTest extends FlatSpec with Matchers {
 
   it should "be empty on creation" in {
     //given
-    val projection = new TestEventStoreHistoryProjection[TestEvent]()
+    val projection = new TestEventStoreHistoryProjection[TestLogicDomainSpecification]()
     //when
     //then
     projection.events() should be(List())
-    projection.version() should be(EventStoreVersion(0L))
+    projection.version() should be(EventStoreVersion.zero)
     projection.lastSnapshotVersion() should be(projection.version())
   }
 
   it should "record the projected events" in {
     //given
-    val projection = new TestEventStoreHistoryProjection[TestEvent]()
+    val projection = new TestEventStoreHistoryProjection[TestLogicDomainSpecification]()
       def projectTestEvent(nr: Long): Unit = {
-        projection.projectEvent(TestEvent(nr), EventStoreVersion(nr))
+        projection.projectEvent(EventWithData(nr), EventStoreVersion(nr))
         projection.lastSnapshotVersion() should be(projection.version())
       }
     val nrOfEventsToTest = 20
     //when
     (1 to nrOfEventsToTest).foreach(index => projectTestEvent(index.toLong))
     //then
-    projection.events() should be((1 to nrOfEventsToTest).reverse.map(index => TestEvent(index.toLong)).toList)
+    projection.events() should be((1 to nrOfEventsToTest).reverse.map(index => EventWithData(index.toLong)).toList)
     projection.version() should be(EventStoreVersion(nrOfEventsToTest))
     projection.lastSnapshotVersion() should be(projection.version())
   }
   it should "throw exception when event version do not match" in {
     //given
-    val projection = new TestEventStoreHistoryProjection[TestEvent]()
+    val projection = new TestEventStoreHistoryProjection[TestLogicDomainSpecification]()
       def projectTestEvent(nr: Long): Unit = {
-        projection.projectEvent(TestEvent(nr), EventStoreVersion(nr))
+        projection.projectEvent(EventWithData(nr), EventStoreVersion(nr))
         projection.lastSnapshotVersion() should be(projection.version())
       }
     val nrOfEventsToTest = 20
@@ -74,6 +74,4 @@ class TestEventStoreHistoryProjectionTest extends FlatSpec with Matchers {
     }
   }
 }
-
-case class TestEvent(nr: Long)
 

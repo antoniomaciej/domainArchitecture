@@ -39,10 +39,32 @@ final class RoleBasedAuthorizationDomain extends DomainSpecification {
   type SideEffects = RoleBasedAuthorizationLocalSideEffects
 }
 
+final class RoleBasedAuthorizationEventSerializationSchema extends EventSerializationSchema[RoleBasedAuthorizationDomain] {
+  override def mapToEvent(data: EventDataWithNr): RoleBasedAuthorizationEvent = {
+    import scala.pickling.Defaults._
+    import scala.pickling.binary._
+    data.eventBytes.unpickle[RoleBasedAuthorizationEvent]
+  }
+
+  override def buildReference(aggregate: RoleBasedAuthorizationAggregate): AggregateReference = aggregate match {
+    case RoleIdAggregate(roleID)             => AggregateReference(0, roleID.id)
+    case RoleNameAggregate(roleName)         => AggregateReference(1, roleName)
+    case PermissionCodeAggregate(code)       => AggregateReference(2, code)
+    case PermissionIdAggregate(permissionId) => AggregateReference(3, permissionId.id)
+  }
+
+  override def eventToData(event: RoleBasedAuthorizationEvent): EventData = {
+    import scala.pickling.Defaults._
+    import scala.pickling.binary._
+    EventData(event.pickle.value)
+  }
+
+}
+
 final class RoleBasedAuthorizationHandlerLogic extends DomainLogic[RoleBasedAuthorizationDomain]
     with RoleBasedAuthorizationValidations {
 
-  override def calculateTransactionScope(command: RoleBasedAuthorizationModelCommand, state: RoleBasedAuthorizationState): CommandToAggregateResult[RoleBasedAuthorizationAggregate] = command match {
+  override def calculateTransactionScope(command: RoleBasedAuthorizationModelCommand, state: RoleBasedAuthorizationState): CommandToAggregates[RoleBasedAuthorizationDomain] = command match {
     case CreateRole(roleName)                                   => \/-(Set(RoleNameAggregate(roleName)))
     case DeleteRole(roleID)                                     => \/-(Set(RoleIdAggregate(roleID)))
     case UpdateRoleName(roleID, roleName)                       => \/-(Set(RoleIdAggregate(roleID), RoleNameAggregate(roleName)))
@@ -56,59 +78,80 @@ final class RoleBasedAuthorizationHandlerLogic extends DomainLogic[RoleBasedAuth
   override def executeCommand(
     command:          RoleBasedAuthorizationModelCommand,
     transactionScope: Map[RoleBasedAuthorizationAggregate, Long]
-  )(implicit state: RoleBasedAuthorizationState, sideEffects: RoleBasedAuthorizationLocalSideEffects): CommandToEventsResult[RoleBasedAuthorizationEvent] = command match {
+  )(implicit state: RoleBasedAuthorizationState, sideEffects: RoleBasedAuthorizationLocalSideEffects): CommandToEventsResult[RoleBasedAuthorizationDomain] = command match {
 
     case CreateRole(roleName) => for {
       roleNameValid <- validName(roleName)
       roleName <- ensureRoleNamesAreUnique(roleName)
-    } yield List(AccessRoleCreated(sideEffects.generateUniqueRoleId(), roleNameValid))
-
+    } yield {
+      val roleID = sideEffects.generateUniqueRoleId()
+      CommandModelResult[RoleBasedAuthorizationDomain](List(AccessRoleCreated(roleID, roleNameValid)), RoleIdAggregate(roleID))
+    }
     case UpdateRoleName(roleID, roleName) => for {
       roleNameValid <- validName(roleName)
       currRole <- existingRoleById(roleID)
       roleName <- ensureRoleNamesAreUnique(roleName, currRole)
     } yield if (currRole.roleName == roleNameValid) {
-      List()
+      CommandModelResult[RoleBasedAuthorizationDomain](List(), RoleIdAggregate(roleID))
     }
     else {
-      List(AccessRoleNameUpdated(currRole.roleId, roleNameValid))
+      CommandModelResult[RoleBasedAuthorizationDomain](List(AccessRoleNameUpdated(currRole.roleId, roleNameValid)), RoleIdAggregate(roleID))
     }
 
     case DeleteRole(roleID) => for {
       roleID <- existingRoleId(roleID)
-    } yield List(AccessRoleDeleted(roleID))
+    } yield {
+      CommandModelResult[RoleBasedAuthorizationDomain](List(AccessRoleDeleted(roleID)), RoleIdAggregate(roleID))
+    }
 
     case CreatePermission(code, description) => for {
       codeValid <- validCode(code)
       descriptionValid <- validDescription(description)
-    } yield List(AccessPermissionCreated(sideEffects.generateUniquePermissionId(), codeValid, descriptionValid))
+    } yield {
+      val permissionId = sideEffects.generateUniquePermissionId()
+      CommandModelResult[RoleBasedAuthorizationDomain](
+        List(AccessPermissionCreated(permissionId, codeValid, descriptionValid)),
+        PermissionIdAggregate(permissionId)
+      )
+    }
 
     case UpdatePermissionDescription(permissionId, description) => for {
       descriptionValid <- validDescription(description)
       permission <- existingPermissionByID(permissionId)
     } yield if (permission.description == descriptionValid) {
-      List()
+      CommandModelResult[RoleBasedAuthorizationDomain](List(), PermissionIdAggregate(permissionId))
     }
     else {
-      List(AccessPermissionDescriptionUpdated(permission.permissionId, descriptionValid))
+      CommandModelResult[RoleBasedAuthorizationDomain](
+        List(AccessPermissionDescriptionUpdated(permission.permissionId, descriptionValid)),
+        PermissionIdAggregate(permissionId)
+      )
     }
 
     case DeletePermission(permissionId) => for {
       permission <- existingPermissionByID(permissionId)
-    } yield List(AccessPermissionDeleted(permission.permissionId))
+    } yield CommandModelResult[RoleBasedAuthorizationDomain](
+      List(AccessPermissionDeleted(permission.permissionId)),
+      PermissionIdAggregate(permissionId)
+    )
 
     case AddPermissionsToRole(permissionId, roleID) => for {
       permissionSetId <- existingPermissionSetID(permissionId)
       roleID <- existingRoleId(roleID)
-    } yield permissionSetId.map(PermissionInRoleAdded(_, roleID)).toList
+    } yield CommandModelResult[RoleBasedAuthorizationDomain](
+      permissionSetId.map(PermissionInRoleAdded(_, roleID)).toList,
+      RoleIdAggregate(roleID)
+    )
 
     case DeletePermissionsFromRole(permissionId, roleID) => for {
       permissionSetId <- existingPermissionSetID(permissionId)
       roleID <- existingRoleId(roleID)
-    } yield permissionSetId
-      .filter(state.isPermissionInRole(roleID, _))
+    } yield CommandModelResult[RoleBasedAuthorizationDomain](
+      permissionSetId.filter(state.isPermissionInRole(roleID, _))
       .map(PermissionInRoleDeleted(_, roleID))
-      .toList
+      .toList,
+      RoleIdAggregate(roleID)
+    )
   }
 }
 
@@ -180,6 +223,7 @@ trait RoleBasedAuthorizationValidations {
     else {
       -\/(EventSourceCommandFailed(notExistingPermissionID.code))
     }
+
 }
 
 trait RoleBasedAuthorizationState {

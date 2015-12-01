@@ -25,6 +25,9 @@
 
 package eu.pmsoft.mcomponents.eventsourcing
 
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreReference
+import scalikejdbc.ConnectionPool
+
 import scala.concurrent.ExecutionContext
 
 trait EventSourceExecutionContext extends EventSourcingConfigurationContext {
@@ -34,7 +37,30 @@ trait EventSourceExecutionContext extends EventSourcingConfigurationContext {
 }
 
 trait EventSourcingConfigurationContext {
-  implicit def configuration: EventSourcingConfiguration
+  implicit def eventSourcingConfiguration: EventSourcingConfiguration
 }
 
-case class EventSourcingConfiguration(executionContext: ExecutionContext, bindingInfrastructure: BindingInfrastructure)
+case class EventSourcingConfiguration(
+  executionContext:      ExecutionContext,
+  bindingInfrastructure: BindingInfrastructure,
+  backendStrategies:     Set[EventStoreBackendStrategy[_]]
+)
+
+sealed trait EventStoreBackendStrategy[D <: DomainSpecification] {
+  def eventStoreReference: EventStoreReference[D]
+}
+
+case class EventStoreInMemory[D <: DomainSpecification](eventStoreReference: EventStoreReference[D]) extends EventStoreBackendStrategy[D]
+
+case class EventStoreSqlBackend[D <: DomainSpecification](
+  eventStoreReference: EventStoreReference[D],
+  connectionPool:      ConnectionPool,
+  dialect:             EventStoreSqlDialect,
+  tablesNamespace:     String,
+  rebuildDDL:          Boolean                = false
+) extends EventStoreBackendStrategy[D]
+
+sealed trait EventStoreSqlDialect
+case object H2EventStoreSqlDialect extends EventStoreSqlDialect
+case object MySqlEventStoreSqlDialect extends EventStoreSqlDialect
+case object PostgresEventStoreSqlDialect extends EventStoreSqlDialect

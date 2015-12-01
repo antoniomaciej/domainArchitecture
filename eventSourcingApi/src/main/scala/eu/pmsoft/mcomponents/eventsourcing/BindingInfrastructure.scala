@@ -25,9 +25,30 @@
 
 package eu.pmsoft.mcomponents.eventsourcing
 
-import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreLoad
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.{ EventStoreRead, EventStoreReference }
+import rx.Observable
 
 trait BindingInfrastructure {
 
-  def bind[E](projection: EventSourceProjection[E], eventStoreLoad: EventStoreLoad[E])
+  def consumerApi: EventConsumerInfrastructure
+
+  def producerApi: EventProductionInfrastructure
+
 }
+
+trait EventProductionInfrastructure {
+  def registerEventStore[D <: DomainSpecification](
+    eventStoreReference: EventStoreReference[D],
+    eventStore:          EventStoreRead[D]
+  )
+}
+
+trait EventConsumerInfrastructure {
+
+  def eventStoreStream[D <: DomainSpecification](
+    eventStoreReference:   EventStoreReference[D],
+    inclusiveStartVersion: EventStoreVersion
+  ): Observable[VersionedEvent[D]]
+}
+
+case class VersionedEvent[D <: DomainSpecification](version: EventStoreVersion, event: D#Event)

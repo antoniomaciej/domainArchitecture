@@ -27,10 +27,20 @@
 package eu.pmsoft.mcomponents.model.user.session
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
+import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.model.user.session.inmemory.UserSessionDomainModule
 import eu.pmsoft.mcomponents.test.{ BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
 
-abstract class UserSessionModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[UserSessionSSODomain] {
+class UserSessionModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[UserSessionSSODomain] {
+
+  override def backendStrategy: EventStoreBackendStrategy[UserSessionSSODomain] = EventStoreInMemory(UserSessionDomainModule.eventStoreReference)
+
+  override def bindingInfrastructure: BindingInfrastructure = LocalBindingInfrastructure.create()
+
+  implicit def eventSourceExecutionContext: EventSourceExecutionContext = EventSourceExecutionContextProvider.create()
+
+  override def implementationModule(): DomainModule[UserSessionSSODomain] = new UserSessionDomainModule()
 
   override def buildGenerator(state: AtomicEventStoreView[UserSessionSSOState]): CommandGenerator[UserSessionCommand] = new UserSessionGenerators(state)
 

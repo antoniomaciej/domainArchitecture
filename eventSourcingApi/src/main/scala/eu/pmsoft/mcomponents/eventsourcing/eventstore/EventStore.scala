@@ -27,45 +27,25 @@ package eu.pmsoft.mcomponents.eventsourcing.eventstore
 
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
 import eu.pmsoft.mcomponents.eventsourcing._
+import rx.Observable
 
 import scala.concurrent.Future
 import scala.reflect._
 
-trait EventStore[D <: DomainSpecification] extends EventStoreLoad[D#Event] with AsyncEventStore[D] {
+trait EventStore[D <: DomainSpecification] extends EventStoreRead[D] {
 
-  def identificationInfo: EventStoreIdentification[D]
+  def calculateAtomicTransactionScopeVersion(logic: DomainLogic[D], command: D#Command): Future[CommandToAtomicState[D]]
 
-}
-
-trait EventStoreIdentification[D <: DomainSpecification] {
-
-  def id: EventStoreID
-
-  def rootEventType: ClassTag[D#Event]
-
-  def aggregateRootType: ClassTag[D#Aggregate]
+  def persistEvents(events: List[D#Event], aggregateRoot: D#Aggregate, atomicTransactionScope: AtomicTransactionScope[D]): Future[CommandResult]
 
 }
+trait EventStoreRead[D <: DomainSpecification] {
 
-trait AsyncEventStore[D <: DomainSpecification] {
+  def loadEvents(range: EventStoreRange): Seq[D#Event]
 
-  def persistEvents(events: List[D#Event], transactionScopeVersion: Map[D#Aggregate, Long]): Future[CommandResult]
+  def loadEventsForAggregate(aggregate: D#Aggregate): Seq[D#Event]
 
-}
-
-//TODO filters for projections
-trait EventStoreLoad[E] {
-
-  def loadEvents(range: EventStoreRange): Future[Seq[E]]
-
-}
-
-trait EventStoreAtomicProjection[E, P] {
-
-  def buildInitialState(): P
-
-  def projectSingleEvent(state: P, event: E): P
-
+  def eventStoreVersionUpdates(): Observable[EventStoreVersion]
 }
 
 case class EventStoreReference[D <: DomainSpecification](
@@ -75,4 +55,11 @@ case class EventStoreReference[D <: DomainSpecification](
 )
 
 case class EventStoreID(val id: String) extends AnyVal
+
+trait EventStoreAtomicProjectionCreationLogic[D <: DomainSpecification, P <: D#State] {
+
+  def buildInitialState(): P
+
+  def projectSingleEvent(state: P, event: D#Event): P
+}
 

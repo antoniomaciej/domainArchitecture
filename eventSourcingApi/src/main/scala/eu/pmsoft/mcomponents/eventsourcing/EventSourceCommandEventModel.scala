@@ -33,17 +33,20 @@ object EventSourceCommandEventModel {
 
   //Commands/Events types
 
-  type CommandToAggregateResult[A] = EventSourceCommandFailure \/ Set[A]
+  type CommandToAggregates[D <: DomainSpecification] = EventSourceCommandFailure \/ Set[D#Aggregate]
+  type CommandToAtomicState[D <: DomainSpecification] = EventSourceCommandFailure \/ AtomicTransactionScope[D]
 
   type CommandResult = EventSourceCommandFailure \/ EventSourceCommandConfirmation
 
-  type CommandToEventsResult[E] = EventSourceCommandFailure \/ List[E]
+  type CommandToEventsResult[D <: DomainSpecification] = EventSourceCommandFailure \/ CommandModelResult[D]
 
   type CommandPartialValidation[E] = EventSourceCommandFailure \/ E
 
   type CommandResultConfirmed = EventSourceCommandFailed \/ EventSourceCommandConfirmation
 
 }
+
+case class CommandModelResult[D <: DomainSpecification](events: List[D#Event], rootAggregate: D#Aggregate)
 
 //Commands/Events model
 /** AnyVal type to define error codes after command execution
@@ -70,16 +73,19 @@ case class EventStoreVersion(val storeVersion: Long) extends AnyVal {
   def add(delta: Long): EventStoreVersion = EventStoreVersion(storeVersion + delta)
 }
 
+object EventStoreVersion {
+  val zero = EventStoreVersion(0L)
+}
+
 /** A event range [from,to). If to is None, then the range is [from,infinity).
  *  @param from inclusive start event number
  *  @param to exclusive end event number
  */
 case class EventStoreRange(from: EventStoreVersion, to: Option[EventStoreVersion]) {
-  assert(from.storeVersion > 0)
+  assert(from.storeVersion >= 0)
   assert(from.storeVersion <= to.getOrElse(from).storeVersion)
 }
 
 case class EventSourceCommandConfirmation(storeVersion: EventStoreVersion)
 
 case class EventSourceModelError(description: String, code: EventSourceCommandError)
-

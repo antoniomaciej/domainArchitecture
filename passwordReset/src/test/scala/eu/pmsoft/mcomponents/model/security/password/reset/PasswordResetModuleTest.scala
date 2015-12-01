@@ -27,10 +27,19 @@
 package eu.pmsoft.mcomponents.model.security.password.reset
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
+import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.test.{ BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
 
-abstract class PasswordResetModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[PasswordResetDomain] {
+class PasswordResetModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[PasswordResetDomain] {
+
+  override def backendStrategy: EventStoreBackendStrategy[PasswordResetDomain] = EventStoreInMemory(PasswordResetDomainModule.eventStoreReference)
+
+  override def bindingInfrastructure: BindingInfrastructure = LocalBindingInfrastructure.create()
+
+  implicit def eventSourceExecutionContext: EventSourceExecutionContext = EventSourceExecutionContextProvider.create()
+
+  override def implementationModule(): DomainModule[PasswordResetDomain] = new PasswordResetDomainModule()
 
   it should "reject invalid session tokens" in {
     val module = createEmptyDomainModel()
@@ -44,7 +53,7 @@ abstract class PasswordResetModuleTest extends BaseEventSourceSpec with Generate
     whenReady(module.commandHandler
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = module.atomicProjection.lastSnapshot().futureValue.findFlowByUserID(UserID(0)).get
+      val process = module.atomicProjection.lastSnapshot().findFlowByUserID(UserID(0)).get
       whenReady(module.commandHandler
         .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("newPassword")))) { confirmationResult =>
         confirmationResult should be(\/-)
@@ -61,7 +70,7 @@ abstract class PasswordResetModuleTest extends BaseEventSourceSpec with Generate
     whenReady(module.commandHandler
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = module.atomicProjection.lastSnapshot().futureValue.findFlowByUserID(UserID(0)).get
+      val process = module.atomicProjection.lastSnapshot().findFlowByUserID(UserID(0)).get
       whenReady(module.commandHandler
         .execute(
           ConfirmPasswordResetFlow(
@@ -80,7 +89,7 @@ abstract class PasswordResetModuleTest extends BaseEventSourceSpec with Generate
     whenReady(module.commandHandler
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = module.atomicProjection.lastSnapshot().futureValue.findFlowByUserID(UserID(0)).get
+      val process = module.atomicProjection.lastSnapshot().findFlowByUserID(UserID(0)).get
       whenReady(module.commandHandler
         .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("")))) { confirmationResult =>
         confirmationResult should be(-\/)

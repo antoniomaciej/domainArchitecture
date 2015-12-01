@@ -43,13 +43,13 @@ class RoleBasedAuthorizationGenerators(val state: AtomicEventStoreView[RoleBased
   } yield List(addRole, addPermission)
   //Generators that depend on the model state as provided by the query api
   lazy val genExistingRoleId = Gen.wrap(
-    Gen.oneOf(state.lastSnapshot().futureValue.allRoleId)
+    Gen.oneOf(state.lastSnapshot().allRoleId)
   )
   lazy val genExistingPermissionId = Gen.wrap(
-    Gen.oneOf(state.lastSnapshot().futureValue.allPermissionID)
+    Gen.oneOf(state.lastSnapshot().allPermissionID)
   )
   lazy val genExistingPermissionSetId = Gen.wrap(
-    Gen.someOf(state.lastSnapshot().futureValue.allPermissionID).map(_.toSet)
+    Gen.someOf(state.lastSnapshot().allPermissionID).map(_.toSet)
   )
   //Stateless generators
   lazy val noEmptyTextString = for {
@@ -102,7 +102,7 @@ class RoleBasedAuthorizationGenerators(val state: AtomicEventStoreView[RoleBased
   override def generateWarmUpCommands: Gen[List[RoleBasedAuthorizationModelCommand]] = Gen.oneOf(roleAndPermission, permissionAndRole)
 
   def genExistingPermissionSetFromRole(roleID: RoleID): Gen[Set[PermissionID]] = Gen.wrap(
-    Gen.someOf(state.lastSnapshot().futureValue.getPermissionsForRole(roleID)).map(_.toSet)
+    Gen.someOf(state.lastSnapshot().getPermissionsForRole(roleID)).map(_.toSet)
   )
 
 }

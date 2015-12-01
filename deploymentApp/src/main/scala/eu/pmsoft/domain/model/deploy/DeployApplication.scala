@@ -25,12 +25,11 @@
 
 package eu.pmsoft.domain.model.deploy
 
-import akka.actor.{Actor, ActorContext, ActorSystem, Props}
+import akka.actor.{ Actor, ActorContext, ActorSystem, Props }
 import akka.io.IO
 import akka.pattern.ask
 import akka.util.Timeout
-import eu.pmsoft.mcomponents.minstance.{MicroComponentRegistry, ApiContract}
-import eu.pmsoft.mcomponents.model.security.password.reset.mins.PasswordResetApi
+import eu.pmsoft.mcomponents.model.security.password.reset.api.PasswordResetApi
 import spray.can.Http
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
@@ -41,7 +40,6 @@ trait DeployApplication extends UserManagementService {
 
   override lazy val passwordResetApi: PasswordResetApi = ???
 }
-
 
 object Boot extends App {
   implicit val system = ActorSystem("deploymentApp")

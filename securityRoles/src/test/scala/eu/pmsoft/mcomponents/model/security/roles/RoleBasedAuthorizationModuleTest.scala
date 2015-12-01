@@ -26,10 +26,19 @@
 
 package eu.pmsoft.mcomponents.model.security.roles
 
-import eu.pmsoft.mcomponents.eventsourcing.{ AsyncEventCommandHandler, AtomicEventStoreView }
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
+import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.test.{ BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
 
-abstract class RoleBasedAuthorizationModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[RoleBasedAuthorizationDomain] {
+class RoleBasedAuthorizationModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[RoleBasedAuthorizationDomain] {
+
+  override def backendStrategy: EventStoreBackendStrategy[RoleBasedAuthorizationDomain] = EventStoreInMemory(RoleBasedAuthorizationDomainModule.eventStoreReference)
+
+  override def bindingInfrastructure: BindingInfrastructure = LocalBindingInfrastructure.create()
+
+  implicit def eventSourceExecutionContext: EventSourceExecutionContext = EventSourceExecutionContextProvider.create()
+
+  override def implementationModule(): DomainModule[RoleBasedAuthorizationDomain] = new RoleBasedAuthorizationDomainModule()
 
   it should "not allow empty roles names" in {
     val module = createEmptyDomainModel()
@@ -43,7 +52,7 @@ abstract class RoleBasedAuthorizationModuleTest extends BaseEventSourceSpec with
   it should "fail when adding not existing permissions to role" in {
     val module = createEmptyDomainModel()
     module.commandHandler.execute(CreateRole("test")).futureValue shouldBe \/-
-    val roleId = module.atomicProjection.lastSnapshot().futureValue.allRoleId.head
+    val roleId = module.atomicProjection.lastSnapshot().allRoleId.head
     module.commandHandler.execute(AddPermissionsToRole(Set(PermissionID(0L)), roleId)).futureValue shouldBe -\/
 
   }
@@ -67,8 +76,8 @@ abstract class RoleBasedAuthorizationModuleTest extends BaseEventSourceSpec with
     whenReady(warmUpResult) { initResults =>
       val firstFailure = initResults.find(_.isLeft)
       firstFailure shouldBe empty withClue ": Failure on warm up commands"
-      val permissionId = module.atomicProjection.lastSnapshot().futureValue.allPermissionID.head
-      val roleId = module.atomicProjection.lastSnapshot().futureValue.allRoleId.head
+      val permissionId = module.atomicProjection.lastSnapshot().allPermissionID.head
+      val roleId = module.atomicProjection.lastSnapshot().allRoleId.head
       whenReady(module.commandHandler.execute(DeletePermissionsFromRole(Set(permissionId), roleId))) { result =>
         result should be(\/-)
       }

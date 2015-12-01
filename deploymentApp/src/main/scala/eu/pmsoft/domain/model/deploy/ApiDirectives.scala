@@ -50,11 +50,9 @@ trait ApiDirectives {
   }
 
   def completeApi[T](requestResultFuture: Future[RequestResult[T]])(implicit marshaller: ToResponseMarshaller[T], executionContext: ExecutionContext, errorMarshaller: ToResponseMarshaller[(StatusCode, ResponseError)]): Route = {
-    onSuccess(requestResultFuture) { requestResult =>
-      requestResult match {
-        case -\/(a) => complete(StatusCodes.BadRequest, a)
-        case \/-(b) => complete(b)
-      }
+    onSuccess(requestResultFuture) {
+      case -\/(a) => complete(StatusCodes.BadRequest, a)
+      case \/-(b) => complete(b)
     }
   }
 

@@ -60,9 +60,28 @@ trait UserRegistrationLocalSideEffects {
   def createNextUid(): UserID
 }
 
+final class UserRegistrationEventSerializationSchema extends EventSerializationSchema[UserRegistrationDomain] {
+  import scala.pickling.static._
+  import scala.pickling.Defaults._
+  import scala.pickling.binary._
+  override def mapToEvent(data: EventDataWithNr): UserRegistrationEvent = {
+    data.eventBytes.unpickle[UserRegistrationEvent]
+  }
+
+  override def buildReference(aggregate: UserRegistrationAggregate): AggregateReference = aggregate match {
+    case UserAggregateId(uid)         => AggregateReference(0, uid.id)
+    case EmailAggregateId(loginEmail) => AggregateReference(1, loginEmail.login)
+  }
+
+  override def eventToData(event: UserRegistrationEvent): EventData = {
+    EventData(event.pickle.value)
+  }
+
+}
+
 final class UserRegistrationHandlerLogic extends DomainLogic[UserRegistrationDomain] with UserRegistrationValidations {
 
-  override def calculateTransactionScope(command: UserRegistrationCommand, state: UserRegistrationState): CommandToAggregateResult[UserRegistrationAggregate] =
+  override def calculateTransactionScope(command: UserRegistrationCommand, state: UserRegistrationState): CommandToAggregates[UserRegistrationDomain] =
     command match {
       case AddUser(loginEmail, passwordHash)     => \/-(Set(EmailAggregateId(loginEmail)))
       case UpdateUserPassword(uid, passwordHash) => \/-(Set(UserAggregateId(uid)))
@@ -73,29 +92,32 @@ final class UserRegistrationHandlerLogic extends DomainLogic[UserRegistrationDom
   override def executeCommand(
     command:          UserRegistrationCommand,
     transactionScope: Map[UserRegistrationAggregate, Long]
-  )(implicit state: UserRegistrationState, sideEffects: UserRegistrationLocalSideEffects): CommandToEventsResult[UserRegistrationEvent] = command match {
+  )(implicit state: UserRegistrationState, sideEffects: UserRegistrationLocalSideEffects): CommandToEventsResult[UserRegistrationDomain] = command match {
     case UpdateActiveUserStatus(uid, active) => for {
       user <- validUidExtractUser(uid)
     } yield if (user.activeStatus == active) {
       //Do not activate if status match the state
-      List()
+      CommandModelResult[UserRegistrationDomain](List(), UserAggregateId(uid))
     }
     else {
-      List(UserActiveStatusUpdated(uid, active))
+      CommandModelResult[UserRegistrationDomain](List(UserActiveStatusUpdated(uid, active)), UserAggregateId(uid))
     }
 
     case AddUser(loginEmail, passwordHash) => for {
       login <- availableLogin(loginEmail)
       email <- validEmail(loginEmail.login)
-    } yield List(UserCreated(sideEffects.createNextUid(), loginEmail, passwordHash))
+    } yield {
+      val uid = sideEffects.createNextUid()
+      CommandModelResult[UserRegistrationDomain](List(UserCreated(uid, loginEmail, passwordHash)), UserAggregateId(uid))
+    }
 
     case UpdateUserPassword(uid, passwordHash) => for {
       user <- validUidExtractUser(uid)
-    } yield List(UserPasswordUpdated(uid, passwordHash))
+    } yield CommandModelResult[UserRegistrationDomain](List(UserPasswordUpdated(uid, passwordHash)), UserAggregateId(uid))
 
     case UpdateUserRoles(uid, roles) => for {
       user <- validUidExtractUser(uid)
-    } yield List(UserObtainedAccessRoles(uid, roles))
+    } yield CommandModelResult[UserRegistrationDomain](List(UserObtainedAccessRoles(uid, roles)), UserAggregateId(uid))
   }
 
 }

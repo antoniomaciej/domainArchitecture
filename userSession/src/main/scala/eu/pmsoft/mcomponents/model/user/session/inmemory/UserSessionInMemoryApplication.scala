@@ -38,13 +38,22 @@ import org.jasypt.util.password.rfc2307.RFC2307SSHAPasswordEncryptor
 import scala.language.higherKinds
 import scala.reflect._
 
-class UserSessionDomainModule extends DomainModule[UserSessionSSODomain] {
+object UserSessionDomainModule {
+
+  val eventStoreReference: EventStoreReference[UserSessionSSODomain] =
+    EventStoreReference[UserSessionSSODomain](EventStoreID("UserSessionSSODomain"), classTag[UserSessionEvent], classTag[UserSessionAggregate])
+}
+
+class UserSessionDomainModule(implicit val eventSourcingConfiguration: EventSourcingConfiguration) extends DomainModule[UserSessionSSODomain] {
   override lazy val logic: DomainLogic[UserSessionSSODomain] = new UserSessionHandlerLogic()
+
+  override lazy val schema: EventSerializationSchema[UserSessionSSODomain] = new UserSessionEventSerializationSchema
 
   override lazy val eventStore: EventStore[UserSessionSSODomain] with VersionedEventStoreView[UserSessionAggregate, UserSessionSSOState] =
     EventStoreProvider.createEventStore[UserSessionSSODomain, UserSessionStateInMemory](
-      new UserSessionEventStoreAtomicProjection(),
-      new UserSessionEventStoreIdentification()
+      new UserSessionEventStoreAtomicAtomicProjection(),
+      schema,
+      UserSessionDomainModule.eventStoreReference
     )
 
   override lazy val sideEffects: UserSessionSideEffect = new ThreadLocalUserSessionSideEffect()
@@ -62,24 +71,14 @@ class ThreadLocalUserSessionSideEffect extends UserSessionSideEffect {
   }
 }
 
-class UserSessionEventStoreAtomicProjection
-    extends EventStoreAtomicProjection[UserSessionEvent, UserSessionStateInMemory] {
+class UserSessionEventStoreAtomicAtomicProjection
+    extends EventStoreAtomicProjectionCreationLogic[UserSessionSSODomain, UserSessionStateInMemory] {
   override def buildInitialState(): UserSessionStateInMemory = UserSessionStateInMemory()
 
   override def projectSingleEvent(state: UserSessionStateInMemory, event: UserSessionEvent): UserSessionStateInMemory = event match {
     case UserSessionCreated(sessionToken, userId)     => state.createSession(sessionToken, userId)
     case UserSessionInvalidated(sessionToken, userId) => state.deleteSession(sessionToken, userId)
   }
-}
-
-class UserSessionEventStoreIdentification extends EventStoreIdentification[UserSessionSSODomain] {
-
-  override def id: EventStoreID = EventStoreID("UserSessionStoreAndProjection")
-
-  override def aggregateRootType: ClassTag[UserSessionAggregate] = classTag[UserSessionAggregate]
-
-  override def rootEventType: ClassTag[UserSessionEvent] = classTag[UserSessionEvent]
-
 }
 
 object UserSessionStateInMemoryLenses {

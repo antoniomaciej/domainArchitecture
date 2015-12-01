@@ -26,47 +26,67 @@
 package eu.pmsoft.mcomponents.eventsourcing.inmemory
 
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreLoad
+import eu.pmsoft.mcomponents.eventsourcing.atomic.Atomic
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.{ EventStoreRead, EventStoreReference }
+import rx.Observable.OnSubscribe
+import rx.schedulers.Schedulers
+import rx.{ Observable, Producer, Subscriber }
 
-import scala.util.{ Failure, Success }
+import scalaz.{ -\/, \/, \/- }
 
 object LocalBindingInfrastructure {
   def create(): BindingInfrastructure = new LocalBindingInfrastructure()
 }
 
-class LocalBindingInfrastructure extends BindingInfrastructure {
-  override def bind[E](projection: EventSourceProjection[E], eventStoreLoad: EventStoreLoad[E]): Unit = {
-    new LocalProjectionEventStoreBinding(projection, eventStoreLoad).startBinding()
+class LocalBindingInfrastructure extends BindingInfrastructure with EventConsumerInfrastructure with EventProductionInfrastructure {
+  override def consumerApi: EventConsumerInfrastructure = this
+
+  override def producerApi: EventProductionInfrastructure = this
+
+  private[this] val eventStoreRegistration = Atomic(BindingRegistrationState())
+
+  override def eventStoreStream[D <: DomainSpecification](
+    eventStoreReference: EventStoreReference[D],
+    startVersion:        EventStoreVersion
+  ): Observable[VersionedEvent[D]] =
+    Observable.create[VersionedEvent[D]](new OnSubscribe[VersionedEvent[D]] {
+      override def call(subscriber: Subscriber[_ >: VersionedEvent[D]]): Unit = {
+        val producer = new EventProducer[D](eventStoreReference, startVersion, subscriber)
+        subscriber.setProducer(producer)
+        eventStoreRegistration.updateAndGet { registration =>
+          registration.registerProducer(eventStoreReference, producer)
+        }
+      }
+    }).subscribeOn(Schedulers.immediate())
+      .observeOn(Schedulers.computation())
+
+  override def registerEventStore[D <: DomainSpecification](
+    eventStoreReference: EventStoreReference[D],
+    eventStore:          EventStoreRead[D]
+  ): Unit = {
+    eventStoreRegistration.updateAndGet { registration =>
+      registration.registerEventStore(eventStoreReference, eventStore)
+    }
   }
 }
 
-class LocalProjectionEventStoreBinding[E](
-    val projection:     EventSourceProjection[E],
-    val eventStoreLoad: EventStoreLoad[E]
+case class BindingRegistrationState(
+    eventStoresByRef: Map[EventStoreReference[_], EventStoreRead[_]]     = Map(),
+    openStreams:      Map[EventStoreReference[_], Set[EventProducer[_]]] = Map()
 ) {
-
-  import scala.concurrent.ExecutionContext.Implicits.global
-
-  def startBinding(): Unit = {
-      def pushLoop(from: EventStoreVersion): Unit = {
-        eventStoreLoad.loadEvents(EventStoreRange(from, None)).onComplete {
-          case Failure(exception) => ???
-          case Success(value) => {
-            val last = value.foldLeft(from)((version, event) => {
-              projection.projectEvent(event, version)
-              version.add(1)
-            })
-            pushLoop(last)
-          }
-        }
-      }
-
-    pushLoop(projection.lastSnapshotVersion().add(1))
-
+  def registerProducer[D <: DomainSpecification](eventStoreReference: EventStoreReference[D], producer: EventProducer[D]): BindingRegistrationState = {
+    val updatedProducers = this.openStreams.getOrElse(eventStoreReference, Set()) + producer
+    val updatedOpenStreams = this.openStreams.updated(eventStoreReference, updatedProducers)
+    eventStoresByRef.get(eventStoreReference).foreach(eventStore =>
+      producer.bindEventStore(eventStore.asInstanceOf[EventStoreRead[D]]))
+    BindingRegistrationState(eventStoresByRef, updatedOpenStreams)
   }
 
-  def handleEvent(event: E, version: EventStoreVersion): Unit = {
-    projection.projectEvent(event, version)
+  def registerEventStore[D <: DomainSpecification](reference: EventStoreReference[D], eventStoreRead: EventStoreRead[D]): BindingRegistrationState = {
+    val updatedEventStoresByRef = this.eventStoresByRef.updated(reference, eventStoreRead)
+    this.openStreams.getOrElse(reference, Set()).foreach { producer =>
+      producer.asInstanceOf[EventProducer[D]].bindEventStore(eventStoreRead)
+    }
+    BindingRegistrationState(updatedEventStoresByRef, this.openStreams)
   }
-
 }

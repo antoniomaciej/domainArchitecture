@@ -56,7 +56,7 @@ class UserSessionGenerators(val state: AtomicEventStoreView[UserSessionSSOState]
   override def generateWarmUpCommands: Gen[List[UserSessionCommand]] = Gen.nonEmptyListOf(genCreateUserSession)
 
   def genExistingSession(): Gen[UserSession] = Gen.wrap(
-    Gen.oneOf(state.lastSnapshot().futureValue.findAllUserSessions())
+    Gen.oneOf(state.lastSnapshot().findAllUserSessions())
   )
 
 }

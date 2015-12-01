@@ -75,19 +75,18 @@ class PasswordResetModelGenerator(val state: AtomicEventStoreView[PasswordResetM
   override def generateWarmUpCommands: Gen[List[PasswordResetModelCommand]] = Gen.listOfN(nrOfInitialProcessToCreate, genInitializePasswordResetFlow)
 
   private def genNewUserId = for {
-    active <- Gen.wrap(Gen.const(state.lastSnapshot().futureValue.getExistingProcessUserId.map(_.id).toSet))
+    active <- Gen.wrap(Gen.const(state.lastSnapshot().getExistingProcessUserId.map(_.id).toSet))
     userId <- Gen.oneOf(((minUserId to maxUserId).toSet[Long] -- active).toSeq)
   } yield UserID(userId)
 
   private def genExistingUserId = Gen.wrap(
-    Gen.oneOf(state.lastSnapshot().futureValue.getExistingProcessUserId.toSeq)
+    Gen.oneOf(state.lastSnapshot().getExistingProcessUserId.toSeq)
   )
 
   private def genExistingProcess = Gen.wrap(
-    Gen.oneOf(state.lastSnapshot().futureValue.getExistingProcessUserId
+    Gen.oneOf(state.lastSnapshot().getExistingProcessUserId
       .map(
-        state.lastSnapshot().futureValue
-        .findFlowByUserID(_).get
+        state.lastSnapshot().findFlowByUserID(_).get
       )
       .toSeq)
   )

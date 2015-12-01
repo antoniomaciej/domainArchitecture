@@ -28,6 +28,8 @@ package eu.pmsoft.mcomponents.model.security.roles
 
 import eu.pmsoft.mcomponents.eventsourcing._
 
+import scala.pickling.directSubclasses
+
 object RoleBasedAuthorizationModel {
 
   val invalidRoleNameErrorCode = 2001L
@@ -113,6 +115,16 @@ case class DeletePermissionsFromRole(permissionIdSet: Set[PermissionID], roleID:
 
 // RoleBasedAuthorizationModel events
 
+@directSubclasses(Array(
+  classOf[AccessRoleCreated],
+  classOf[AccessRoleNameUpdated],
+  classOf[AccessRoleDeleted],
+  classOf[AccessPermissionCreated],
+  classOf[AccessPermissionDescriptionUpdated],
+  classOf[AccessPermissionDeleted],
+  classOf[PermissionInRoleAdded],
+  classOf[PermissionInRoleDeleted]
+))
 sealed trait RoleBasedAuthorizationEvent
 
 //Roles

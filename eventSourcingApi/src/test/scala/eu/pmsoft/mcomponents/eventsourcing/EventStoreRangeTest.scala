@@ -29,9 +29,9 @@ import org.scalatest.{ Matchers, FlatSpec }
 
 class EventStoreRangeTest extends FlatSpec with Matchers {
 
-  it should "not accept event store versions < 0 " in {
+  it should "not accept event store versions <= 0 " in {
     intercept[AssertionError] {
-      EventStoreRange(EventStoreVersion(0L), None)
+      EventStoreRange(EventStoreVersion(-1L), None)
     }
   }
 

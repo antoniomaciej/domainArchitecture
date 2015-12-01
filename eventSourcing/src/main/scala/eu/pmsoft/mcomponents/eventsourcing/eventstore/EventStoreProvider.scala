@@ -25,152 +25,90 @@
 
 package eu.pmsoft.mcomponents.eventsourcing.eventstore
 
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel.CommandResult
-import eu.pmsoft.mcomponents.eventsourcing.atomic.Atomic
-import eu.pmsoft.mcomponents.eventsourcing.{ DomainSpecification, VersionedEventStoreView, _ }
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel.{ CommandResult, CommandToAtomicState }
+import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.eventsourcing.atomic.{ LazyLoadByVersion, Atomic }
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.inmemory.EventStoreInMemoryAtomicProjection
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.sql._
+import eu.pmsoft.mcomponents.eventsourcing.projection.VersionedProjection
+import rx.Observable
+import rx.subjects.BehaviorSubject
 
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.{ Future, Promise }
-import scalaz._
+import scala.concurrent.{ ExecutionContext, Future, Promise }
+import scalaz.{ \/-, -\/ }
 
 object EventStoreProvider {
 
   def createEventStore[D <: DomainSpecification, P <: D#State](
-    logic:              EventStoreAtomicProjection[D#Event, P],
-    identificationInfo: EventStoreIdentification[D]
-  ): EventStore[D] with VersionedEventStoreView[D#Aggregate, P] = {
-    new AtomicEventStoreWithProjection(logic, identificationInfo)
+    stateCreationLogic:  EventStoreAtomicProjectionCreationLogic[D, P],
+    schema:              EventSerializationSchema[D],
+    eventStoreReference: EventStoreReference[D]
+  )(implicit eventSourcingConfiguration: EventSourcingConfiguration): EventStore[D] with VersionedEventStoreView[D#Aggregate, P] = {
+    val backendStrategy = eventSourcingConfiguration.backendStrategies.find(_.eventStoreReference == eventStoreReference)
+    val backend = backendStrategy match {
+      case None => throw new IllegalStateException(s"backend for event store ${eventStoreReference} not configured")
+      case Some(strategy) =>
+        strategy match {
+          case EventStoreInMemory(eventStoreReference)             => new EventStoreInMemoryAtomicProjection(stateCreationLogic, schema)
+          case backendConfig @ EventStoreSqlBackend(_, _, _, _, _) => new EventStoreSqlAtomicProjection(stateCreationLogic, schema, backendConfig.asInstanceOf[EventStoreSqlBackend[D]])
+        }
+    }
+    //TODO life cycle
+    backend.initializeBackend()
+    val eventStore = new AtomicEventStoreWithProjection(eventStoreReference, backend)(eventSourcingConfiguration)
+    eventSourcingConfiguration.bindingInfrastructure.producerApi.registerEventStore(eventStoreReference, eventStore)
+    eventStore
   }
 
 }
 
-final class AtomicEventStoreWithProjection[D <: DomainSpecification, P <: D#State](
-  val logic:              EventStoreAtomicProjection[D#Event, P],
-  val identificationInfo: EventStoreIdentification[D]
-)
+private final class AtomicEventStoreWithProjection[D <: DomainSpecification, P <: D#State](
+  val eventStoreReference: EventStoreReference[D],
+  val eventStoreBackend:   EventStoreTransactionalBackend[D, P]
+)(implicit val eventSourcingConfiguration: EventSourcingConfiguration) extends EventStore[D]
+    with VersionedEventStoreView[D#Aggregate, P]
+    with LazyLoadByVersion[P] {
 
-    extends EventStore[D] with VersionedEventStoreView[D#Aggregate, P] {
+  private[this] val eventCreationSubject: BehaviorSubject[EventStoreVersion] = BehaviorSubject.create(EventStoreVersion.zero)
 
-  protected[this] val inMemoryStore = Atomic(AtomicEventStoreState[D, P](logic.buildInitialState()))
+  override def eventStoreVersionUpdates(): Observable[EventStoreVersion] = eventCreationSubject
 
-  override def persistEvents(events: List[D#Event], transactionScopeVersion: Map[D#Aggregate, Long]): Future[CommandResult] = {
-      def checkIfStateMatchTransactionScopeVersion(state: AtomicEventStoreState[D, P]): EventSourceCommandFailure \/ AtomicEventStoreState[D, P] = transactionScopeVersion.find({
-        case (aggregate, aggregateVersion) => state.aggregatesVersion.getOrElse(aggregate, 0L).compareTo(aggregateVersion) != 0
-      }) match {
-        case Some(notMatchingAggregateVersion) => -\/(EventSourceCommandRollback())
-        case None                              => \/-(state)
-      }
-
-      def updateState(state: AtomicEventStoreState[D, P]): AtomicEventStoreState[D, P] = {
-        val updatedEventHistory = state.eventHistory ++ events
-        val updatedStateProjection = (state.state /: events)(logic.projectSingleEvent)
-        val updatedAggregatesVersion = state.aggregatesVersion ++ (transactionScopeVersion mapValues (_ + 1))
-        val updatedVersion = state.version.add(events.size)
-        AtomicEventStoreState(updatedStateProjection, updatedEventHistory, updatedVersion, updatedAggregatesVersion)
-      }
-    val afterUpdate = inMemoryStore.updateAndGetWithCondition(updateState, checkIfStateMatchTransactionScopeVersion)
-    afterUpdate.map(triggerDelayedProjections)
-    Future.successful(
-      afterUpdate.map { state =>
-        EventSourceCommandConfirmation(EventStoreVersion(state.eventHistory.length))
-      }
-    )
+  override def lastSnapshot(): P = eventStoreBackend readOnly { transaction =>
+    transaction.projectionState
   }
 
-  override def lastSnapshot(): Future[P] = Future.successful(inMemoryStore().state)
-
-  private val futureProjections = TrieMap[EventStoreVersion, Promise[P]]()
-  private val futureLoads = TrieMap[EventStoreRange, Promise[Seq[D#Event]]]()
-
-  private def triggerDelayedProjections(state: AtomicEventStoreState[D, P]) = {
-    futureProjections.filterKeys {
-      _.storeVersion <= state.version.storeVersion
-    } foreach { pair =>
-      pair._2.trySuccess(state.state)
-    }
-    val toRemove = futureProjections.filter(_._2.isCompleted)
-    toRemove.foreach {
-      case (key, promise) => futureProjections.remove(key, promise)
-    }
-
-    futureLoads.filterKeys {
-      _.from.storeVersion <= state.version.storeVersion
-    } foreach { pair =>
-      pair._2.trySuccess(extractEventRange(pair._1, state))
-    }
-    futureLoads.filter(_._2.isCompleted).foreach {
-      case (key, promise) => futureLoads.remove(key, promise)
-    }
+  override def getCurrentVersion(): VersionedProjection[P] = eventStoreBackend readOnly { transaction =>
+    VersionedProjection[P](transaction.eventStoreVersion, transaction.projectionState)
   }
 
-  private def extractEventRange(range: EventStoreRange, state: AtomicEventStoreState[D, P]): Seq[D#Event] = {
-      def dropFrom(events: List[D#Event]) = {
-        val toDrop = range.from.storeVersion.toInt
-        if (toDrop > 1) {
-          events.drop(toDrop - 1)
-        }
-        else {
-          events
-        }
+  override def calculateAtomicTransactionScopeVersion(logic: DomainLogic[D], command: D#Command): Future[CommandToAtomicState[D]] = eventStoreBackend readOnly { transaction =>
+    val projectionState: P = transaction.projectionState
+    val result = logic.calculateTransactionScope(command, projectionState).map { setAggregated =>
+      val aggregatesVersions: Map[D#Aggregate, Long] = transaction.calculateAggregatesVersions(setAggregated)
+      AtomicTransactionScope[D](aggregatesVersions, projectionState)
+    }
+    Future.successful(result)
+  }
+
+  override def loadEvents(range: EventStoreRange): Seq[D#Event] = eventStoreBackend readOnly { transaction =>
+    transaction.extractEventRange(range)
+  }
+
+  override def persistEvents(events: List[D#Event], aggregateRoot: D#Aggregate, atomicTransactionScope: AtomicTransactionScope[D]): Future[CommandResult] = {
+    val result = eventStoreBackend.persistEventsOnAtomicTransaction(events, aggregateRoot, atomicTransactionScope.transactionScopeVersion)
+    result match {
+      case -\/(a) =>
+      case \/-(success) => {
+        eventCreationSubject.onNext(success.storeVersion)
+        triggerNewVersionAvailable(success.storeVersion)
       }
-      def takeLimit(events: List[D#Event]) = range.to match {
-        case Some(limit) => events.take((limit.storeVersion - range.from.storeVersion).toInt).toSeq
-        case None        => events.toSeq
-      }
-    takeLimit(dropFrom(state.eventHistory))
+    }
+    Future.successful(result)
   }
 
-  override def loadEvents(range: EventStoreRange): Future[Seq[D#Event]] = {
-    val currentState = inMemoryStore()
-    if (currentState.version.storeVersion >= range.from.storeVersion) {
-      Future.successful(extractEventRange(range, currentState))
-    }
-    else {
-      val promise = Promise[Seq[D#Event]]()
-      val futureProjection = futureLoads.putIfAbsent(range, promise) match {
-        case Some(oldPromise) => oldPromise.future
-        case None             => promise.future
-      }
-      triggerDelayedProjections(inMemoryStore())
-      futureProjection
-    }
-  }
-
-  private def waitAsyncForFutureProjection(storeVersion: EventStoreVersion): Future[P] = {
-    val promise = Promise[P]()
-    val futureProjection = futureProjections.putIfAbsent(storeVersion, promise) match {
-      case Some(oldPromise) => oldPromise.future
-      case None             => promise.future
-    }
-    // it may be the case, that between the check on atLeastOn and insertion of the promise the value of the state changed
-    // to a correct storeVersion, so trigger a additional check here
-    triggerDelayedProjections(inMemoryStore())
-    futureProjection
-  }
-
-  override def atLeastOn(storeVersion: EventStoreVersion): Future[P] = {
-    val currState = inMemoryStore()
-    if (currState.version.storeVersion >= storeVersion.storeVersion) {
-      Future.successful(currState.state)
-    }
-    else {
-      waitAsyncForFutureProjection(storeVersion)
-    }
-  }
-
-  override def projection(transactionScope: Set[D#Aggregate]): Future[VersionedProjection[D#Aggregate, P]] = {
-    val atomicState = inMemoryStore()
-    val transactionScopeVersion: Map[D#Aggregate, Long] = transactionScope.map { aggregate =>
-      aggregate -> atomicState.aggregatesVersion.getOrElse(aggregate, 0L)
-    }(collection.breakOut)
-    Future.successful(VersionedProjection[D#Aggregate, P](transactionScopeVersion, atomicState.state))
+  override def loadEventsForAggregate(aggregate: D#Aggregate): Seq[D#Event] = eventStoreBackend readOnly { transaction =>
+    transaction.loadEventsForAggregate(aggregate)
   }
 }
 
-//TODO extract event store state to a implementation part
-case class AtomicEventStoreState[D <: DomainSpecification, P <: D#State](
-  state:             P,
-  eventHistory:      List[D#Event]          = List[D#Event](),
-  version:           EventStoreVersion      = EventStoreVersion(0),
-  aggregatesVersion: Map[D#Aggregate, Long] = Map[D#Aggregate, Long]()
-)

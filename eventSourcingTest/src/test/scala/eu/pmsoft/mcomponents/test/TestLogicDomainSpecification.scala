@@ -27,10 +27,8 @@ package eu.pmsoft.mcomponents.test
 
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.eventsourcing.eventstore.{ EventStoreIdentification, AsyncEventStore, EventStore }
 import org.scalacheck.Gen
 
-import scala.concurrent.Future
 import scalaz.\/-
 
 class TestLogicDomainSpecification extends DomainSpecification {
@@ -42,12 +40,12 @@ class TestLogicDomainSpecification extends DomainSpecification {
 }
 
 class TestDomainLogic extends DomainLogic[TestLogicDomainSpecification] {
-  override def executeCommand(command: TheCommand, transactionScope: Map[TheAggregate, Long])(implicit state: TheState, sideEffect: TheSideEffect): CommandToEventsResult[TheEvent] = command match {
-    case CommandOne() => \/-(List(EventOne()))
-    case CommandTwo() => \/-(List(EventTwo()))
+  override def executeCommand(command: TheCommand, transactionScope: Map[TheAggregate, Long])(implicit state: TheState, sideEffect: TheSideEffect): CommandToEventsResult[TestLogicDomainSpecification] = command match {
+    case CommandOne() => \/-(CommandModelResult[TestLogicDomainSpecification](List(EventOne()), AggregateOne()))
+    case CommandTwo() => \/-(CommandModelResult[TestLogicDomainSpecification](List(EventTwo()), AggregateTwo()))
   }
 
-  override def calculateTransactionScope(command: TheCommand, state: TheState): CommandToAggregateResult[TheAggregate] =
+  override def calculateTransactionScope(command: TheCommand, state: TheState): CommandToAggregates[TestLogicDomainSpecification] =
     \/-(Set[TheAggregate]())
 }
 
@@ -62,6 +60,8 @@ sealed trait TheEvent
 case class EventOne() extends TheEvent
 
 case class EventTwo() extends TheEvent
+
+case class EventWithData(nr: Long) extends TheEvent
 
 sealed trait TheAggregate
 

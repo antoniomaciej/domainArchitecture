@@ -28,7 +28,9 @@ package eu.pmsoft.mcomponents.test
 
 import java.util.concurrent.Executor
 
+import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel.CommandResultConfirmed
 import eu.pmsoft.mcomponents.eventsourcing._
+import org.joda.time.DateTime
 import org.scalacheck.Gen
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
@@ -59,7 +61,9 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
     def execute(task: Runnable) = task.run()
   })
 
-  implicit lazy val eventSourcingConfiguration = EventSourcingConfiguration(synchronousExecutionContext, bindingInfrastructure)
+  implicit lazy val eventSourcingConfiguration = EventSourcingConfiguration(synchronousExecutionContext, bindingInfrastructure, Set(backendStrategy))
+
+  def backendStrategy: EventStoreBackendStrategy[D]
 
   def bindingInfrastructure: BindingInfrastructure
 
@@ -94,6 +98,40 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
     domainImplementation.sideEffects should be(domainImplementation.sideEffects)
   }
 
+  it should "serialize and unserialize all events " in {
+    //given
+    val domainImplementation: DomainModule[D] = implementationModule()
+    val commandApi: DomainCommandApi[D] = eventSourceExecutionContext.assemblyDomainApplication(domainImplementation)
+    val generator = buildGenerator(commandApi.atomicProjection)
+    val warmUpCommands = generator.generateWarmUpCommands.sample.get
+    var commandsHistory = warmUpCommands
+    withClue(s"WarmUpCommands: $warmUpCommands \n") {
+      val warmUpResult = serial(warmUpCommands)(commandApi.commandHandler.execute)
+      whenReady(warmUpResult) { results =>
+        val firstFailure = results.find(_.isLeft)
+        firstFailure shouldBe empty withClue ": Failure on warm up commands"
+        forAll(generator.generateSingleCommands) {
+          command: D#Command =>
+            commandsHistory = command :: commandsHistory
+            withClue(s"CommandsHistory: $commandsHistory \n") {
+              val resultsFuture = commandApi.commandHandler.execute(command)
+              whenReady(resultsFuture) { result =>
+                withClue(s"last command result:$result \n") {
+                  result shouldBe \/-
+                }
+              }
+            }
+        }
+      }
+    }
+    val events = domainImplementation.eventStore.loadEvents(EventStoreRange(EventStoreVersion.zero, None))
+    events.foreach { event =>
+      val eventData: EventData = domainImplementation.schema.eventToData(event)
+      val recreatedEvent = domainImplementation.schema.mapToEvent(EventDataWithNr(0L, eventData.eventBytes, new DateTime()))
+      recreatedEvent should be(event)
+    }
+  }
+
   it should "accept any list of valid commands " in {
     forAll(genModule) {
       commandApi: DomainCommandApi[D] =>
@@ -107,21 +145,19 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
             val firstFailure = results.find(_.isLeft)
             firstFailure shouldBe empty withClue ": Failure on warm up commands"
 
-            validateState(commandApi.atomicProjection.lastSnapshot().futureValue)
+            validateState(commandApi.atomicProjection.lastSnapshot())
 
             forAll(generator.generateSingleCommands) {
               command: D#Command =>
                 commandsHistory = command :: commandsHistory
                 withClue(s"CommandsHistory: $commandsHistory \n") {
-
                   val resultsFuture = commandApi.commandHandler.execute(command)
+                  whenReady(resultsFuture) { result =>
+                    withClue(s"last command result:$result \n") {
 
-                  whenReady(resultsFuture) { results =>
-                    withClue(s"last command result:$results \n") {
-
-                      results shouldBe \/-
-                      validateState(commandApi.atomicProjection.lastSnapshot().futureValue)
-                      postCommandValidation(commandApi.atomicProjection.lastSnapshot().futureValue, command)
+                      result shouldBe \/-
+                      validateState(commandApi.atomicProjection.lastSnapshot())
+                      postCommandValidation(commandApi.atomicProjection.lastSnapshot(), command)
                     }
                   }
                 }
@@ -142,16 +178,17 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
           val firstFailure = results.find(_.isLeft)
           firstFailure shouldBe empty withClue ": Failure on warm up commands"
 
-          validateState(commandApi.atomicProjection.lastSnapshot().futureValue)
+          validateState(commandApi.atomicProjection.lastSnapshot())
 
           forAll(generator.generateSingleCommands) {
             command: D#Command =>
                 def executeSingleCommand(): Unit = {
                   val resultsFuture = commandApi.commandHandler.execute(command)
-                  whenReady(resultsFuture) { results =>
+                  whenReady(resultsFuture) { result =>
                     withClue(s"last command result:$results \n") {
-                      validateState(commandApi.atomicProjection.lastSnapshot().futureValue)
-                      postCommandValidation(commandApi.atomicProjection.lastSnapshot().futureValue, command)
+                      // Result can be -\/, but the resulting state must be valid
+                      validateState(commandApi.atomicProjection.lastSnapshot())
+                      postCommandValidation(commandApi.atomicProjection.lastSnapshot(), command)
                     }
                   }
                 }

@@ -26,7 +26,7 @@
 package eu.pmsoft.domain.model.deploy
 
 import akka.event.Logging
-import eu.pmsoft.mcomponents.model.security.password.reset.mins._
+import eu.pmsoft.mcomponents.model.security.password.reset.api._
 import spray.routing._
 
 import scala.concurrent.ExecutionContext

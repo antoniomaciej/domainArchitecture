@@ -75,7 +75,7 @@ class UserRegistrationGenerators(val state: AtomicEventStoreView[UserRegistratio
     status <- Gen.oneOf(true, false)
   } yield UpdateActiveUserStatus(uid, status)
 
-  def loadAllUID(): Seq[UserID] = state.lastSnapshot().futureValue.getAllUid.toSeq
+  def loadAllUID(): Seq[UserID] = state.lastSnapshot().getAllUid.toSeq
 
   override def generateSingleCommands: Gen[UserRegistrationCommand] = Gen.frequency(
     (1, genAddUser),

@@ -30,7 +30,7 @@ import akka.event.Logging
 import akka.io.IO
 import akka.pattern.ask
 import eu.pmsoft.domain.model.{ SessionToken, UserID }
-import eu.pmsoft.mcomponents.model.security.password.reset.mins.{ InitializePasswordResetFlowRequest, InitializePasswordResetFlowResponse }
+import eu.pmsoft.mcomponents.model.security.password.reset.api.{ InitializePasswordResetFlowRequest, InitializePasswordResetFlowResponse }
 import spray.can.Http
 import spray.client.pipelining._
 import spray.http.BasicHttpCredentials

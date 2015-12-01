@@ -27,10 +27,19 @@
 package eu.pmsoft.mcomponents.model.user.registry
 
 import eu.pmsoft.domain.model._
-import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
+import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
+import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.test.{ BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
 
-abstract class UserRegistrationModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[UserRegistrationDomain] {
+class UserRegistrationModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[UserRegistrationDomain] {
+
+  override def backendStrategy: EventStoreBackendStrategy[UserRegistrationDomain] = EventStoreInMemory(UserRegistrationDomainModule.eventStoreReference)
+
+  override def bindingInfrastructure: BindingInfrastructure = LocalBindingInfrastructure.create()
+
+  implicit def eventSourceExecutionContext: EventSourceExecutionContext = EventSourceExecutionContextProvider.create()
+
+  override def implementationModule(): DomainModule[UserRegistrationDomain] = new UserRegistrationDomainModule()
 
   it should "not allow duplicated login names" in {
     val module = createEmptyDomainModel()

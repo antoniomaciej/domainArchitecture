@@ -30,6 +30,8 @@ import eu.pmsoft.domain.model.{ UserID, UserLogin, UserPassword }
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.model.security.roles.RoleID
 
+import scala.pickling.directSubclasses
+
 object UserRegistrationModel {
 
   val invalidLoginErrorCode = 4001L
@@ -87,7 +89,12 @@ case class UpdateActiveUserStatus(uid: UserID, active: Boolean) extends UserRegi
 case class UpdateUserRoles(uid: UserID, roles: Set[RoleID]) extends UserRegistrationCommand
 
 //UserRegistrationModel events
-
+@directSubclasses(Array(
+  classOf[UserCreated],
+  classOf[UserPasswordUpdated],
+  classOf[UserActiveStatusUpdated],
+  classOf[UserObtainedAccessRoles]
+))
 sealed trait UserRegistrationEvent
 
 case class UserCreated(

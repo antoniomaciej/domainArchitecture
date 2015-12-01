@@ -26,10 +26,12 @@
 
 package eu.pmsoft.mcomponents.eventsourcing
 
-import eu.pmsoft.mcomponents.eventsourcing.eventstore.{ AsyncEventStore, EventStoreIdentification, EventStore }
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
+import eu.pmsoft.mcomponents.eventsourcing.eventstore._
+import eu.pmsoft.mcomponents.eventsourcing.projection.VersionedProjection
+import org.joda.time.DateTime
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.Future
 
 trait DomainSpecification {
   type Command
@@ -42,15 +44,19 @@ trait DomainSpecification {
 trait DomainModule[D <: DomainSpecification] {
 
   def logic: DomainLogic[D]
+
   def sideEffects: D#SideEffects
+
+  def schema: EventSerializationSchema[D]
+
   def eventStore: EventStore[D] with VersionedEventStoreView[D#Aggregate, D#State]
 
 }
 
 trait DomainLogic[D <: DomainSpecification] {
-  def calculateTransactionScope(command: D#Command, state: D#State): CommandToAggregateResult[D#Aggregate]
+  def calculateTransactionScope(command: D#Command, state: D#State): CommandToAggregates[D]
 
-  def executeCommand(command: D#Command, transactionScope: Map[D#Aggregate, Long])(implicit state: D#State, sideEffects: D#SideEffects): CommandToEventsResult[D#Event]
+  def executeCommand(command: D#Command, transactionScope: Map[D#Aggregate, Long])(implicit state: D#State, sideEffects: D#SideEffects): CommandToEventsResult[D]
 }
 
 trait AsyncEventCommandHandler[D <: DomainSpecification] {
@@ -59,22 +65,45 @@ trait AsyncEventCommandHandler[D <: DomainSpecification] {
 
 }
 
-trait DomainCommandApi[D <: DomainSpecification] {
+trait DomainCommandApi[D <: DomainSpecification] extends EventSourcingConfigurationContext {
 
   def commandHandler: AsyncEventCommandHandler[D]
 
   def atomicProjection: VersionedEventStoreView[D#Aggregate, D#State]
+
 }
 
 trait AtomicEventStoreView[+P] {
-  def atLeastOn(storeVersion: EventStoreVersion): Future[P]
-  def lastSnapshot(): Future[P]
+
+  def lastSnapshot(): P
+
 }
 
 trait VersionedEventStoreView[A, +P] extends AtomicEventStoreView[P] {
-  def projection(transactionScope: Set[A]): Future[VersionedProjection[A, P]]
+
+  def atLeastOn(storeVersion: EventStoreVersion): Future[VersionedProjection[P]]
 
 }
 
-case class VersionedProjection[A, +P](transactionScopeVersion: Map[A, Long], projection: P)
+case class AtomicTransactionScope[D <: DomainSpecification](transactionScopeVersion: Map[D#Aggregate, Long], projectionView: D#State)
+
+trait EventSerializationSchema[D <: DomainSpecification] {
+  def mapToEvent(data: EventDataWithNr): D#Event
+
+  def eventToData(event: D#Event): EventData
+
+  def buildReference(aggregate: D#Aggregate): AggregateReference
+}
+
+case class EventData(eventBytes: Array[Byte])
+
+case class EventDataWithNr(eventNr: Long, eventBytes: Array[Byte], createdAt: DateTime)
+
+case class AggregateReference(aggregateType: Int, aggregateUniqueId: String)
+
+object AggregateReference {
+  def apply(aggregateType: Int, aggregateUniqueId: Long): AggregateReference = {
+    AggregateReference(aggregateType, "%d".format(aggregateUniqueId))
+  }
+}
 

@@ -27,22 +27,42 @@ package eu.pmsoft.mcomponents.test
 
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.eventsourcing.eventstore.{ EventStoreIdentification, EventStore }
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.{ EventStoreID, EventStoreReference, EventStore }
+import eu.pmsoft.mcomponents.eventsourcing.projection.VersionedProjection
+import rx.Observable
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.Future
+import scala.reflect._
 import scalaz._
 
 /** Test to validate coverage
  */
 class OnTestLogicGeneratedCommandSpecification extends BaseEventSourceSpec with GeneratedCommandSpecification[TestLogicDomainSpecification] {
 
-  override def bindingInfrastructure: BindingInfrastructure = Mocked.shouldNotBeCalled
+  it should "provide a eventStoreConfiguration" in {
+    eventSourcingConfiguration.backendStrategies should be(Set(EventStoreInMemory[TestLogicDomainSpecification](eventStoreReference)))
+    eventSourcingConfiguration.bindingInfrastructure should be(bindingInfrastructure)
+  }
+
+  override lazy val bindingInfrastructure: BindingInfrastructure = new BindingInfrastructure {
+    override def consumerApi: EventConsumerInfrastructure = Mocked.shouldNotBeCalled
+
+    override def producerApi: EventProductionInfrastructure = Mocked.shouldNotBeCalled
+  }
+
+  val eventStoreReference = EventStoreReference[TestLogicDomainSpecification](
+    EventStoreID("any"),
+    classTag[TheEvent],
+    classTag[TheAggregate]
+  )
+
+  override def backendStrategy: EventStoreBackendStrategy[TestLogicDomainSpecification] = EventStoreInMemory[TestLogicDomainSpecification](eventStoreReference)
 
   override implicit def eventSourceExecutionContext: EventSourceExecutionContext = new EventSourceExecutionContext {
 
     override def assemblyDomainApplication[D <: DomainSpecification](domainImplementation: DomainModule[D]): DomainCommandApi[D] = new FakeDomainApi()
 
-    override implicit def configuration: EventSourcingConfiguration = Mocked.shouldNotBeCalled
+    override implicit def eventSourcingConfiguration: EventSourcingConfiguration = Mocked.shouldNotBeCalled
   }
 
   override def buildGenerator(state: AtomicEventStoreView[TheState]): CommandGenerator[TheCommand] = new TheCommandGenerator()
@@ -57,20 +77,48 @@ class OnTestLogicGeneratedCommandSpecification extends BaseEventSourceSpec with 
     //TODO use mockito and create a generic nested mock/stub creator
     override lazy val eventStore: EventStore[TestLogicDomainSpecification] with VersionedEventStoreView[TheAggregate, TheState] =
       new EventStore[TestLogicDomainSpecification] with VersionedEventStoreView[TheAggregate, TheState] {
-        override def identificationInfo: EventStoreIdentification[TestLogicDomainSpecification] = Mocked.shouldNotBeCalled
 
-        override def projection(transactionScope: Set[TheAggregate]): Future[VersionedProjection[TheAggregate, TheState]] = Mocked.shouldNotBeCalled
+        override def loadEvents(range: EventStoreRange): Seq[TheEvent] = Seq(EventOne(), EventTwo())
 
-        override def lastSnapshot(): Future[TheState] = Mocked.shouldNotBeCalled
+        override def calculateAtomicTransactionScopeVersion(logic: DomainLogic[TestLogicDomainSpecification], command: TheCommand): Future[CommandToAtomicState[TestLogicDomainSpecification]] = Mocked.shouldNotBeCalled
 
-        override def atLeastOn(storeVersion: EventStoreVersion): Future[TheState] = Mocked.shouldNotBeCalled
+        override def persistEvents(
+          events:        List[TheEvent],
+          aggregateRoot: TheAggregate, AtomicTransactionScope: AtomicTransactionScope[TestLogicDomainSpecification]
+        ): Future[CommandResult] = Mocked.shouldNotBeCalled
 
-        override def persistEvents(events: List[TheEvent], transactionScopeVersion: Map[TheAggregate, Long]): Future[CommandResult] = Mocked.shouldNotBeCalled
+        override def lastSnapshot(): TheState = Mocked.shouldNotBeCalled
 
-        override def loadEvents(range: EventStoreRange): Future[Seq[TheEvent]] = Mocked.shouldNotBeCalled
+        override def eventStoreVersionUpdates(): Observable[EventStoreVersion] = Mocked.shouldNotBeCalled
+
+        override def atLeastOn(storeVersion: EventStoreVersion): Future[VersionedProjection[TheState]] = Mocked.shouldNotBeCalled
+
+        override def loadEventsForAggregate(aggregate: TheAggregate): Seq[TheEvent] = Mocked.shouldNotBeCalled
       }
 
     override lazy val sideEffects: TheSideEffect = new TheSideEffect {}
+
+    override def schema: EventSerializationSchema[TestLogicDomainSpecification] = new EventSerializationSchema[TestLogicDomainSpecification] {
+      override def mapToEvent(data: EventDataWithNr): TheEvent = {
+        val number = data.eventBytes(0).toInt
+        number match {
+          case 1 => EventOne()
+          case 2 => EventTwo()
+          case _ => throw new IllegalStateException("serialization must produce only 1 or 2 values")
+        }
+      }
+
+      override def buildReference(aggregate: TheAggregate): AggregateReference = aggregate match {
+        case AggregateOne() => AggregateReference(1, "one")
+        case AggregateTwo() => AggregateReference(1, "two")
+      }
+
+      override def eventToData(event: TheEvent): EventData = event match {
+        case EventOne()        => EventData(Array(1.toByte))
+        case EventTwo()        => EventData(Array(2.toByte))
+        case EventWithData(nr) => EventData(Array(nr.toByte))
+      }
+    }
   }
 }
 
@@ -81,15 +129,15 @@ class FakeDomainApi[D <: DomainSpecification] extends DomainCommandApi[D] {
 
   override def commandHandler: AsyncEventCommandHandler[D] = new AsyncEventCommandHandler[D] {
     override def execute(command: D#Command): Future[CommandResultConfirmed] =
-      Future.successful(\/-(EventSourceCommandConfirmation(EventStoreVersion(0L))))
+      Future.successful(\/-(EventSourceCommandConfirmation(EventStoreVersion.zero)))
   }
 
   override def atomicProjection: VersionedEventStoreView[D#Aggregate, D#State] = new VersionedEventStoreView[D#Aggregate, D#State] {
-    override def projection(transactionScope: Set[D#Aggregate]): Future[VersionedProjection[D#Aggregate, D#State]] =
-      Future.successful(VersionedProjection[D#Aggregate, D#State](Map(), fakeState))
 
-    override def lastSnapshot(): Future[D#State] = Future.successful(fakeState)
+    override def lastSnapshot(): D#State = fakeState
 
-    override def atLeastOn(storeVersion: EventStoreVersion): Future[D#State] = Future.successful(fakeState)
+    override def atLeastOn(storeVersion: EventStoreVersion): Future[VersionedProjection[D#State]] = Future.successful(VersionedProjection(EventStoreVersion.zero, fakeState))
   }
+
+  override def eventSourcingConfiguration: EventSourcingConfiguration = Mocked.shouldNotBeCalled
 }

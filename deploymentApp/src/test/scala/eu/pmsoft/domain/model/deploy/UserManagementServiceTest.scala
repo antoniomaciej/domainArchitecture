@@ -32,7 +32,7 @@ import eu.pmsoft.domain.model._
 import eu.pmsoft.mcomponents.eventsourcing.{ EventSourceCommandConfirmation, EventStoreVersion }
 import eu.pmsoft.mcomponents.minstance.{ RequestErrorCode, RequestErrorDomain, ResponseError }
 import eu.pmsoft.mcomponents.model.security.password.reset._
-import eu.pmsoft.mcomponents.model.security.password.reset.mins._
+import eu.pmsoft.mcomponents.model.security.password.reset.api._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{ FlatSpec, Matchers, OneInstancePerTest }
 import spray.http.HttpEncodings
@@ -65,7 +65,7 @@ class UserManagementServiceTest
 
   it should "Receive call backend api" in {
     val apiCall = InitializePasswordResetFlowRequest(UserID(0L), SessionToken("xxx"))
-    passwordResetApi.initializeFlow _ expects apiCall returning Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion(0L)))))
+    passwordResetApi.initializeFlow _ expects apiCall returning Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion.zero))))
     Post("/password/init", apiCall) ~> routingDefinition ~> check {
       val res = responseAs[InitializePasswordResetFlowResponse]
       res.confirmation.storeVersion.storeVersion should be(0L)

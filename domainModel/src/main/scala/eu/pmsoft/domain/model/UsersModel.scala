@@ -32,10 +32,10 @@ object UsersModel {
 
 case class UserSession(sessionToken: SessionToken, userId: UserID)
 
-case class UserID(val id: Long) extends AnyVal
+final case class UserID(val id: Long) extends AnyVal
 
-case class UserPassword(val passwordHash: String) extends AnyVal
+final case class UserPassword(val passwordHash: String) extends AnyVal
 
-case class SessionToken(val token: String) extends AnyVal
+final case class SessionToken(val token: String) extends AnyVal
 
-case class UserLogin(val login: String) extends AnyVal
+final case class UserLogin(val login: String) extends AnyVal

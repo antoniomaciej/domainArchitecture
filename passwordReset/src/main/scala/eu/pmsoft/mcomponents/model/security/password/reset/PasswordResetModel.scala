@@ -29,6 +29,8 @@ package eu.pmsoft.mcomponents.model.security.password.reset
 import eu.pmsoft.domain.model._
 import eu.pmsoft.mcomponents.eventsourcing._
 
+import scala.pickling.directSubclasses
+
 object PasswordResetModel {
 
   val invalidSessionTokenErrorCode = 100L
@@ -108,6 +110,11 @@ case class ConfirmPasswordResetFlow(
 ) extends PasswordResetModelCommand
 
 //events
+@directSubclasses(Array(
+  classOf[PasswordResetFlowCreated],
+  classOf[PasswordResetFlowCancelled],
+  classOf[PasswordResetFlowConfirmed]
+))
 sealed trait PasswordResetModelEvent
 
 case class PasswordResetFlowCreated(

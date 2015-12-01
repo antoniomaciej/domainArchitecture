@@ -44,7 +44,20 @@ object domainArchitecture extends Build {
     settings(testDependencies: _*).
     dependsOn(eventSourcingApi)
 
+  //coverage is not well calculated, so disable integration tests.
+//  lazy val FunTest = config("fun") extend (Test)
+
+  def itFilter(name: String): Boolean = name endsWith "IntegrationTest"
+
+  def unitFilter(name: String): Boolean = (name endsWith "Test") && !itFilter(name)
+
   lazy val eventSourcing = (project in file("eventSourcing")).
+//    configs(FunTest).
+//    settings(inConfig(FunTest)(Defaults.testTasks): _*).
+    settings(
+      testOptions in Test ++= Seq(Tests.Filter(unitFilter))
+//      testOptions in FunTest := Seq(Tests.Filter(itFilter))
+    ).
     settings(commonSettings: _*).
     settings(dependencies: _*).
     dependsOn(eventSourcingTest % "test").
@@ -93,6 +106,8 @@ object domainArchitecture extends Build {
     dependsOn(domainModel).
     dependsOn(userSession, userRegistry, passwordReset, securityRoles)
 
+  //    configs(FunTest).
+  //    settings(inConfig(FunTest)(Defaults.testSettings): _*).
   lazy val root = (project in file(".")).
     aggregate(eventSourcing, eventSourcingApi, eventSourcingTest,
       domainModel,
@@ -103,6 +118,12 @@ object domainArchitecture extends Build {
 
   lazy val dependencies = Seq(
     libraryDependencies ++= Seq(
+      "org.scalikejdbc" %% "scalikejdbc" % "2.3.1",
+      "org.scalikejdbc" %% "scalikejdbc-config" % "2.3.1",
+      "org.scalikejdbc" %% "scalikejdbc-test" % "2.3.1" % "test",
+      "com.h2database" % "h2" % "1.4.190" % "test",
+      "mysql" % "mysql-connector-java" % "5.1.38" % "test",
+      "org.postgresql" % "postgresql" % "9.4-1206-jdbc42" % "test",
       "org.jasypt" % "jasypt" % "1.9.2",
       "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
       "ch.qos.logback" % "logback-classic" % "1.1.3",
@@ -114,7 +135,10 @@ object domainArchitecture extends Build {
       "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion,
       "org.scalaz" %% "scalaz-core" % "7.1.2",
       "org.scalaz" %% "scalaz-concurrent" % "7.1.2",
-      "io.reactivex" % "rxjava" % "1.0.14"
+      "io.reactivex" % "rxjava" % "1.0.14",
+      "com.google.guava" % "guava" % "19.0",
+      "org.mapdb" % "mapdb" % "2.0-beta12",
+      "org.scala-lang.modules" %% "scala-pickling" % "0.11.0"
     )
   )
 
@@ -133,10 +157,6 @@ object domainArchitecture extends Build {
   lazy val deploymentDependencies = Seq(
     libraryDependencies ++= Seq(
       "org.json4s" %% "json4s-native" % "3.2.10",
-      "org.scalikejdbc" %% "scalikejdbc" % "2.3.0",
-      "org.scalikejdbc" %% "scalikejdbc-config" % "2.3.0",
-      "org.scalikejdbc" %% "scalikejdbc-test" % "2.3.0" % "test",
-      "com.h2database" % "h2" % "1.4.190" % "test",
       "com.mchange" % "c3p0" % "0.9.5.1",
       "com.typesafe.akka" %% "akka-actor" % akkaVersion,
       "io.spray" %% "spray-can" % sprayVersion,
@@ -153,8 +173,9 @@ object domainArchitecture extends Build {
     organization := Organization,
     version := Version,
     concurrentRestrictions in Global += Tags.limit(Tags.Test, 1),
-    scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature"),
+    scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature", "-Yinline-warnings"),
     resolvers += Classpaths.typesafeReleases,
+    resolvers += Resolver.file("Local repo", file(System.getProperty("user.home") + "/.ivy2/local"))(Resolver.ivyStylePatterns),
     publishArtifact in(Test, packageBin) := true,
     publishArtifact in(Test, packageDoc) := true,
     publishArtifact in(Test, packageSrc) := true
