@@ -44,5 +44,4 @@ class EventStoreSqlDDLIntegrationTest extends FlatSpec with Matchers with EventS
     db.autoClose(false)
     (db, EventStoreSqlDDL.fromDialect(PostgresEventStoreSqlDialect, "testDialect"))
   }
-
 }

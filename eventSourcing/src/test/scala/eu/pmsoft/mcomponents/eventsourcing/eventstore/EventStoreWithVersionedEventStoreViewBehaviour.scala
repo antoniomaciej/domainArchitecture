@@ -40,16 +40,16 @@ import scalaz._
 trait EventStoreWithVersionedEventStoreViewBehaviour {
   self: FlatSpec with Matchers with PropertyChecks with ScalaFutures with DisjunctionMatchers =>
 
+  def addOneEvent(eventStore: EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState])(eventNr: Int): Unit = {
+    addOneEventOnThreadRoot(eventStore)(0, eventNr)
+  }
+
+  def addOneEventOnThreadRoot(eventStore: EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState])(threadNr: Int, eventNr: Int): Unit = {
+    val atomicTransactionScope = eventStore.calculateAtomicTransactionScopeVersion(new TheTestDomainLogic(), TestCommandForThreads(0, 0)).futureValue.toOption.get
+    eventStore.persistEvents(List(TestEventThread(threadNr, eventNr)), TestAggregateThread(threadNr), atomicTransactionScope).futureValue
+  }
+
   def eventStoreWithAtomicProjection(testsTag: Tag, eventStoreCreator: () => EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState]): Unit = {
-
-      def addOneEvent(eventStore: EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState])(eventNr: Int): Unit = {
-        addOneEventOnThreadRoot(eventStore)(0, eventNr)
-      }
-
-      def addOneEventOnThreadRoot(eventStore: EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState])(threadNr: Int, eventNr: Int): Unit = {
-        val atomicTransactionScope = eventStore.calculateAtomicTransactionScopeVersion(new TheTestDomainLogic(), TestCommandForThreads(0, 0)).futureValue.toOption.get
-        eventStore.persistEvents(List(TestEventThread(threadNr, eventNr)), TestAggregateThread(threadNr), atomicTransactionScope).futureValue
-      }
 
     it should "provide projections on the future" taggedAs (testsTag) in {
       //given
@@ -105,7 +105,7 @@ trait EventStoreWithVersionedEventStoreViewBehaviour {
       val futureLoad1To4AfterEventsClose = eventStore.loadEvents(rangeClose)
       val futureLoad1To4AfterEventsOpen = eventStore.loadEvents(rangeOpen)
       futureLoad1To4AfterEventsClose shouldBe List(TestEventThread(0, 2), TestEventThread(0, 3), TestEventThread(0, 4))
-      futureLoad1To4AfterEventsOpen shouldBe List(TestEventThread(0, 3), TestEventThread(0, 4), TestEventThread(0, 5), TestEventThread(0, 6), TestEventThread(0, 7), TestEventThread(0, 8), TestEventThread(0, 9), TestEventThread(0, 10))
+      futureLoad1To4AfterEventsOpen shouldBe ((3 to 10).map( TestEventThread(0, _)))
     }
 
     it should "extract events for a root aggregate" in {
@@ -131,59 +131,60 @@ trait EventStoreWithVersionedEventStoreViewBehaviour {
     }
 
     it should "detect concurrent execution of updates in the same transaction scope" taggedAs (testsTag) in {
-      runConcurrentEventPersistence(thread => 0, expectedResult = true)
+      runConcurrentEventPersistence(thread => 0, expectedResult = true,eventStoreCreator)
     }
 
     it should "run concurrently in different transaction scope" taggedAs (testsTag) in {
-      runConcurrentEventPersistence(thread => thread, expectedResult = false)
+      runConcurrentEventPersistence(thread => thread, expectedResult = false,eventStoreCreator)
     }
+  }
 
-      def runConcurrentEventPersistence(aggregateIdForThreadF: Int => Int, expectedResult: Boolean): Unit = {
-        //given
-        val eventStore = eventStoreCreator()
-        //and
-        val nrOfThreads = 4
-        val barriers = new CountDownLatch(nrOfThreads)
-        val rollbackError = new AtomicBoolean(false)
-        val endThreadsFlag = new AtomicBoolean(false)
-        val domainLogic = new TheTestDomainLogic()
+  def runConcurrentEventPersistence(aggregateIdForThreadF: Int => Int, expectedResult: Boolean,
+                                    eventStoreCreator: () => EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState]): Unit = {
+    //given
+    val eventStore = eventStoreCreator()
+    //and
+    val nrOfThreads = 4
+    val barriers = new CountDownLatch(nrOfThreads)
+    val rollbackError = new AtomicBoolean(false)
+    val endThreadsFlag = new AtomicBoolean(false)
+    val domainLogic = new TheTestDomainLogic()
 
-        //when 4 thread are executed in parallel to store on a transaction context Map(TestAggregate(1) -> aggregateIdForThreadF(threadNr))
-        val service: ExecutorService = Executors.newFixedThreadPool(nrOfThreads)
-        (1 to 4) foreach { thread =>
-          service.execute(new Runnable {
-            override def run(): Unit = {
-              var counter = 0
-              try {
-                while (!Thread.interrupted() && !endThreadsFlag.get() && !rollbackError.get()) {
-                  val aggregateIdForThread = aggregateIdForThreadF(thread)
-                  counter = counter + 1
-                  val scope: AtomicTransactionScope[TheTestDomainSpecification] = eventStore.calculateAtomicTransactionScopeVersion(domainLogic, TestCommandForThreads(thread, aggregateIdForThread)).futureValue.toOption.get
-                  eventStore.persistEvents(List(TestEventThread(thread, counter)), TestAggregateThread(thread), scope).futureValue match {
-                    case -\/(error) => error match {
-                      case EventSourceCommandRollback() => rollbackError.set(true)
-                      case EventSourceCommandFailed(_)  =>
-                    }
-                    case \/-(b) =>
-                  }
+    //when 4 thread are executed in parallel to store on a transaction context Map(TestAggregate(1) -> aggregateIdForThreadF(threadNr))
+    val service: ExecutorService = Executors.newFixedThreadPool(nrOfThreads)
+    (1 to 4) foreach { thread =>
+      service.execute(new Runnable {
+        override def run(): Unit = {
+          var counter = 0
+          try {
+            while (!Thread.interrupted() && !endThreadsFlag.get() && !rollbackError.get()) {
+              val aggregateIdForThread = aggregateIdForThreadF(thread)
+              counter = counter + 1
+              val scope: AtomicTransactionScope[TheTestDomainSpecification] = eventStore.calculateAtomicTransactionScopeVersion(domainLogic, TestCommandForThreads(thread, aggregateIdForThread)).futureValue.toOption.get
+              eventStore.persistEvents(List(TestEventThread(thread, counter)), TestAggregateThread(thread), scope).futureValue match {
+                case -\/(error) => error match {
+                  case EventSourceCommandRollback() => rollbackError.set(true)
+                  case EventSourceCommandFailed(_)  =>
                 }
+                case \/-(b) =>
               }
-              catch {
-                case e: Throwable => e.printStackTrace()
-              }
-              barriers.countDown()
             }
-          })
+          }
+          catch {
+            case e: Throwable => e.printStackTrace()
+          }
+          barriers.countDown()
         }
-        val calculationTime = 500
-        barriers.await(calculationTime, TimeUnit.MILLISECONDS)
-        endThreadsFlag.set(false)
-        val timeToCloseThread = 100
-        service.shutdownNow()
-        barriers.await(timeToCloseThread, TimeUnit.MILLISECONDS)
+      })
+    }
+    val calculationTime = 500
+    barriers.await(calculationTime, TimeUnit.MILLISECONDS)
+    endThreadsFlag.set(false)
+    val timeToCloseThread = 100
+    service.shutdownNow()
+    barriers.await(timeToCloseThread, TimeUnit.MILLISECONDS)
 
-        //then a error related to concurrency transaction scopes must be found
-        rollbackError.get() shouldBe expectedResult
-      }
+    //then a error related to concurrency transaction scopes must be found
+    rollbackError.get() shouldBe expectedResult
   }
 }

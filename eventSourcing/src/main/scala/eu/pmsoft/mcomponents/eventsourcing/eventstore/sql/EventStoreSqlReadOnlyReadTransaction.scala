@@ -71,8 +71,9 @@ class EventStoreSqlWriteTransaction[D <: DomainSpecification](
         val lastVersion = (initialVersion /: events) {
           case (version, event) =>
             val eventData = schema.eventToData(event)
-            val ver = sql"""insert into ${ddlDialect.eventDataTableSql} (binary_data,aggregate_type,unique_id) values (${eventData.eventBytes},${rootAggregateReference.aggregateType},${rootAggregateReference.aggregateUniqueId})""".updateAndReturnGeneratedKey().apply()
-            ver
+            sql"""insert into ${ddlDialect.eventDataTableSql} (binary_data,aggregate_type,unique_id)
+                 values (${eventData.eventBytes},${rootAggregateReference.aggregateType},${rootAggregateReference.aggregateUniqueId})"""
+              .updateAndReturnGeneratedKey().apply()
         }
         \/-(EventStoreVersion(lastVersion))
       }
@@ -206,7 +207,10 @@ class EventStoreSqlReadOnlyReadTransaction[D <: DomainSpecification, P <: D#Stat
   override def loadEventsForAggregate(aggregate: D#Aggregate): Seq[D#Event] = {
     val aggregateRef = schema.buildReference(aggregate)
     db.withinTx { implicit session =>
-      val listEvent: List[EventDataWithNr] = sql"select * from ${ddlDialect.eventDataTableSql} where aggregate_type = ${aggregateRef.aggregateType} and unique_id=${aggregateRef.aggregateUniqueId} order by event_nr".map(rs => SqlEventDataMapping.eventDataWithNr(rs)).list.apply()
+      val listEvent: List[EventDataWithNr] =
+        sql"""select * from ${ddlDialect.eventDataTableSql}
+             where aggregate_type = ${aggregateRef.aggregateType} and unique_id=${aggregateRef.aggregateUniqueId} order by event_nr"""
+          .map(rs => SqlEventDataMapping.eventDataWithNr(rs)).list.apply()
       listEvent.map(schema.mapToEvent).toStream
     }
   }

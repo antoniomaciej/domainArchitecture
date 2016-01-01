@@ -56,5 +56,4 @@ trait EventStoreSqlDDLBehaviour {
       dialect.tablesExists(db) should be(false)
     }
   }
-
 }
