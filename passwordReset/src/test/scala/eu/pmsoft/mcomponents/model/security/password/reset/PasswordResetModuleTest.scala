@@ -27,6 +27,7 @@
 package eu.pmsoft.mcomponents.model.security.password.reset
 
 import eu.pmsoft.domain.model._
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreRead
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.test.{ BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
@@ -42,22 +43,22 @@ class PasswordResetModuleTest extends BaseEventSourceSpec with GeneratedCommandS
   override def implementationModule(): DomainModule[PasswordResetDomain] = new PasswordResetDomainModule()
 
   it should "reject invalid session tokens" in {
-    val module = createEmptyDomainModel()
-    whenReady(module.commandHandler.execute(InitializePasswordResetFlow(UserID(0), SessionToken("")))) { result =>
+    val (api, _) = createApiAndDomainModule()
+    whenReady(api.commandHandler.execute(InitializePasswordResetFlow(UserID(0), SessionToken("")))) { result =>
       result should be(-\/)
     }
   }
 
   it should "reject second password reset confirmation" in {
-    val module = createEmptyDomainModel()
-    whenReady(module.commandHandler
+    val (api, _) = createApiAndDomainModule()
+    whenReady(api.commandHandler
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = module.atomicProjection.lastSnapshot().findFlowByUserID(UserID(0)).get
-      whenReady(module.commandHandler
+      val process = api.atomicProjection.lastSnapshot().findFlowByUserID(UserID(0)).get
+      whenReady(api.commandHandler
         .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("newPassword")))) { confirmationResult =>
         confirmationResult should be(\/-)
-        whenReady(module.commandHandler
+        whenReady(api.commandHandler
           .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("newPassword2")))) { confirmationResultTwo =>
           confirmationResultTwo should be(-\/)
         }
@@ -66,12 +67,12 @@ class PasswordResetModuleTest extends BaseEventSourceSpec with GeneratedCommandS
   }
 
   it should "reject confirmations with tokens pairs not matching security verification" in {
-    val module = createEmptyDomainModel()
-    whenReady(module.commandHandler
+    val (api, _) = createApiAndDomainModule()
+    whenReady(api.commandHandler
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = module.atomicProjection.lastSnapshot().findFlowByUserID(UserID(0)).get
-      whenReady(module.commandHandler
+      val process = api.atomicProjection.lastSnapshot().findFlowByUserID(UserID(0)).get
+      whenReady(api.commandHandler
         .execute(
           ConfirmPasswordResetFlow(
             SessionToken("validButNotMatching"),
@@ -85,39 +86,42 @@ class PasswordResetModuleTest extends BaseEventSourceSpec with GeneratedCommandS
   }
 
   it should "reject confirmation with invalid password" in {
-    val module = createEmptyDomainModel()
-    whenReady(module.commandHandler
+    val (api, _) = createApiAndDomainModule()
+    whenReady(api.commandHandler
       .execute(InitializePasswordResetFlow(UserID(0), SessionToken("validSessionToken")))) { result =>
       result should be(\/-)
-      val process = module.atomicProjection.lastSnapshot().findFlowByUserID(UserID(0)).get
-      whenReady(module.commandHandler
+      val process = api.atomicProjection.lastSnapshot().findFlowByUserID(UserID(0)).get
+      whenReady(api.commandHandler
         .execute(ConfirmPasswordResetFlow(process.sessionToken, process.passwordResetToken, UserPassword("")))) { confirmationResult =>
         confirmationResult should be(-\/)
       }
     }
   }
 
-  override def buildGenerator(state: AtomicEventStoreView[PasswordResetModelState]): CommandGenerator[PasswordResetModelCommand] = new PasswordResetModelGenerator(state)
+  override def buildGenerator(state: AtomicEventStoreView[PasswordResetModelState])(implicit eventStoreRead: EventStoreRead[PasswordResetDomain]): CommandGenerator[PasswordResetModelCommand] = new PasswordResetModelGenerator(state)
 
-  override def postCommandValidation(state: PasswordResetModelState, command: PasswordResetModelCommand): Unit =
-    command match {
-      case InitializePasswordResetFlow(userId, sessionToken) =>
-        state.findFlowByUserID(userId) should not be empty withClue ": Process initialized but not visible on state"
-        val process = state.findFlowByUserID(userId).get
-        process.sessionToken should be(sessionToken) withClue ": Process initialized but sessionToken do not match"
-        state.findFlowByPasswordToken(process.passwordResetToken) should not be empty withClue ": Process started but passwordToken visible on state"
-        state.findFlowByPasswordToken(process.passwordResetToken)
-          .get should equal(process) withClue ": Process started but state by passwordToken do not match state by userId"
-        state.getExistingProcessUserId should contain(userId) withClue ": UserId not marked as started"
-      case CancelPasswordResetFlowByUser(userId) =>
-        state.findFlowByUserID(userId) shouldBe empty withClue ": Process cancelled but visible on state"
-        state.getExistingProcessUserId should not contain userId withClue ": UserId marked as started"
-      case CancelPasswordResetFlowByToken(passwordResetToken) =>
-        state.findFlowByPasswordToken(passwordResetToken) shouldBe empty withClue ": Process cancelled but passwordToken visible on state"
-      case ConfirmPasswordResetFlow(sessionToken, passwordResetToken, newPassword) =>
-    }
+  override def postCommandValidation(
+    state:   PasswordResetModelState,
+    command: PasswordResetModelCommand,
+    result:  EventSourceCommandConfirmation[PasswordResetAggregate]
+  )(implicit eventStoreRead: EventStoreRead[PasswordResetDomain]): Unit = command match {
+    case InitializePasswordResetFlow(userId, sessionToken) =>
+      state.findFlowByUserID(userId) should not be empty withClue ": Process initialized but not visible on state"
+      val process = state.findFlowByUserID(userId).get
+      process.sessionToken should be(sessionToken) withClue ": Process initialized but sessionToken do not match"
+      state.findFlowByPasswordToken(process.passwordResetToken) should not be empty withClue ": Process started but passwordToken visible on state"
+      state.findFlowByPasswordToken(process.passwordResetToken)
+        .get should equal(process) withClue ": Process started but state by passwordToken do not match state by userId"
+      state.getExistingProcessUserId should contain(userId) withClue ": UserId not marked as started"
+    case CancelPasswordResetFlowByUser(userId) =>
+      state.findFlowByUserID(userId) shouldBe empty withClue ": Process cancelled but visible on state"
+      state.getExistingProcessUserId should not contain userId withClue ": UserId marked as started"
+    case CancelPasswordResetFlowByToken(passwordResetToken) =>
+      state.findFlowByPasswordToken(passwordResetToken) shouldBe empty withClue ": Process cancelled but passwordToken visible on state"
+    case ConfirmPasswordResetFlow(sessionToken, passwordResetToken, newPassword) =>
+  }
 
-  override def validateState(state: PasswordResetModelState) {
+  override def validateState(state: PasswordResetModelState)(implicit eventStoreRead: EventStoreRead[PasswordResetDomain]): Unit = {
     findInconsistentProcessByUserId(state) shouldBe empty withClue ": A userId marked as process started but the process is not found"
     findInconsistentProcessByPasswordToken(state) shouldBe empty withClue ": No process found for the provided passwordResetToken"
   }

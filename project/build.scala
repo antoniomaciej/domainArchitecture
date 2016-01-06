@@ -31,7 +31,7 @@ object domainArchitecture extends Build {
 
   lazy val Organization = "eu.pmsoft"
   lazy val Name = "domainArchitecture"
-  lazy val Version = "0.0.1-SNAPSHOT"
+  lazy val Version = "0.0.2"
 
   lazy val eventSourcingApi = (project in file("eventSourcingApi")).
     settings(commonSettings: _*).
@@ -44,19 +44,18 @@ object domainArchitecture extends Build {
     settings(testDependencies: _*).
     dependsOn(eventSourcingApi)
 
-  //coverage is not well calculated, so disable integration tests.
-//  lazy val FunTest = config("fun") extend (Test)
+  lazy val FunTest = config("fun") extend (Test)
 
   def itFilter(name: String): Boolean = name endsWith "IntegrationTest"
 
   def unitFilter(name: String): Boolean = (name endsWith "Test") && !itFilter(name)
 
   lazy val eventSourcing = (project in file("eventSourcing")).
-//    configs(FunTest).
-//    settings(inConfig(FunTest)(Defaults.testTasks): _*).
+    configs(FunTest).
+    settings(inConfig(FunTest)(Defaults.testTasks): _*).
     settings(
-      testOptions in Test ++= Seq(Tests.Filter(unitFilter))
-//      testOptions in FunTest := Seq(Tests.Filter(itFilter))
+      testOptions in Test ++= Seq(Tests.Filter(unitFilter)),
+      testOptions in FunTest ++= Seq(Tests.Filter(itFilter))
     ).
     settings(commonSettings: _*).
     settings(dependencies: _*).
@@ -106,9 +105,9 @@ object domainArchitecture extends Build {
     dependsOn(domainModel).
     dependsOn(userSession, userRegistry, passwordReset, securityRoles)
 
-  //    configs(FunTest).
-  //    settings(inConfig(FunTest)(Defaults.testSettings): _*).
   lazy val root = (project in file(".")).
+    configs(FunTest).
+    settings(inConfig(FunTest)(Defaults.testSettings): _*).
     aggregate(eventSourcing, eventSourcingApi, eventSourcingTest,
       domainModel,
       userSession, userRegistry, passwordReset, securityRoles,
@@ -168,12 +167,11 @@ object domainArchitecture extends Build {
     )
   )
 
-
   lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
     organization := Organization,
     version := Version,
     concurrentRestrictions in Global += Tags.limit(Tags.Test, 1),
-    scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature", "-Yinline-warnings"),
+    scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature", "-Yinline-warnings", "-Xlog-implicits"),
     resolvers += Classpaths.typesafeReleases,
     resolvers += Resolver.file("Local repo", file(System.getProperty("user.home") + "/.ivy2/local"))(Resolver.ivyStylePatterns),
     publishArtifact in(Test, packageBin) := true,

@@ -72,7 +72,7 @@ class UserRegistrationAndProjectionTest extends BaseEventSourceComponentTestSpec
       UserLogin("testLogin@test.com"), UserPassword("testPassword")
     )).futureValue shouldBe \/-
     //then
-    projection.getLastSnapshotView().projection.userLoginSet should be(Set(UserLogin("testLogin@test.com")))
+    projection.lastSnapshotView().projection.userLoginSet should be(Set(UserLogin("testLogin@test.com")))
   }
 
   class TestProjection extends EventSourceProjectionCreationLogic[UserRegistrationDomain, ExistingUsers] {

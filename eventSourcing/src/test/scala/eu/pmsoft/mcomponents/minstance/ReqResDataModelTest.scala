@@ -53,9 +53,9 @@ class ReqResDataModelTest extends BaseEventSourceComponentTestSpec {
 
   it should "translate command results to responses - command success case " in {
     //given
-    val failure = scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion(1L)))
+    val success = scalaz.\/-(EventSourceCommandConfirmation[Int](EventStoreVersion(1L), 1))
     //when
-    val responseFailure = failure.asResponse
+    val responseFailure = success.asResponse
     //then
     responseFailure should be(\/-)
     responseFailure.map { s =>

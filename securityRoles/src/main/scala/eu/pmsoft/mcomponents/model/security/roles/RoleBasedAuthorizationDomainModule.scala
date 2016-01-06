@@ -47,7 +47,7 @@ class RoleBasedAuthorizationDomainModule(implicit val eventSourcingConfiguration
   override lazy val schema: EventSerializationSchema[RoleBasedAuthorizationDomain] = new RoleBasedAuthorizationEventSerializationSchema
 
   override lazy val eventStore: EventStore[RoleBasedAuthorizationDomain] with VersionedEventStoreView[RoleBasedAuthorizationAggregate, RoleBasedAuthorizationState] =
-    EventStoreProvider.createEventStore[RoleBasedAuthorizationDomain, RoleBasedAuthorizationStateInMemory](new RoleBasedEventStoreAtomicAtomicProjection(), schema, RoleBasedAuthorizationDomainModule.eventStoreReference)
+    EventStoreProvider.createEventStore[RoleBasedAuthorizationDomain, RoleBasedAuthorizationStateInMemory](new RoleBasedEventStoreAtomicProjection(), schema, RoleBasedAuthorizationDomainModule.eventStoreReference)
 
   override lazy val sideEffects: RoleBasedAuthorizationLocalSideEffects = new LocalThreadRoleBasedAuthorizationLocalSideEffects()
 }
@@ -62,7 +62,7 @@ class LocalThreadRoleBasedAuthorizationLocalSideEffects extends RoleBasedAuthori
   override def generateUniquePermissionId(): PermissionID = new PermissionID(permissionIdCounter.getAndAdd(1))
 }
 
-class RoleBasedEventStoreAtomicAtomicProjection extends EventStoreAtomicProjectionCreationLogic[RoleBasedAuthorizationDomain, RoleBasedAuthorizationStateInMemory] {
+class RoleBasedEventStoreAtomicProjection extends EventStoreAtomicProjectionCreationLogic[RoleBasedAuthorizationDomain, RoleBasedAuthorizationStateInMemory] {
   override def buildInitialState(): RoleBasedAuthorizationStateInMemory = RoleBasedAuthorizationStateInMemory()
 
   override def projectSingleEvent(

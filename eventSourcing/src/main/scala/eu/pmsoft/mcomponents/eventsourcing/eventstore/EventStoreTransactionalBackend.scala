@@ -34,7 +34,7 @@ trait EventStoreTransactionalBackend[D <: DomainSpecification, P <: D#State] {
 
   def readOnly[A](execution: EventStoreReadTransaction[D, P] => A): A
 
-  def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, transactionScopeVersion: Map[D#Aggregate, Long]): CommandResult
+  def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, transactionScopeVersion: Map[D#Aggregate, Long]): CommandResult[D]
 }
 
 trait EventStoreReadTransaction[D <: DomainSpecification, P <: D#State] {

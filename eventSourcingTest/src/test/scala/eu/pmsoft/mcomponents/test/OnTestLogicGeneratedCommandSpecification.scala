@@ -27,7 +27,7 @@ package eu.pmsoft.mcomponents.test
 
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.eventsourcing.eventstore.{ EventStoreID, EventStoreReference, EventStore }
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.{ EventStoreRead, EventStoreID, EventStoreReference, EventStore }
 import eu.pmsoft.mcomponents.eventsourcing.projection.VersionedProjection
 import rx.Observable
 
@@ -65,11 +65,12 @@ class OnTestLogicGeneratedCommandSpecification extends BaseEventSourceSpec with 
     override implicit def eventSourcingConfiguration: EventSourcingConfiguration = Mocked.shouldNotBeCalled
   }
 
-  override def buildGenerator(state: AtomicEventStoreView[TheState]): CommandGenerator[TheCommand] = new TheCommandGenerator()
+  override def buildGenerator(state: AtomicEventStoreView[TheState])(implicit eventStoreRead: EventStoreRead[TestLogicDomainSpecification]): CommandGenerator[TheCommand] = new TheCommandGenerator()
 
-  override def postCommandValidation(state: TheState, command: TheCommand): Unit = state.ok
+  override def postCommandValidation(state: TheState, command: TheCommand,
+                                     result: EventSourceCommandConfirmation[TheAggregate])(implicit eventStoreRead: EventStoreRead[TestLogicDomainSpecification]): Unit = state.ok
 
-  override def validateState(state: TheState): Unit = state.ok
+  override def validateState(state: TheState)(implicit eventStoreRead: EventStoreRead[TestLogicDomainSpecification]): Unit = state.ok
 
   override def implementationModule(): DomainModule[TestLogicDomainSpecification] = new DomainModule[TestLogicDomainSpecification] {
     override lazy val logic: DomainLogic[TestLogicDomainSpecification] = new TestDomainLogic()
@@ -85,7 +86,7 @@ class OnTestLogicGeneratedCommandSpecification extends BaseEventSourceSpec with 
         override def persistEvents(
           events:        List[TheEvent],
           aggregateRoot: TheAggregate, AtomicTransactionScope: AtomicTransactionScope[TestLogicDomainSpecification]
-        ): Future[CommandResult] = Mocked.shouldNotBeCalled
+        ): Future[CommandResult[TestLogicDomainSpecification]] = Mocked.shouldNotBeCalled
 
         override def lastSnapshot(): TheState = Mocked.shouldNotBeCalled
 
@@ -126,10 +127,11 @@ class FakeDomainApi[D <: DomainSpecification] extends DomainCommandApi[D] {
   lazy val fakeState: D#State = new TheState {
     override def ok: Boolean = true
   }.asInstanceOf[D#State]
+  lazy val fakeAggregate: D#Aggregate = AggregateOne().asInstanceOf[D#Aggregate]
 
   override def commandHandler: AsyncEventCommandHandler[D] = new AsyncEventCommandHandler[D] {
-    override def execute(command: D#Command): Future[CommandResultConfirmed] =
-      Future.successful(\/-(EventSourceCommandConfirmation(EventStoreVersion.zero)))
+    override def execute(command: D#Command): Future[CommandResultConfirmed[D#Aggregate]] =
+      Future.successful(\/-(EventSourceCommandConfirmation(EventStoreVersion.zero, fakeAggregate)))
   }
 
   override def atomicProjection: VersionedEventStoreView[D#Aggregate, D#State] = new VersionedEventStoreView[D#Aggregate, D#State] {

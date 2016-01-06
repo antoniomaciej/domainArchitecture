@@ -27,11 +27,12 @@
 package eu.pmsoft.mcomponents.eventsourcing.test.model.test
 
 import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
-import eu.pmsoft.mcomponents.eventsourcing.test.model.{ TestCommandTwo, TestCommandOne, TheTestCommand, TheTestState }
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreRead
+import eu.pmsoft.mcomponents.eventsourcing.test.model._
 import eu.pmsoft.mcomponents.test.CommandGenerator
 import org.scalacheck._
 
-class TestUserRegistrationGenerators(val state: AtomicEventStoreView[TheTestState]) extends CommandGenerator[TheTestCommand] {
+class TestUserRegistrationGenerators(val state: AtomicEventStoreView[TheTestState])(implicit eventStoreRead: EventStoreRead[TheTestDomainSpecification]) extends CommandGenerator[TheTestCommand] {
   override def generateSingleCommands: Gen[TheTestCommand] = oneOrTwo
 
   override def generateWarmUpCommands: Gen[List[TheTestCommand]] = Gen.nonEmptyListOf(oneOrTwo)

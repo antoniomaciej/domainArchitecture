@@ -50,7 +50,7 @@ private class InMemoryProjectionAtomic[D <: DomainSpecification, P](buildLogic: 
     extends Subscriber[VersionedEvent[D]] with EventSourceProjectionView[P] with LazyLoadByVersion[P] {
   private val state: Atomic[VersionedProjection[P]] = Atomic(VersionedProjection(EventStoreVersion.zero, buildLogic.zero()))
 
-  override def getProjectionView(expectedVersion: EventStoreVersion): Future[VersionedProjection[P]] = atLeastOn(expectedVersion)
+  override def projectionView(expectedVersion: EventStoreVersion): Future[VersionedProjection[P]] = atLeastOn(expectedVersion)
 
   override def onError(e: Throwable): Unit = {
     //TODO a central logic should handle errors at this level
@@ -65,8 +65,8 @@ private class InMemoryProjectionAtomic[D <: DomainSpecification, P](buildLogic: 
     triggerNewVersionAvailable(updated)
   }
 
-  override def getLastSnapshotView(): VersionedProjection[P] = state()
+  override def lastSnapshotView(): VersionedProjection[P] = state()
 
-  override def getCurrentVersion(): VersionedProjection[P] = state()
+  override def loadCurrentProjectionVersion(): VersionedProjection[P] = state()
 }
 

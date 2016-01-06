@@ -27,6 +27,7 @@
 package eu.pmsoft.mcomponents.model.user.session
 
 import eu.pmsoft.domain.model._
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreRead
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.model.user.session.inmemory.UserSessionDomainModule
@@ -42,9 +43,9 @@ class UserSessionModuleTest extends BaseEventSourceSpec with GeneratedCommandSpe
 
   override def implementationModule(): DomainModule[UserSessionSSODomain] = new UserSessionDomainModule()
 
-  override def buildGenerator(state: AtomicEventStoreView[UserSessionSSOState]): CommandGenerator[UserSessionCommand] = new UserSessionGenerators(state)
+  override def buildGenerator(state: AtomicEventStoreView[UserSessionSSOState])(implicit eventStoreRead: EventStoreRead[UserSessionSSODomain]): CommandGenerator[UserSessionCommand] = new UserSessionGenerators(state)
 
-  override def validateState(state: UserSessionSSOState): Unit = {
+  override def validateState(state: UserSessionSSOState)(implicit eventStoreRead: EventStoreRead[UserSessionSSODomain]): Unit = {
     findInconsistentSessionByToken(state) shouldBe empty withClue ": Session exist but can not be found by token"
     findInconsistentSessionByUserID(state) shouldBe empty withClue ": Session exist but can not be found by userId"
   }
@@ -61,7 +62,11 @@ class UserSessionModuleTest extends BaseEventSourceSpec with GeneratedCommandSpe
       .filter(session => state.findUserSession(session.userId).isEmpty)
   }
 
-  override def postCommandValidation(state: UserSessionSSOState, command: UserSessionCommand): Unit = command match {
+  override def postCommandValidation(
+    state:   UserSessionSSOState,
+    command: UserSessionCommand,
+    result:  EventSourceCommandConfirmation[UserSessionAggregate]
+  )(implicit eventStoreRead: EventStoreRead[UserSessionSSODomain]): Unit = command match {
     case CreateUserSession(userId) =>
       state.findUserSession(userId) should not be empty withClue ": Session not created"
     case InvalidateSession(sessionToken) =>

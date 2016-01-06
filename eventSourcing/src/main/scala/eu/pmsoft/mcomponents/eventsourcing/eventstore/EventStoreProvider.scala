@@ -50,7 +50,7 @@ object EventStoreProvider {
       case None => throw new IllegalStateException(s"backend for event store ${eventStoreReference} not configured")
       case Some(strategy) =>
         strategy match {
-          case EventStoreInMemory(eventStoreReference)             => new EventStoreInMemoryAtomicProjection(stateCreationLogic, schema)
+          case EventStoreInMemory(_)                               => new EventStoreInMemoryAtomicProjection(stateCreationLogic, schema)
           case backendConfig @ EventStoreSqlBackend(_, _, _, _, _) => new EventStoreSqlAtomicProjection(stateCreationLogic, schema, backendConfig.asInstanceOf[EventStoreSqlBackend[D]])
         }
     }
@@ -78,7 +78,7 @@ private final class AtomicEventStoreWithProjection[D <: DomainSpecification, P <
     transaction.projectionState
   }
 
-  override def getCurrentVersion(): VersionedProjection[P] = eventStoreBackend readOnly { transaction =>
+  override def loadCurrentProjectionVersion(): VersionedProjection[P] = eventStoreBackend readOnly { transaction =>
     VersionedProjection[P](transaction.eventStoreVersion, transaction.projectionState)
   }
 
@@ -95,14 +95,13 @@ private final class AtomicEventStoreWithProjection[D <: DomainSpecification, P <
     transaction.extractEventRange(range)
   }
 
-  override def persistEvents(events: List[D#Event], aggregateRoot: D#Aggregate, atomicTransactionScope: AtomicTransactionScope[D]): Future[CommandResult] = {
+  override def persistEvents(events: List[D#Event], aggregateRoot: D#Aggregate, atomicTransactionScope: AtomicTransactionScope[D]): Future[CommandResult[D]] = {
     val result = eventStoreBackend.persistEventsOnAtomicTransaction(events, aggregateRoot, atomicTransactionScope.transactionScopeVersion)
     result match {
       case -\/(a) =>
-      case \/-(success) => {
+      case \/-(success) =>
         eventCreationSubject.onNext(success.storeVersion)
         triggerNewVersionAvailable(success.storeVersion)
-      }
     }
     Future.successful(result)
   }

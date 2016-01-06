@@ -127,7 +127,7 @@ class EventStoreAtomicProjectionCache[D <: DomainSpecification, P <: D#State](va
     val cachedState = timedCache.get(eventStoreVersion.storeVersion, new Callable[AtomicEventStoreStateSql[D, P]] {
       override def call(): AtomicEventStoreStateSql[D, P] = {
         val storedVersions = versionCache()
-        val nearestStored = storedVersions.versions.filter(_.version.storeVersion <= eventStoreVersion.storeVersion).headOption
+        val nearestStored = storedVersions.versions.find(_.version.storeVersion <= eventStoreVersion.storeVersion)
         val buildFromState = nearestStored.getOrElse(stateZero)
         if (buildFromState.version.storeVersion == eventStoreVersion.storeVersion) {
           buildFromState
@@ -144,11 +144,10 @@ class EventStoreAtomicProjectionCache[D <: DomainSpecification, P <: D#State](va
         logger.debug(s"Building event store state for range ${range}")
         val events: Seq[D#Event] = rangeExtractor(range)
         val updatedState = (buildFromState /: events) {
-          case (state, event) => {
+          case (state, event) =>
             val updatedVersion = state.version.add(1)
             val updatedProjection = stateCreationLogic.projectSingleEvent(state.projection, event)
             AtomicEventStoreStateSql(updatedVersion, updatedProjection)
-          }
         }
         updatedState
       }

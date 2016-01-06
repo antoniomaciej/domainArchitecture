@@ -76,7 +76,7 @@ class InMemoryProjectionTest extends BaseEventSourceComponentTestSpec {
     //then
     val expectedEventStoreVersion = 102L
     val expectedNrOfThreeEvents = 100
-    projection.getProjectionView(EventStoreVersion(expectedEventStoreVersion)).futureValue should be(VersionedProjection(EventStoreVersion(expectedEventStoreVersion), ProjectionState(1, 1, expectedNrOfThreeEvents)))
+    projection.projectionView(EventStoreVersion(expectedEventStoreVersion)).futureValue should be(VersionedProjection(EventStoreVersion(expectedEventStoreVersion), ProjectionState(1, 1, expectedNrOfThreeEvents)))
 
   }
 

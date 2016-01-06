@@ -28,6 +28,8 @@ package eu.pmsoft.mcomponents.eventsourcing.test.model
 
 import eu.pmsoft.mcomponents.eventsourcing._
 
+import scala.pickling.directSubclasses
+
 object TheTestModel {
 
   val invalidErrorCode = 4001L
@@ -60,6 +62,12 @@ case class TestCommandForThreads(threadNr: Int, targetAggregate: Int) extends Th
 
 //UserRegistrationModel events
 
+@directSubclasses(Array(
+  classOf[TestEventOne],
+  classOf[TestEventTwo],
+  classOf[TestEventThree],
+  classOf[TestEventThread]
+))
 sealed trait TheTestEvent
 
 case class TestEventOne() extends TheTestEvent

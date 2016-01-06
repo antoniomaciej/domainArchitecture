@@ -26,6 +26,7 @@
 
 package eu.pmsoft.mcomponents.model.security.roles
 
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreRead
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.test.{ BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
@@ -41,53 +42,58 @@ class RoleBasedAuthorizationModuleTest extends BaseEventSourceSpec with Generate
   override def implementationModule(): DomainModule[RoleBasedAuthorizationDomain] = new RoleBasedAuthorizationDomainModule()
 
   it should "not allow empty roles names" in {
-    val module = createEmptyDomainModel()
-    module.commandHandler.execute(CreateRole("")).futureValue should be(-\/)
+    val (api, _) = createApiAndDomainModule()
+    api.commandHandler.execute(CreateRole("")).futureValue should be(-\/)
   }
   it should "not allow duplicated roles names" in {
-    val module = createEmptyDomainModel()
-    module.commandHandler.execute(CreateRole("correct")).futureValue should be(\/-)
-    module.commandHandler.execute(CreateRole("correct")).futureValue should be(-\/)
+    val (api, _) = createApiAndDomainModule()
+    api.commandHandler.execute(CreateRole("correct")).futureValue should be(\/-)
+    api.commandHandler.execute(CreateRole("correct")).futureValue should be(-\/)
   }
   it should "fail when adding not existing permissions to role" in {
-    val module = createEmptyDomainModel()
-    module.commandHandler.execute(CreateRole("test")).futureValue shouldBe \/-
-    val roleId = module.atomicProjection.lastSnapshot().allRoleId.head
-    module.commandHandler.execute(AddPermissionsToRole(Set(PermissionID(0L)), roleId)).futureValue shouldBe -\/
+    val (api, _) = createApiAndDomainModule()
+    api.commandHandler.execute(CreateRole("test")).futureValue shouldBe \/-
+    val roleId = api.atomicProjection.lastSnapshot().allRoleId.head
+    api.commandHandler.execute(AddPermissionsToRole(Set(PermissionID(0L)), roleId)).futureValue shouldBe -\/
 
   }
   it should "not allow empty permission descriptions" in {
-    val module = createEmptyDomainModel()
-    whenReady(module.commandHandler.execute(CreatePermission("name", ""))) { result =>
+    val (api, _) = createApiAndDomainModule()
+    whenReady(api.commandHandler.execute(CreatePermission("name", ""))) { result =>
       result should be(-\/)
     }
   }
   it should "not allow empty permission names" in {
-    val module = createEmptyDomainModel()
-    whenReady(module.commandHandler.execute(CreatePermission("", "description"))) { result =>
+    val (api, _) = createApiAndDomainModule()
+    whenReady(api.commandHandler.execute(CreatePermission("", "description"))) { result =>
       result should be(-\/)
     }
   }
   it should "ignore deletion of permission X role relations that do not exists" in {
-    val module = createEmptyDomainModel()
+    val (api, _) = createApiAndDomainModule()
     val initCommands = List(CreateRole("name"), CreatePermission("code", "description"))
 
-    val warmUpResult = serial(initCommands)(module.commandHandler.execute)
+    val warmUpResult = serial(initCommands)(api.commandHandler.execute)
     whenReady(warmUpResult) { initResults =>
       val firstFailure = initResults.find(_.isLeft)
       firstFailure shouldBe empty withClue ": Failure on warm up commands"
-      val permissionId = module.atomicProjection.lastSnapshot().allPermissionID.head
-      val roleId = module.atomicProjection.lastSnapshot().allRoleId.head
-      whenReady(module.commandHandler.execute(DeletePermissionsFromRole(Set(permissionId), roleId))) { result =>
+      val permissionId = api.atomicProjection.lastSnapshot().allPermissionID.head
+      val roleId = api.atomicProjection.lastSnapshot().allRoleId.head
+      whenReady(api.commandHandler.execute(DeletePermissionsFromRole(Set(permissionId), roleId))) { result =>
         result should be(\/-)
       }
     }
 
   }
 
-  override def buildGenerator(state: AtomicEventStoreView[RoleBasedAuthorizationState]): CommandGenerator[RoleBasedAuthorizationModelCommand] = new RoleBasedAuthorizationGenerators(state)
+  override def buildGenerator(state: AtomicEventStoreView[RoleBasedAuthorizationState])(implicit eventStoreRead: EventStoreRead[RoleBasedAuthorizationDomain]): CommandGenerator[RoleBasedAuthorizationModelCommand] =
+    new RoleBasedAuthorizationGenerators(state)
 
-  override def postCommandValidation(state: RoleBasedAuthorizationState, command: RoleBasedAuthorizationModelCommand): Unit = command match {
+  override def postCommandValidation(
+    state:   RoleBasedAuthorizationState,
+    command: RoleBasedAuthorizationModelCommand,
+    result:  EventSourceCommandConfirmation[RoleBasedAuthorizationAggregate]
+  )(implicit eventStoreRead: EventStoreRead[RoleBasedAuthorizationDomain]): Unit = command match {
 
     case CreateRole(roleName) =>
       val roles = state.allRoleId.map(state.roleById).filter(_.isDefined).map(_.get)
@@ -124,7 +130,7 @@ class RoleBasedAuthorizationModuleTest extends BaseEventSourceSpec with Generate
       state.permissionById(permissionId).get.description should be(description)
   }
 
-  override def validateState(state: RoleBasedAuthorizationState) {
+  override def validateState(state: RoleBasedAuthorizationState)(implicit eventStoreRead: EventStoreRead[RoleBasedAuthorizationDomain]): Unit = {
     findInconsistentRoleID(state) shouldBe empty withClue ": A not existing role found by RoleID reference"
     findInconsistentPermissionID(state) shouldBe empty withClue ": A not existing permission found by PermissionID reference"
     findInconsistentPermissionIDInRoleRelation(state) shouldBe empty withClue ": A not existing permission found by role reference"

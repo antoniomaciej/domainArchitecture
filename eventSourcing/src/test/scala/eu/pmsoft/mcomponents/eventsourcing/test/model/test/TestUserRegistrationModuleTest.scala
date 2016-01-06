@@ -26,6 +26,7 @@
 
 package eu.pmsoft.mcomponents.eventsourcing.test.model.test
 
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreRead
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.eventsourcing.test.model._
@@ -43,10 +44,10 @@ class TestUserRegistrationModuleTest extends BaseEventSourceSpec with GeneratedC
 
   override def implementationModule(): DomainModule[TheTestDomainSpecification] = new TheTestDomainModule()
 
-  override def buildGenerator(state: AtomicEventStoreView[TheTestState]): CommandGenerator[TheTestCommand] =
-    new TestUserRegistrationGenerators(state)
+  override def buildGenerator(state: AtomicEventStoreView[TheTestState])(implicit eventStoreRead: EventStoreRead[TheTestDomainSpecification]): CommandGenerator[TheTestCommand] = new TestUserRegistrationGenerators(state)
 
-  override def postCommandValidation(state: TheTestState, command: TheTestCommand): Unit = command match {
+  override def postCommandValidation(state: TheTestState, command: TheTestCommand,
+                                     result: EventSourceCommandConfirmation[TheTestAggregate])(implicit eventStoreRead: EventStoreRead[TheTestDomainSpecification]): Unit = command match {
     case TestCommandForThreads(threadNr, targetAggregate) => ()
     case TestCommandOne()                                 => state.lastAdded() should be(1)
     case TestCommandTwo(createTwo) => if (createTwo) {
@@ -57,7 +58,7 @@ class TestUserRegistrationModuleTest extends BaseEventSourceSpec with GeneratedC
     }
   }
 
-  override def validateState(state: TheTestState): Unit = {
+  override def validateState(state: TheTestState)(implicit eventStoreRead: EventStoreRead[TheTestDomainSpecification]): Unit = {
       def countState(expected: Char)(counter: Int, char: Char) = {
         if (char == expected) {
           counter + 1

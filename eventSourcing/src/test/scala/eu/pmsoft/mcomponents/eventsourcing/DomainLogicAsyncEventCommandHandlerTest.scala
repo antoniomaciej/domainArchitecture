@@ -45,9 +45,9 @@ class DomainLogicAsyncEventCommandHandlerTest extends BaseEventSourceComponentTe
 
       override def calculateAtomicTransactionScopeVersion(logic: DomainLogic[RollBackDomain], command: RollbackTestCommand): Future[CommandToAtomicState[RollBackDomain]] = Mocked.shouldNotBeCalled
 
-      override def persistEvents(events: List[RollbackTestEvent], aggregateRoot: RollbackTestAggregateId, atomicTransactionScope: AtomicTransactionScope[RollBackDomain]): Future[CommandResult] = {
+      override def persistEvents(events: List[RollbackTestEvent], aggregateRoot: RollbackTestAggregateId, atomicTransactionScope: AtomicTransactionScope[RollBackDomain]): Future[CommandResult[RollBackDomain]] = {
         if (counter.getAndAdd(1) > 3) {
-          Future.successful(scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion.zero)))
+          Future.successful(scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion.zero, aggregateRoot)))
         }
         else {
           Future.successful(scalaz.-\/(EventSourceCommandRollback()))
@@ -74,7 +74,7 @@ class DomainLogicAsyncEventCommandHandlerTest extends BaseEventSourceComponentTe
 
       override def calculateAtomicTransactionScopeVersion(logic: DomainLogic[RollBackDomain], command: RollbackTestCommand): Future[CommandToAtomicState[RollBackDomain]] = Mocked.shouldNotBeCalled
 
-      override def persistEvents(events: List[RollbackTestEvent], aggregateRoot: RollbackTestAggregateId, atomicTransactionScope: AtomicTransactionScope[RollBackDomain]): Future[CommandResult] =
+      override def persistEvents(events: List[RollbackTestEvent], aggregateRoot: RollbackTestAggregateId, atomicTransactionScope: AtomicTransactionScope[RollBackDomain]): Future[CommandResult[RollBackDomain]] =
         Future.failed(new IllegalStateException("test error"))
 
       override def loadEvents(range: EventStoreRange): Seq[RollbackTestEvent] = Mocked.shouldNotBeCalled
@@ -105,7 +105,7 @@ class DomainLogicAsyncEventCommandHandlerTest extends BaseEventSourceComponentTe
         events:                 List[RollbackTestEvent],
         aggregateRoot:          RollbackTestAggregateId,
         atomicTransactionScope: AtomicTransactionScope[RollBackDomain]
-      ): Future[CommandResult] =
+      ): Future[CommandResult[RollBackDomain]] =
         eventStore.persistEvents(events, aggregateRoot, atomicTransactionScope)
 
       override def lastSnapshot(): RollbackTestState = RollbackTestState()
@@ -149,7 +149,7 @@ trait RollbackTestSideEffect {}
 
 class RollBackDomainLogic extends DomainLogic[RollBackDomain] {
   override def executeCommand(command: RollbackTestCommand, transactionScope: Map[RollbackTestAggregateId, Long])(implicit state: RollbackTestState, sideEffect: RollbackTestSideEffect): CommandToEventsResult[RollBackDomain] =
-    scalaz.\/-(CommandModelResult[RollBackDomain](List(RollbackTestEvent()), RollbackTestAggregateId()))
+    scalaz.\/-(CommandModelResult(List(RollbackTestEvent()), RollbackTestAggregateId()))
 
   override def calculateTransactionScope(command: RollbackTestCommand, state: RollbackTestState): CommandToAggregates[RollBackDomain] =
     scalaz.\/-(Set(RollbackTestAggregateId()))

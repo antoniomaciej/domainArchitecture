@@ -35,7 +35,7 @@ import eu.pmsoft.mcomponents.model.security.password.reset._
 import eu.pmsoft.mcomponents.model.security.password.reset.api._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{ FlatSpec, Matchers, OneInstancePerTest }
-import spray.http.HttpEncodings
+import spray.http.{ HttpEntity, HttpEncodings }
 import spray.http.HttpHeaders.`Accept-Encoding`
 import spray.http.StatusCodes._
 import spray.httpx.ResponseTransformation
@@ -65,20 +65,18 @@ class UserManagementServiceTest
 
   it should "Receive call backend api" in {
     val apiCall = InitializePasswordResetFlowRequest(UserID(0L), SessionToken("xxx"))
-    passwordResetApi.initializeFlow _ expects apiCall returning Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion.zero))))
+    passwordResetApi.initializeFlow _ expects apiCall returning Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion.zero, UserIdFlowAggregate(UserID(0))))))
     Post("/password/init", apiCall) ~> routingDefinition ~> check {
-      val res = responseAs[InitializePasswordResetFlowResponse]
-      res.confirmation.storeVersion.storeVersion should be(0L)
+      body.asString should be("{\"confirmation\":{\"storeVersion\":0,\"rootAggregate\":{\"userID\":0}}}")
     }
   }
 
   it should "Receive call backend api - with gzip encoding" in {
     val apiCall = InitializePasswordResetFlowRequest(UserID(1L), SessionToken("yyy"))
-    passwordResetApi.initializeFlow _ expects apiCall returning Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion(1L)))))
+    passwordResetApi.initializeFlow _ expects apiCall returning Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion(1L), UserIdFlowAggregate(UserID(0))))))
 
     Post("/password/init", apiCall) ~> `Accept-Encoding`(HttpEncodings.gzip) ~> routingDefinition ~> check {
-      val res = Gzip.decode(response).as[InitializePasswordResetFlowResponse].right.get
-      res.confirmation.storeVersion.storeVersion should be(1L)
+      Gzip.decode(response).entity.asString should be("{\"confirmation\":{\"storeVersion\":1,\"rootAggregate\":{\"userID\":0}}}")
     }
   }
 

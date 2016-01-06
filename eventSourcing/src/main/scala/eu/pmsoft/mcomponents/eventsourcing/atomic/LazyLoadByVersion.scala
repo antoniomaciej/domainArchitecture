@@ -34,12 +34,12 @@ import scala.concurrent.{ Future, Promise }
 
 trait LazyLoadByVersion[T] {
 
-  def getCurrentVersion(): VersionedProjection[T]
+  def loadCurrentProjectionVersion(): VersionedProjection[T]
 
   private val futureValues = TrieMap[EventStoreVersion, Promise[VersionedProjection[T]]]()
 
   def atLeastOn(expectedStoreVersion: EventStoreVersion): Future[VersionedProjection[T]] = {
-    val versionAndProjection = getCurrentVersion()
+    val versionAndProjection = loadCurrentProjectionVersion()
     triggerDelayedViews(versionAndProjection)
     if (versionAndProjection.version.storeVersion >= expectedStoreVersion.storeVersion) {
       Future.successful(versionAndProjection)
@@ -50,7 +50,7 @@ trait LazyLoadByVersion[T] {
   }
 
   def triggerNewVersionAvailable(version: EventStoreVersion): Unit = {
-    triggerDelayedViews(getCurrentVersion())
+    triggerDelayedViews(loadCurrentProjectionVersion())
   }
   def triggerNewVersionAvailable(versionedProjection: VersionedProjection[T]): Unit = {
     triggerDelayedViews(versionedProjection)

@@ -84,11 +84,11 @@ case class InitializePasswordResetFlowRequest(
 )
 
 // reset password should be send by a email from a projection
-case class InitializePasswordResetFlowResponse(confirmation: EventSourceCommandConfirmation)
+case class InitializePasswordResetFlowResponse(confirmation: EventSourceCommandConfirmation[PasswordResetAggregate])
 
 case class CancelPasswordResetFlowRequest(passwordResetToken: PasswordResetToken)
 
-case class CancelPasswordResetFlowResponse(confirmation: EventSourceCommandConfirmation)
+case class CancelPasswordResetFlowResponse(confirmation: EventSourceCommandConfirmation[PasswordResetAggregate])
 
 case class ConfirmPasswordResetFlowRequest(
   sessionToken:       SessionToken,
@@ -96,5 +96,5 @@ case class ConfirmPasswordResetFlowRequest(
   newPassword:        UserPassword
 )
 
-case class ConfirmPasswordResetFlowResponse(confirmation: EventSourceCommandConfirmation)
+case class ConfirmPasswordResetFlowResponse(confirmation: EventSourceCommandConfirmation[PasswordResetAggregate])
 

@@ -96,14 +96,14 @@ final class TheTestDomainLogic extends DomainLogic[TheTestDomainSpecification] {
   )(implicit state: TheTestState, sideEffects: TestSideEffects): CommandToEventsResult[TheTestDomainSpecification] =
     command match {
       case TestCommandForThreads(threadNr, targetAggregate) =>
-        \/-(CommandModelResult[TheTestDomainSpecification](List(TestEventThread(threadNr, targetAggregate)), TestAggregateThread(threadNr)))
+        \/-(CommandModelResult(List(TestEventThread(threadNr, targetAggregate)), TestAggregateThread(threadNr)))
       case TestCommandOne() =>
-        \/-(CommandModelResult[TheTestDomainSpecification](List(TestEventOne()), TestAggregateOne()))
+        \/-(CommandModelResult(List(TestEventOne()), TestAggregateOne()))
       case TestCommandTwo(createTwo) => if (createTwo) {
-        \/-(CommandModelResult[TheTestDomainSpecification](List(TestEventTwo()), TestAggregateTwo()))
+        \/-(CommandModelResult(List(TestEventTwo()), TestAggregateTwo()))
       }
       else {
-        \/-(CommandModelResult[TheTestDomainSpecification](List(TestEventThree()), TestAggregateTwo()))
+        \/-(CommandModelResult(List(TestEventThree()), TestAggregateTwo()))
       }
     }
 

@@ -36,7 +36,7 @@ trait EventStore[D <: DomainSpecification] extends EventStoreRead[D] {
 
   def calculateAtomicTransactionScopeVersion(logic: DomainLogic[D], command: D#Command): Future[CommandToAtomicState[D]]
 
-  def persistEvents(events: List[D#Event], aggregateRoot: D#Aggregate, atomicTransactionScope: AtomicTransactionScope[D]): Future[CommandResult]
+  def persistEvents(events: List[D#Event], aggregateRoot: D#Aggregate, atomicTransactionScope: AtomicTransactionScope[D]): Future[CommandResult[D]]
 
 }
 trait EventStoreRead[D <: DomainSpecification] {

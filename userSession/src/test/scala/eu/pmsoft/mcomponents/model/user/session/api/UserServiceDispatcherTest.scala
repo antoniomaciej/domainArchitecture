@@ -63,9 +63,9 @@ class UserServiceDispatcherTest extends BaseEventSourceComponentTestSpec {
     override implicit def eventSourcingConfiguration: EventSourcingConfiguration = EventSourcingConfiguration(executionContext, LocalBindingInfrastructure.create(), Set())
 
     override def commandHandler: AsyncEventCommandHandler[UserSessionSSODomain] = new AsyncEventCommandHandler[UserSessionSSODomain] {
-      override def execute(command: UserSessionCommand): Future[CommandResultConfirmed] =
+      override def execute(command: UserSessionCommand): Future[CommandResultConfirmed[UserSessionSSODomain#Aggregate]] =
         Future.successful(
-          scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion(0L)))
+          scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion(0L), UserSessionUserIDAggregate(UserID(0L))))
         )
     }
 

@@ -90,17 +90,17 @@ private final class DomainLogicAsyncEventCommandHandler[D <: DomainSpecification
   private def calculateAtomicTransactionScope(logic: DomainLogic[D], command: D#Command): Future[CommandToAtomicState[D]] =
     eventStore.calculateAtomicTransactionScopeVersion(logic, command)
 
-  final def execute(command: D#Command): Future[CommandResultConfirmed] = {
-      def singleTry(): Future[CommandResult] = {
+  final def execute(command: D#Command): Future[CommandResultConfirmed[D#Aggregate]] = {
+      def singleTry(): Future[CommandResult[D]] = {
         (for {
           atomicTransactionScope <- EitherT(calculateAtomicTransactionScope(logic, command))
           eventsAndRoot <- EitherT(applyCommand(command, atomicTransactionScope))
           confirmation <- EitherT(eventStore.persistEvents(eventsAndRoot.events, eventsAndRoot.rootAggregate, atomicTransactionScope))
         } yield confirmation).run
       }
-    val p = Promise[CommandResultConfirmed]()
+    val p = Promise[CommandResultConfirmed[D#Aggregate]]()
 
-      def executionLoop() {
+      def executionLoop(): Unit = {
         singleTry() onComplete {
           case util.Failure(exception) => p.failure(exception)
           case util.Success(value) => value match {

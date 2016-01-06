@@ -37,9 +37,9 @@ class EventStoreRangeUtils$Test extends FlatSpec with Matchers {
     EventStoreRangeUtils.extractRangeFromList(testList, EventStoreRange(EventStoreVersion.zero, None)) should be(testList)
     EventStoreRangeUtils.extractRangeFromList(testList, EventStoreRange(EventStoreVersion(1L), None)) should be(testList)
 
-    (2 to (nrOfTestEvents + 2)).map{ from =>
+    (2 to (nrOfTestEvents + 2)).foreach { from =>
       val extracted = EventStoreRangeUtils.extractRangeFromList(testList, EventStoreRange(EventStoreVersion(from), None))
-      extracted should be(testList.drop(from-1))
+      extracted should be(testList.drop(from - 1))
     }
   }
 
@@ -58,7 +58,7 @@ class EventStoreRangeUtils$Test extends FlatSpec with Matchers {
         EventStoreVersion(4L),
         Some(EventStoreVersion(4L))
       )
-    ) should be(testList.drop(3).take(1))
+    ) should be(testList.slice(3, 4))
 
     val startFrom = 10L
     val takeMoreThatAvailable = 100L
@@ -68,7 +68,7 @@ class EventStoreRangeUtils$Test extends FlatSpec with Matchers {
         EventStoreVersion(startFrom),
         Some(EventStoreVersion(takeMoreThatAvailable))
       )
-    ) should be(testList.drop((startFrom - 1 ).toInt))
+    ) should be(testList.drop((startFrom - 1).toInt))
 
     EventStoreRangeUtils.extractRangeFromList(
       testList,

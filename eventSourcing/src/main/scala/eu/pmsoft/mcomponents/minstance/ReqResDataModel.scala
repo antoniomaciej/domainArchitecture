@@ -27,7 +27,7 @@
 package eu.pmsoft.mcomponents.minstance
 
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
-import eu.pmsoft.mcomponents.eventsourcing.{ EventSourceCommandConfirmation, EventSourceModelError, EventStoreVersion }
+import eu.pmsoft.mcomponents.eventsourcing.{ DomainSpecification, EventSourceCommandConfirmation, EventSourceModelError, EventStoreVersion }
 import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
 
 import scala.language.implicitConversions
@@ -36,13 +36,13 @@ import scalaz.\/
 object ReqResDataModel {
 
   //Request/Response types
-  type CommandResultOnDomain = ResponseError \/ EventSourceCommandConfirmation
+  type CommandResultOnDomain[A] = ResponseError \/ EventSourceCommandConfirmation[A]
 
   type RequestResult[R] = ResponseError \/ R
 
   type CommandVersionResult = ResponseError \/ EventStoreVersion
 
-  implicit def commandToResponse(cmdResult: CommandResultConfirmed)(implicit serviceDomain: RequestErrorDomain): CommandResultToResponseResultTranslator = new DomainScopeCommandResultToResponseResultTranslator(cmdResult)
+  implicit def commandToResponse[A](cmdResult: CommandResultConfirmed[A])(implicit serviceDomain: RequestErrorDomain): CommandResultToResponseResultTranslator[A] = new DomainScopeCommandResultToResponseResultTranslator(cmdResult)
 
   implicit def errorToResponse(cmdError: EventSourceModelError)(implicit serviceDomain: RequestErrorDomain): EventErrorToResponseErrorTranslator = new DomainScopeEventSourceModelErrorToResponseResultTranslator(cmdError)
 
@@ -54,16 +54,16 @@ case class RequestErrorDomain(val domain: String) extends AnyVal
 
 case class ResponseError(errorCode: RequestErrorCode, domain: RequestErrorDomain)
 
-trait CommandResultToResponseResultTranslator {
+trait CommandResultToResponseResultTranslator[A] {
 
-  def asResponse: RequestResult[EventSourceCommandConfirmation]
+  def asResponse: RequestResult[EventSourceCommandConfirmation[A]]
 
 }
 
-class DomainScopeCommandResultToResponseResultTranslator(val cmdResult: CommandResultConfirmed)(implicit val serviceDomain: RequestErrorDomain)
-    extends CommandResultToResponseResultTranslator {
+class DomainScopeCommandResultToResponseResultTranslator[A](val cmdResult: CommandResultConfirmed[A])(implicit val serviceDomain: RequestErrorDomain)
+    extends CommandResultToResponseResultTranslator[A] {
 
-  override def asResponse: RequestResult[EventSourceCommandConfirmation] = cmdResult.leftMap { cmdError =>
+  override def asResponse: RequestResult[EventSourceCommandConfirmation[A]] = cmdResult.leftMap { cmdError =>
     ResponseError(RequestErrorCode(cmdError.error.errorCode), serviceDomain)
   }
 }
@@ -78,18 +78,18 @@ class DomainScopeEventSourceModelErrorToResponseResultTranslator(val cmdError: E
     extends EventErrorToResponseErrorTranslator {
   override def toResponseError: ResponseError = ResponseError(RequestErrorCode(cmdError.code.errorCode), serviceDomain)
 }
-
-sealed trait MicroComponentRegistrationError
-
-case class RegisterIsEmpty() extends MicroComponentRegistrationError
-
-case class RegisterAlreadyInitialized() extends MicroComponentRegistrationError
-
-case class ComponentAlreadyRegistered() extends MicroComponentRegistrationError
-
-case class ComponentNotFound(msg: String) extends MicroComponentRegistrationError
-
-sealed trait MicroComponentRegistrationConfirmation
-
-case class ComponentRegistered() extends MicroComponentRegistrationConfirmation
+//
+//sealed trait MicroComponentRegistrationError
+//
+//case class RegisterIsEmpty() extends MicroComponentRegistrationError
+//
+//case class RegisterAlreadyInitialized() extends MicroComponentRegistrationError
+//
+//case class ComponentAlreadyRegistered() extends MicroComponentRegistrationError
+//
+//case class ComponentNotFound(msg: String) extends MicroComponentRegistrationError
+//
+//sealed trait MicroComponentRegistrationConfirmation
+//
+//case class ComponentRegistered() extends MicroComponentRegistrationConfirmation
 

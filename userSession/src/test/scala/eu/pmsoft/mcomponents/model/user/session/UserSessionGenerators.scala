@@ -28,10 +28,11 @@ package eu.pmsoft.mcomponents.model.user.session
 
 import eu.pmsoft.domain.model._
 import eu.pmsoft.mcomponents.eventsourcing.AtomicEventStoreView
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreRead
 import eu.pmsoft.mcomponents.test.CommandGenerator
 import org.scalacheck.Gen
 
-class UserSessionGenerators(val state: AtomicEventStoreView[UserSessionSSOState]) extends CommandGenerator[UserSessionCommand] {
+class UserSessionGenerators(val state: AtomicEventStoreView[UserSessionSSOState])(implicit eventStoreRead: EventStoreRead[UserSessionSSODomain]) extends CommandGenerator[UserSessionCommand] {
   lazy val genCreateUserSession = for {
     userId <- genUserID
   } yield CreateUserSession(userId)

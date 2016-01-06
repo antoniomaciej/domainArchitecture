@@ -61,11 +61,11 @@ class EventStoreSqlAtomicProjection[D <: DomainSpecification, P <: D#State](
     }
   }
 
-  override def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, transactionScopeVersion: Map[D#Aggregate, Long]): CommandResult = {
+  override def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, transactionScopeVersion: Map[D#Aggregate, Long]): CommandResult[D] = {
     withDbTransaction { db =>
       new EventStoreSqlWriteTransaction(db, schema, ddl).persistEvents(events, rootAggregate, transactionScopeVersion) match {
         case -\/(a)       => -\/(EventSourceCommandRollback())
-        case \/-(version) => \/-(EventSourceCommandConfirmation(version))
+        case \/-(version) => \/-(EventSourceCommandConfirmation(version, rootAggregate))
       }
     }
   }

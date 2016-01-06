@@ -97,10 +97,10 @@ final class UserRegistrationHandlerLogic extends DomainLogic[UserRegistrationDom
       user <- validUidExtractUser(uid)
     } yield if (user.activeStatus == active) {
       //Do not activate if status match the state
-      CommandModelResult[UserRegistrationDomain](List(), UserAggregateId(uid))
+      CommandModelResult(List(), UserAggregateId(uid))
     }
     else {
-      CommandModelResult[UserRegistrationDomain](List(UserActiveStatusUpdated(uid, active)), UserAggregateId(uid))
+      CommandModelResult(List(UserActiveStatusUpdated(uid, active)), UserAggregateId(uid))
     }
 
     case AddUser(loginEmail, passwordHash) => for {
@@ -108,16 +108,16 @@ final class UserRegistrationHandlerLogic extends DomainLogic[UserRegistrationDom
       email <- validEmail(loginEmail.login)
     } yield {
       val uid = sideEffects.createNextUid()
-      CommandModelResult[UserRegistrationDomain](List(UserCreated(uid, loginEmail, passwordHash)), UserAggregateId(uid))
+      CommandModelResult(List(UserCreated(uid, loginEmail, passwordHash)), UserAggregateId(uid))
     }
 
     case UpdateUserPassword(uid, passwordHash) => for {
       user <- validUidExtractUser(uid)
-    } yield CommandModelResult[UserRegistrationDomain](List(UserPasswordUpdated(uid, passwordHash)), UserAggregateId(uid))
+    } yield CommandModelResult(List(UserPasswordUpdated(uid, passwordHash)), UserAggregateId(uid))
 
     case UpdateUserRoles(uid, roles) => for {
       user <- validUidExtractUser(uid)
-    } yield CommandModelResult[UserRegistrationDomain](List(UserObtainedAccessRoles(uid, roles)), UserAggregateId(uid))
+    } yield CommandModelResult(List(UserObtainedAccessRoles(uid, roles)), UserAggregateId(uid))
   }
 
 }

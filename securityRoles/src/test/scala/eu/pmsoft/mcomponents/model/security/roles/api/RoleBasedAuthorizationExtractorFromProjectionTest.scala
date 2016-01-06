@@ -57,7 +57,7 @@ class RoleBasedAuthorizationExtractorFromProjectionTest extends BaseEventSourceC
 
     val mocked: RoleBasedAuthorizationExtractorFromProjection = createMocked
 
-    val notFoundExpected = mocked.findPermissionByName(EventSourceCommandConfirmation(EventStoreVersion.zero), "anyCode").futureValue
+    val notFoundExpected = mocked.findPermissionByName(EventSourceCommandConfirmation(EventStoreVersion.zero, RoleIdAggregate(RoleID(0L))), "anyCode").futureValue
     notFoundExpected shouldBe -\/
     notFoundExpected shouldBe scalaz.-\/(RoleBasedAuthorizationRequestModel.permissionNotFoundAfterInsert.toResponseError)
 
@@ -65,7 +65,7 @@ class RoleBasedAuthorizationExtractorFromProjectionTest extends BaseEventSourceC
   it should "failure with roleNotFoundAfterInsert when role not found after insert" in {
 
     val mocked: RoleBasedAuthorizationExtractorFromProjection = createMocked
-    val notFoundExpected = mocked.findRoleByName(EventSourceCommandConfirmation(EventStoreVersion.zero), "anyName").futureValue
+    val notFoundExpected = mocked.findRoleByName(EventSourceCommandConfirmation(EventStoreVersion.zero, RoleIdAggregate(RoleID(0L))), "anyName").futureValue
     notFoundExpected shouldBe -\/
     notFoundExpected shouldBe scalaz.-\/(RoleBasedAuthorizationRequestModel.roleNotFoundAfterInsert.toResponseError)
 
@@ -83,7 +83,7 @@ class MockedRoleBasedAuthorizationExtractorFromProjection extends RoleBasedAutho
     override implicit def eventSourcingConfiguration: EventSourcingConfiguration = EventSourcingConfiguration(ExecutionContext.Implicits.global, LocalBindingInfrastructure.create(), Set())
 
     override def commandHandler: AsyncEventCommandHandler[RoleBasedAuthorizationDomain] = new AsyncEventCommandHandler[RoleBasedAuthorizationDomain] {
-      override def execute(command: RoleBasedAuthorizationModelCommand): Future[CommandResultConfirmed] = Mocked.shouldNotBeCalled
+      override def execute(command: RoleBasedAuthorizationModelCommand): Future[CommandResultConfirmed[RoleBasedAuthorizationDomain#Aggregate]] = Mocked.shouldNotBeCalled
     }
 
     override def atomicProjection: VersionedEventStoreView[RoleBasedAuthorizationAggregate, RoleBasedAuthorizationState] =

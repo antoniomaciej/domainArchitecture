@@ -91,7 +91,7 @@ final class UserSessionHandlerLogic extends DomainLogic[UserSessionSSODomain] wi
     command:          UserSessionCommand,
     transactionScope: Map[UserSessionAggregate, Long]
   )(implicit state: UserSessionSSOState, sideEffects: UserSessionSideEffect): CommandToEventsResult[UserSessionSSODomain] = command match {
-    case CreateUserSession(userId) => {
+    case CreateUserSession(userId) =>
       val sessionToken = sideEffects.generateSessionToken(userId)
       val events = state.findUserSession(userId) match {
         case Some(session) =>
@@ -104,15 +104,14 @@ final class UserSessionHandlerLogic extends DomainLogic[UserSessionSSODomain] wi
             UserSessionCreated(sessionToken, userId)
           )
       }
-      \/-(CommandModelResult[UserSessionSSODomain](events, UserSessionUserIDAggregate(userId)))
-    }
+      \/-(CommandModelResult(events, UserSessionUserIDAggregate(userId)))
     case InvalidateSession(sessionToken) => for {
       userId <- extractUserId(transactionScope)
-    } yield CommandModelResult[UserSessionSSODomain](List(UserSessionInvalidated(sessionToken, userId)), UserSessionUserIDAggregate(userId))
+    } yield CommandModelResult(List(UserSessionInvalidated(sessionToken, userId)), UserSessionUserIDAggregate(userId))
 
     case InvalidateUserSession(userId) => for {
       session <- sessionExist(userId)
-    } yield CommandModelResult[UserSessionSSODomain](List(UserSessionInvalidated(session.sessionToken, session.userId)), UserSessionUserIDAggregate(userId))
+    } yield CommandModelResult(List(UserSessionInvalidated(session.sessionToken, session.userId)), UserSessionUserIDAggregate(userId))
 
   }
 

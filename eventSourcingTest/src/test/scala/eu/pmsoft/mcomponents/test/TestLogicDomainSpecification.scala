@@ -27,6 +27,7 @@ package eu.pmsoft.mcomponents.test
 
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
 import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreRead
 import org.scalacheck.Gen
 
 import scalaz.\/-
@@ -41,8 +42,8 @@ class TestLogicDomainSpecification extends DomainSpecification {
 
 class TestDomainLogic extends DomainLogic[TestLogicDomainSpecification] {
   override def executeCommand(command: TheCommand, transactionScope: Map[TheAggregate, Long])(implicit state: TheState, sideEffect: TheSideEffect): CommandToEventsResult[TestLogicDomainSpecification] = command match {
-    case CommandOne() => \/-(CommandModelResult[TestLogicDomainSpecification](List(EventOne()), AggregateOne()))
-    case CommandTwo() => \/-(CommandModelResult[TestLogicDomainSpecification](List(EventTwo()), AggregateTwo()))
+    case CommandOne() => \/-(CommandModelResult(List(EventOne()), AggregateOne()))
+    case CommandTwo() => \/-(CommandModelResult(List(EventTwo()), AggregateTwo()))
   }
 
   override def calculateTransactionScope(command: TheCommand, state: TheState): CommandToAggregates[TestLogicDomainSpecification] =
@@ -85,7 +86,7 @@ case class FailureState() extends TheState {
   override def ok: Boolean = false
 }
 
-class TheCommandGenerator extends CommandGenerator[TheCommand] {
+class TheCommandGenerator(implicit eventStoreRead: EventStoreRead[TestLogicDomainSpecification]) extends CommandGenerator[TheCommand] {
   override def generateSingleCommands: Gen[TheCommand] = genOneOrTwo
 
   override def generateWarmUpCommands: Gen[List[TheCommand]] = Gen.nonEmptyListOf(genOneOrTwo)

@@ -74,7 +74,7 @@ private class UserServiceDispatcher(
     res <- EitherT(createResponseFromSession(userSession))
   } yield res).run
 
-  def findUserSession(cmdResult: EventSourceCommandConfirmation, userId: UserID): Future[RequestResult[UserSession]] = sessionCommandApi.atomicProjection.atLeastOn(cmdResult.storeVersion).map { state =>
+  def findUserSession(cmdResult: EventSourceCommandConfirmation[UserSessionSSODomain#Aggregate], userId: UserID): Future[RequestResult[UserSession]] = sessionCommandApi.atomicProjection.atLeastOn(cmdResult.storeVersion).map { state =>
     state.projection.findUserSession(userId) match {
       case Some(session) => \/-(session)
       case None          => -\/(UserSessionModel.criticalSessionNotFoundAfterSuccessCommand.toResponseError)

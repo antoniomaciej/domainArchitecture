@@ -53,9 +53,9 @@ class UserRegistrationRequestDispatcherTest extends BaseEventSourceComponentTest
     override implicit def eventSourcingConfiguration: EventSourcingConfiguration = EventSourcingConfiguration(executionContext, LocalBindingInfrastructure.create(), Set())
 
     override def commandHandler: AsyncEventCommandHandler[UserRegistrationDomain] = new AsyncEventCommandHandler[UserRegistrationDomain] {
-      override def execute(command: UserRegistrationCommand): Future[CommandResultConfirmed] =
+      override def execute(command: UserRegistrationCommand): Future[CommandResultConfirmed[UserRegistrationDomain#Aggregate]] =
         Future.successful(
-          scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion.zero))
+          scalaz.\/-(EventSourceCommandConfirmation(EventStoreVersion.zero, UserAggregateId(UserID(0))))
         )
     }
 

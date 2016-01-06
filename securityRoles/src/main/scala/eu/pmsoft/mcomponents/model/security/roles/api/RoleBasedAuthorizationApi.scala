@@ -142,7 +142,7 @@ trait RoleBasedAuthorizationExtractorFromProjection {
 
   def commandApi: DomainCommandApi[RoleBasedAuthorizationDomain]
 
-  def findPermissionByName(cmdResult: EventSourceCommandConfirmation, code: String): Future[RequestResult[CreatePermissionResponse]] =
+  def findPermissionByName(cmdResult: EventSourceCommandConfirmation[RoleBasedAuthorizationDomain#Aggregate], code: String): Future[RequestResult[CreatePermissionResponse]] =
     commandApi.atomicProjection.atLeastOn(cmdResult.storeVersion).map { state =>
       state.projection.permissionByCode(code) match {
         case Some(permission) => \/-(CreatePermissionResponse(permission.permissionId))
@@ -150,7 +150,7 @@ trait RoleBasedAuthorizationExtractorFromProjection {
       }
     }
 
-  def findRoleByName(cmdResult: EventSourceCommandConfirmation, roleName: String): Future[RequestResult[CreateRoleResponse]] =
+  def findRoleByName(cmdResult: EventSourceCommandConfirmation[RoleBasedAuthorizationDomain#Aggregate], roleName: String): Future[RequestResult[CreateRoleResponse]] =
     commandApi.atomicProjection.atLeastOn(cmdResult.storeVersion).map { state =>
       state.projection.roleByName(roleName) match {
         case Some(role) => \/-(CreateRoleResponse(role.roleId))

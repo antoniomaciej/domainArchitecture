@@ -44,7 +44,7 @@ class EventStoreInMemoryAtomicProjection[D <: DomainSpecification, P <: D#State]
 
   override def readOnly[A](execution: (EventStoreReadTransaction[D, P]) => A): A = execution(new InMemoryAtomicEventStoreReadTransaction(inMemoryStore(), schema))
 
-  override def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, transactionScopeVersion: Map[D#Aggregate, Long]): CommandResult = {
+  override def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, transactionScopeVersion: Map[D#Aggregate, Long]): CommandResult[D] = {
     val eventsOfAggregate = events.map(EventOfAggregate(_, rootAggregate))
     val aggregatesReferenceVersion = transactionScopeVersion.map {
       case (aggregate, version) => (schema.buildReference(aggregate), version)
@@ -66,7 +66,7 @@ class EventStoreInMemoryAtomicProjection[D <: DomainSpecification, P <: D#State]
         AtomicEventStoreReadStateInMemory(updatedStateProjection, updatedEventHistory, updatedVersion, updatedAggregatesVersion)
       }
     inMemoryStore.updateAndGetWithCondition(updateState, checkIfStateMatchTransactionScopeVersion).map { state =>
-      EventSourceCommandConfirmation(EventStoreVersion(state.eventHistoryList.length))
+      EventSourceCommandConfirmation(EventStoreVersion(state.eventHistoryList.length), rootAggregate)
     }
   }
 }

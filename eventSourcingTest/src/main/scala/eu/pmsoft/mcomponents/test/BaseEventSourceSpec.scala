@@ -28,8 +28,8 @@ package eu.pmsoft.mcomponents.test
 
 import java.util.concurrent.Executor
 
-import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel.CommandResultConfirmed
 import eu.pmsoft.mcomponents.eventsourcing._
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreRead
 import org.joda.time.DateTime
 import org.scalacheck.Gen
 import org.scalatest._
@@ -42,7 +42,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 abstract class BaseEventSourceSpec extends BaseEventSourceComponentTestSpec
 
-abstract class BaseEventSourceComponentTestSpec extends FlatSpec with Matchers
+abstract class BaseEventSourceComponentTestSpec extends FlatSpec with Matchers with OptionValues
     with PropertyChecks with ScalaFutures with AppendedClues with ParallelTestExecution with DisjunctionMatchers {
 
   val longInterval = 150
@@ -71,11 +71,15 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
 
   def implementationModule(): DomainModule[D]
 
-  def createEmptyDomainModel(): DomainCommandApi[D] = eventSourceExecutionContext.assemblyDomainApplication(implementationModule())
+  def createApiAndDomainModule(): (DomainCommandApi[D], DomainModule[D]) = {
+    val module = implementationModule()
+    val api = eventSourceExecutionContext.assemblyDomainApplication(module)
+    (api, module)
+  }
 
-  private def genModule: Gen[DomainCommandApi[D]] = Gen.wrap(Gen.const(createEmptyDomainModel()))
+  private def genModule: Gen[(DomainCommandApi[D], DomainModule[D])] = Gen.wrap(Gen.const(createApiAndDomainModule()))
 
-  def serial[T, B](l: Iterable[T])(fn: T => Future[B]): Future[List[B]] = (Future(List[B]()) /: l) {
+  def serial[T, B](l: Iterable[T])(fn: T => Future[B]): Future[List[B]] = (Future.successful(List[B]()) /: l) {
     (previousFuture, nextValue) =>
       for {
         previousResults <- previousFuture
@@ -83,11 +87,12 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
       } yield previousResults :+ nextResult
   }
 
-  def buildGenerator(state: AtomicEventStoreView[D#State]): CommandGenerator[D#Command]
+  def buildGenerator(state: AtomicEventStoreView[D#State])(implicit eventStoreRead: EventStoreRead[D]): CommandGenerator[D#Command]
 
-  def validateState(state: D#State): Unit
+  def validateState(state: D#State)(implicit eventStoreRead: EventStoreRead[D]): Unit
 
-  def postCommandValidation(state: D#State, command: D#Command): Unit
+  def postCommandValidation(state: D#State, command: D#Command,
+                            result: EventSourceCommandConfirmation[D#Aggregate])(implicit eventStoreRead: EventStoreRead[D]): Unit
 
   it should "provide a eventStore singleton " in {
     val domainImplementation = implementationModule()
@@ -102,7 +107,7 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
     //given
     val domainImplementation: DomainModule[D] = implementationModule()
     val commandApi: DomainCommandApi[D] = eventSourceExecutionContext.assemblyDomainApplication(domainImplementation)
-    val generator = buildGenerator(commandApi.atomicProjection)
+    val generator = buildGenerator(commandApi.atomicProjection)(domainImplementation.eventStore)
     val warmUpCommands = generator.generateWarmUpCommands.sample.get
     var commandsHistory = warmUpCommands
     withClue(s"WarmUpCommands: $warmUpCommands \n") {
@@ -134,9 +139,12 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
 
   it should "accept any list of valid commands " in {
     forAll(genModule) {
-      commandApi: DomainCommandApi[D] =>
+      apiAndModule: (DomainCommandApi[D], DomainModule[D]) =>
 
-        val generator = buildGenerator(commandApi.atomicProjection)
+        val commandApi: DomainCommandApi[D] = apiAndModule._1
+        val module: DomainModule[D] = apiAndModule._2
+
+        val generator = buildGenerator(commandApi.atomicProjection)(module.eventStore)
         val warmUpCommands = generator.generateWarmUpCommands.sample.get
         var commandsHistory = warmUpCommands
         withClue(s"WarmUpCommands: $warmUpCommands \n") {
@@ -145,7 +153,7 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
             val firstFailure = results.find(_.isLeft)
             firstFailure shouldBe empty withClue ": Failure on warm up commands"
 
-            validateState(commandApi.atomicProjection.lastSnapshot())
+            validateState(commandApi.atomicProjection.lastSnapshot())(module.eventStore)
 
             forAll(generator.generateSingleCommands) {
               command: D#Command =>
@@ -156,8 +164,8 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
                     withClue(s"last command result:$result \n") {
 
                       result shouldBe \/-
-                      validateState(commandApi.atomicProjection.lastSnapshot())
-                      postCommandValidation(commandApi.atomicProjection.lastSnapshot(), command)
+                      validateState(commandApi.atomicProjection.lastSnapshot())(module.eventStore)
+                      postCommandValidation(commandApi.atomicProjection.lastSnapshot(), command, result.toOption.get)(module.eventStore)
                     }
                   }
                 }
@@ -169,8 +177,12 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
 
   it should "Run duplicated events without exceptions and with valid state" in {
     forAll(genModule) {
-      commandApi: DomainCommandApi[D] =>
-        val generator = buildGenerator(commandApi.atomicProjection)
+      apiAndModule: (DomainCommandApi[D], DomainModule[D]) =>
+
+        val commandApi: DomainCommandApi[D] = apiAndModule._1
+        val module: DomainModule[D] = apiAndModule._2
+
+        val generator = buildGenerator(commandApi.atomicProjection)(module.eventStore)
         val warmUpCommands = generator.generateWarmUpCommands.sample.get
         var commandsHistory = warmUpCommands
         val warmUpResult = serial(warmUpCommands)(commandApi.commandHandler.execute)
@@ -178,7 +190,7 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
           val firstFailure = results.find(_.isLeft)
           firstFailure shouldBe empty withClue ": Failure on warm up commands"
 
-          validateState(commandApi.atomicProjection.lastSnapshot())
+          validateState(commandApi.atomicProjection.lastSnapshot())(module.eventStore)
 
           forAll(generator.generateSingleCommands) {
             command: D#Command =>
@@ -187,8 +199,10 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
                   whenReady(resultsFuture) { result =>
                     withClue(s"last command result:$results \n") {
                       // Result can be -\/, but the resulting state must be valid
-                      validateState(commandApi.atomicProjection.lastSnapshot())
-                      postCommandValidation(commandApi.atomicProjection.lastSnapshot(), command)
+                      validateState(commandApi.atomicProjection.lastSnapshot())(module.eventStore)
+                      result.foreach { confirmation =>
+                        postCommandValidation(commandApi.atomicProjection.lastSnapshot(), command, confirmation)(module.eventStore)
+                      }
                     }
                   }
                 }

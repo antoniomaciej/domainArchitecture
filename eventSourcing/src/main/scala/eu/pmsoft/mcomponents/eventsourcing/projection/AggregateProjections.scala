@@ -25,34 +25,27 @@
 
 package eu.pmsoft.mcomponents.eventsourcing.projection
 
-import eu.pmsoft.mcomponents.eventsourcing.{ EventStoreVersion, DomainSpecification }
+import eu.pmsoft.mcomponents.eventsourcing.{ DomainSpecification, EventStoreVersion, EventStoreRange }
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreRead
 
-import scala.concurrent.Future
+object AggregateProjections {
 
-trait EventSourceProjection[D <: DomainSpecification] {
+  def buildAggregate[D <: DomainSpecification, A](
+    eventStoreRead: EventStoreRead[D],
+    buildLogic:     AggregateProjection[D, A]
+  )(aggregateId: D#Aggregate): A = build[D, A](buildLogic, eventStoreRead.loadEventsForAggregate(aggregateId))
 
-  def projectEvent(event: D#Event, storeVersion: EventStoreVersion): Unit
+  def buildProjection[D <: DomainSpecification, A](
+    eventStoreRead: EventStoreRead[D],
+    buildLogic:     AggregateProjection[D, A]
+  ): A = build[D, A](buildLogic, eventStoreRead.loadEvents(EventStoreRange(EventStoreVersion.zero, None)))
 
-  def lastSnapshotVersion(): EventStoreVersion
-
-}
-
-trait EventSourceProjectionView[P] {
-
-  def projectionView(expectedVersion: EventStoreVersion): Future[VersionedProjection[P]]
-
-  def lastSnapshotView(): VersionedProjection[P]
-
-}
-
-case class VersionedProjection[+P](version: EventStoreVersion, projection: P)
-
-trait EventSourceProjectionCreationLogic[D <: DomainSpecification, P] {
-  def zero(): P
-  def projectEvent(state: P, version: EventStoreVersion, event: D#Event): P
-}
-
-trait AggregateProjection[D <: DomainSpecification, A] {
-  def zero(): A
-  def projectEvent(state: A, event: D#Event): A
+  private def build[D <: DomainSpecification, A](
+    buildLogic: AggregateProjection[D, A],
+    events:     Seq[D#Event]
+  ): A =
+    (buildLogic.zero() /: events) {
+      case (agg, event) =>
+        buildLogic.projectEvent(agg, event)
+    }
 }

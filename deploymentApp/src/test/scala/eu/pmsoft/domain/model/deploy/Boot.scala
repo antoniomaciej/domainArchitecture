@@ -32,6 +32,7 @@ import akka.util.Timeout
 import eu.pmsoft.domain.model.{ SessionToken, UserID }
 import eu.pmsoft.mcomponents.eventsourcing.{ EventStoreVersion, EventSourceCommandConfirmation }
 import eu.pmsoft.mcomponents.minstance.ReqResDataModel.RequestResult
+import eu.pmsoft.mcomponents.model.security.password.reset.UserIdFlowAggregate
 import eu.pmsoft.mcomponents.model.security.password.reset.api._
 import eu.pmsoft.mcomponents.model.security.roles.api.RoleBasedAuthorizationApi
 import eu.pmsoft.mcomponents.model.user.registry.api.UserRegistrationApi
@@ -63,7 +64,7 @@ class BindActorToRouting extends Actor with UserManagementService {
 
   override lazy val passwordResetApi: PasswordResetApi = new PasswordResetApi {
     override def initializeFlow(req: InitializePasswordResetFlowRequest): Future[RequestResult[InitializePasswordResetFlowResponse]] =
-      Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion.zero))))
+      Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion.zero, UserIdFlowAggregate(UserID(0))))))
 
     override def cancelFlow(req: CancelPasswordResetFlowRequest): Future[RequestResult[CancelPasswordResetFlowResponse]] =
       Mocked.shouldNotBeCalled

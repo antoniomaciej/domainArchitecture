@@ -61,7 +61,7 @@ trait DomainLogic[D <: DomainSpecification] {
 
 trait AsyncEventCommandHandler[D <: DomainSpecification] {
 
-  def execute(command: D#Command): Future[CommandResultConfirmed]
+  def execute(command: D#Command): Future[CommandResultConfirmed[D#Aggregate]]
 
 }
 

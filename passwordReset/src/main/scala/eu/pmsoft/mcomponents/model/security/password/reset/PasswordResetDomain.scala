@@ -114,7 +114,7 @@ final class PasswordResetModelLogicHandler extends DomainLogic[PasswordResetDoma
           PasswordResetFlowCreated(userId, sessionToken, sideEffects.generatePasswordResetToken(sessionToken))
         )
       }
-      CommandModelResult[PasswordResetDomain](
+      CommandModelResult(
         events,
         UserIdFlowAggregate(userId)
       )
@@ -122,14 +122,14 @@ final class PasswordResetModelLogicHandler extends DomainLogic[PasswordResetDoma
     case CancelPasswordResetFlowByUser(userId) => for {
       passwordResetToken <- extractPasswordResetTokenForUser(userId)
       userId <- extractUserFromAggregated(transactionScope)
-    } yield CommandModelResult[PasswordResetDomain](
+    } yield CommandModelResult(
       List(PasswordResetFlowCancelled(userId, passwordResetToken)),
       UserIdFlowAggregate(userId)
     )
 
     case CancelPasswordResetFlowByToken(passwordResetToken) => for {
       userId <- extractUserFromAggregated(transactionScope)
-    } yield CommandModelResult[PasswordResetDomain](
+    } yield CommandModelResult(
       List(PasswordResetFlowCancelled(userId, passwordResetToken)),
       UserIdFlowAggregate(userId)
     )
@@ -139,7 +139,7 @@ final class PasswordResetModelLogicHandler extends DomainLogic[PasswordResetDoma
       sessionTokenValid <- validateSessionToken(sessionToken)
       passwordResetTokenValid <- validateTokenPair(sessionToken, passwordResetToken)
       userId <- extractUserFromAggregated(transactionScope)
-    } yield CommandModelResult[PasswordResetDomain](
+    } yield CommandModelResult(
       List(PasswordResetFlowConfirmed(userId, newPassword)),
       UserIdFlowAggregate(userId)
     )

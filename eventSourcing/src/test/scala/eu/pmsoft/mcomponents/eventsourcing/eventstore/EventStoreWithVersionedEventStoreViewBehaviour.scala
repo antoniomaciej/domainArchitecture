@@ -51,7 +51,7 @@ trait EventStoreWithVersionedEventStoreViewBehaviour {
 
   def eventStoreWithAtomicProjection(testsTag: Tag, eventStoreCreator: () => EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState]): Unit = {
 
-    it should "provide projections on the future" taggedAs (testsTag) in {
+    it should "provide projections on the future" taggedAs testsTag in {
       //given
       val eventStore = eventStoreCreator()
       //and a version number to extract
@@ -84,7 +84,7 @@ trait EventStoreWithVersionedEventStoreViewBehaviour {
       eventStore.loadEvents(EventStoreRange(EventStoreVersion.zero, None)) shouldBe List(TestEventThread(0, 1), TestEventThread(0, 2), TestEventThread(0, 3), TestEventThread(0, 4), TestEventThread(0, 5))
     }
 
-    it should "range [2,4) and [3,inf) is correctly extracted" taggedAs (testsTag) in {
+    it should "range [2,4) and [3,inf) is correctly extracted" taggedAs testsTag in {
       //given
       val eventStore = eventStoreCreator()
       //and a number of events to generate
@@ -105,7 +105,7 @@ trait EventStoreWithVersionedEventStoreViewBehaviour {
       val futureLoad1To4AfterEventsClose = eventStore.loadEvents(rangeClose)
       val futureLoad1To4AfterEventsOpen = eventStore.loadEvents(rangeOpen)
       futureLoad1To4AfterEventsClose shouldBe List(TestEventThread(0, 2), TestEventThread(0, 3), TestEventThread(0, 4))
-      futureLoad1To4AfterEventsOpen shouldBe ((3 to 10).map( TestEventThread(0, _)))
+      futureLoad1To4AfterEventsOpen shouldBe (3 to 10).map(TestEventThread(0, _))
     }
 
     it should "extract events for a root aggregate" in {
@@ -117,25 +117,25 @@ trait EventStoreWithVersionedEventStoreViewBehaviour {
       //when events are added on thread root aggregates
       val addFunc: (Int, Int) => Unit = addOneEventOnThreadRoot(eventStore)
       for {
-        thread <- (0 to 4)
-        eventNr <- (1 to nrOfEvents)
+        thread <- 0 to 4
+        eventNr <- 1 to nrOfEvents
       } addFunc(thread, eventNr)
         //then each aggregate have it own events
 
         def eventsOnAggregate(aggNr: Int): Seq[TheTestEvent] = (1 to nrOfEvents).map(TestEventThread(aggNr, _))
 
       for {
-        threadNr <- (0 to 4)
+        threadNr <- 0 to 4
       } eventStore.loadEventsForAggregate(TestAggregateThread(threadNr)) should be(eventsOnAggregate(threadNr))
 
     }
 
-    it should "detect concurrent execution of updates in the same transaction scope" taggedAs (testsTag) in {
-      runConcurrentEventPersistence(thread => 0, expectedResult = true,eventStoreCreator)
+    it should "detect concurrent execution of updates in the same transaction scope" taggedAs testsTag in {
+      runConcurrentEventPersistence(thread => 0, expectedResult = true, eventStoreCreator)
     }
 
-    it should "run concurrently in different transaction scope" taggedAs (testsTag) in {
-      runConcurrentEventPersistence(thread => thread, expectedResult = false,eventStoreCreator)
+    it should "run concurrently in different transaction scope" taggedAs testsTag in {
+      runConcurrentEventPersistence(thread => thread, expectedResult = false, eventStoreCreator)
     }
   }
 

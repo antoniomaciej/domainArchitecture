@@ -97,7 +97,7 @@ class EventProducer[D <: DomainSpecification](
   def triggerEventPublication(): Unit = {
       def ensurePreviousStateWasNotSending(state: ProducerState[D]): \/[String, ProducerState[D]] = {
         state.sending match {
-          case SendingInactive => {
+          case SendingInactive =>
             state.status match {
               case Init                       => -\/("nothing to send")
               case EventStoreBind(eventStore) => \/-(state)
@@ -105,7 +105,6 @@ class EventProducer[D <: DomainSpecification](
               case Completed                  => \/-(state)
               case Shutdown                   => -\/("stream closed")
             }
-          }
           case SendingActive => -\/("already sending")
         }
       }
@@ -150,14 +149,12 @@ class EventProducer[D <: DomainSpecification](
         else {
           backToSendingInactive _
         }
-      case ErrorState(e) => {
+      case ErrorState(e) =>
         subscriber.onError(e)
         shutDownStream _
-      }
-      case _ => {
+      case _ =>
         subscriber.onCompleted()
         shutDownStream _
-      }
     }
 
     val afterSendState = producerState.updateAndGet(updateFunction)
@@ -205,7 +202,7 @@ class EventProducer[D <: DomainSpecification](
           nrOfRequestedEvents = requestTotal
         )
       }
-    updateStateAfterSend _
+    updateStateAfterSend
   }
 
 }

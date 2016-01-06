@@ -27,9 +27,10 @@
 package eu.pmsoft.mcomponents.model.user.registry
 
 import eu.pmsoft.domain.model._
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreRead
 import eu.pmsoft.mcomponents.eventsourcing.inmemory.LocalBindingInfrastructure
 import eu.pmsoft.mcomponents.eventsourcing._
-import eu.pmsoft.mcomponents.test.{ BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
+import eu.pmsoft.mcomponents.test.{ Mocked, BaseEventSourceSpec, CommandGenerator, GeneratedCommandSpecification }
 
 class UserRegistrationModuleTest extends BaseEventSourceSpec with GeneratedCommandSpecification[UserRegistrationDomain] {
 
@@ -42,9 +43,9 @@ class UserRegistrationModuleTest extends BaseEventSourceSpec with GeneratedComma
   override def implementationModule(): DomainModule[UserRegistrationDomain] = new UserRegistrationDomainModule()
 
   it should "not allow duplicated login names" in {
-    val module = createEmptyDomainModel()
+    val (api, _) = createApiAndDomainModule()
     val commands = List(AddUser(UserLogin("test@mail.com"), UserPassword("password")), AddUser(UserLogin("test@mail.com"), UserPassword("anyOther")))
-    val serialExecutions = serial(commands)(module.commandHandler.execute)
+    val serialExecutions = serial(commands)(api.commandHandler.execute)
     whenReady(serialExecutions) { results =>
       results.size should be(2)
       results.head should be(\/-) withClue ": The first command should success"
@@ -53,49 +54,67 @@ class UserRegistrationModuleTest extends BaseEventSourceSpec with GeneratedComma
   }
 
   it should "not allow invalid emails as user login" in {
-    val module = createEmptyDomainModel()
-    whenReady(module.commandHandler.execute(AddUser(UserLogin("invalidEmail"), UserPassword("password")))) { result =>
+    val (api, _) = createApiAndDomainModule()
+    whenReady(api.commandHandler.execute(AddUser(UserLogin("invalidEmail"), UserPassword("password")))) { result =>
       result should be(-\/) withClue ": Validation should reject the AddUser command"
     }
   }
 
   it should "not allow empty emails as user login" in {
-    val module = createEmptyDomainModel()
-    whenReady(module.commandHandler.execute(AddUser(UserLogin(""), UserPassword("password")))) { result =>
+    val (api, _) = createApiAndDomainModule()
+    whenReady(api.commandHandler.execute(AddUser(UserLogin(""), UserPassword("password")))) { result =>
       result should be(-\/) withClue ": Validation should reject the AddUser command"
     }
   }
 
   it should "fail to update password for not existing users" in {
-    val module = createEmptyDomainModel()
-    whenReady(module.commandHandler.execute(UpdateUserPassword(UserID(0), UserPassword("AnyPassword")))) { result =>
+    val (api, _) = createApiAndDomainModule()
+    whenReady(api.commandHandler.execute(UpdateUserPassword(UserID(0), UserPassword("AnyPassword")))) { result =>
       result should be(-\/) withClue ": Validation should reject the non existing userID"
     }
   }
   it should "fail to update active status for not existing users" in {
-    val module = createEmptyDomainModel()
-    whenReady(module.commandHandler.execute(UpdateActiveUserStatus(UserID(0), active = false))) { result =>
+    val (api, _) = createApiAndDomainModule()
+    whenReady(api.commandHandler.execute(UpdateActiveUserStatus(UserID(0), active = false))) { result =>
       result should be(-\/) withClue ": Validation should reject the non existing userID"
     }
   }
 
-  override def buildGenerator(state: AtomicEventStoreView[UserRegistrationState]): CommandGenerator[UserRegistrationCommand] = new UserRegistrationGenerators(state)
+  override def buildGenerator(state: AtomicEventStoreView[UserRegistrationState])(implicit eventStoreRead: EventStoreRead[UserRegistrationDomain]): CommandGenerator[UserRegistrationCommand] = new UserRegistrationGenerators(state)
 
-  def postCommandValidation(state: UserRegistrationState, command: UserRegistrationCommand): Unit = command match {
+  override def postCommandValidation(
+    state:   UserRegistrationState,
+    command: UserRegistrationCommand,
+    result:  EventSourceCommandConfirmation[UserRegistrationAggregate]
+  )(implicit eventStoreRead: EventStoreRead[UserRegistrationDomain]): Unit = command match {
     case UpdateActiveUserStatus(uid, active) =>
-      state.getUserByID(uid).get.activeStatus shouldBe active
+      val user = result.rootAggregate match {
+        case userAggId @ UserAggregateId(_) => UserRegistrationAggregates.buildUser(userAggId)
+        case EmailAggregateId(_)            => fail("bad aggregate")
+      }
+      user.profile.value.active shouldBe active
     case AddUser(loginEmail, passwordHash) =>
-      state.getAllUid
-        .map(state.getUserByID).map(_.get)
-        .find(user => user.login == loginEmail && user.passwordHash == passwordHash) should not be empty
+      val user = result.rootAggregate match {
+        case userAggId @ UserAggregateId(_) => UserRegistrationAggregates.buildUser(userAggId)
+        case EmailAggregateId(_)            => fail("bad aggregate")
+      }
+      user.profile.value.login shouldBe loginEmail
+      user.profile.value.passwordHash shouldBe passwordHash
     case UpdateUserPassword(uid, passwordHash) =>
-      state.getUserByID(uid) should not be empty
-      state.getUserByID(uid).get.passwordHash should be(passwordHash)
+      val user = result.rootAggregate match {
+        case userAggId @ UserAggregateId(_) => UserRegistrationAggregates.buildUser(userAggId)
+        case EmailAggregateId(_)            => fail("bad aggregate")
+      }
+      user.profile.value.passwordHash shouldBe passwordHash
     case UpdateUserRoles(uid, roles) =>
-      state.getUserByID(uid).get.roles should equal(roles)
+      val user = result.rootAggregate match {
+        case userAggId @ UserAggregateId(_) => UserRegistrationAggregates.buildUser(userAggId)
+        case EmailAggregateId(_)            => fail("bad aggregate")
+      }
+      user.profile.value.roles should equal(roles)
   }
 
-  def validateState(state: UserRegistrationState): Unit = {
+  override def validateState(state: UserRegistrationState)(implicit eventStoreRead: EventStoreRead[UserRegistrationDomain]): Unit = {
     findInconsistentUid(state) shouldBe empty withClue ": UserID registered but marked as not existing"
     findMissingUsers(state) shouldBe empty withClue ": Can not find used for the given userId"
     findUsersThatCanNotLogin(state) shouldBe empty withClue ": User exists but login marked as not existing"

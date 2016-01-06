@@ -75,7 +75,7 @@ class UserRegistrationRequestDispatcher(val commandApi: DomainCommandApi[UserReg
       response <- EitherT(findCreatedUser(cmdResult, registrationRequest.login))
     } yield response).run
 
-  private def findCreatedUser(cmdResult: EventSourceCommandConfirmation, login: UserLogin): Future[RequestResult[RegisterUserResponse]] =
+  private def findCreatedUser(cmdResult: EventSourceCommandConfirmation[UserRegistrationDomain#Aggregate], login: UserLogin): Future[RequestResult[RegisterUserResponse]] =
     commandApi.atomicProjection.atLeastOn(cmdResult.storeVersion).map { state =>
       state.projection.getUserByLogin(login) match {
         case Some(user) => \/-(RegisterUserResponse(user.uid))
