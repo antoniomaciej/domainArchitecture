@@ -35,13 +35,13 @@ object domainArchitecture extends Build {
 
   lazy val eventSourcingApi = (project in file("eventSourcingApi")).
     settings(commonSettings: _*).
-    settings(testDependencies: _*).
-    settings(dependencies: _*)
+    settings(apiDependencies: _*).
+    settings(testDependenciesOnTest: _*)
 
   lazy val eventSourcingTest = (project in file("eventSourcingTest")).
     settings(commonSettings: _*).
     settings(dependencies: _*).
-    settings(testDependencies: _*).
+    settings(testDependenciesOnMain: _*).
     dependsOn(eventSourcingApi)
 
   lazy val FunTest = config("fun") extend (Test)
@@ -58,16 +58,16 @@ object domainArchitecture extends Build {
       testOptions in FunTest ++= Seq(Tests.Filter(itFilter))
     ).
     settings(commonSettings: _*).
-    settings(dependencies: _*).
+    settings(coreDependencies: _*).
     dependsOn(eventSourcingTest % "test").
     dependsOn(eventSourcingApi)
 
   lazy val domainModel = (project in file("domainModel")).
-    settings(commonSettings: _*).
-    settings(dependencies: _*)
+    settings(commonSettings: _*)
 
   lazy val securityRoles = (project in file("securityRoles")).
     settings(commonSettings: _*).
+    settings(coreDependencies: _*).
     settings(dependencies: _*).
     dependsOn(eventSourcing).
     dependsOn(eventSourcingTest % "test").
@@ -75,6 +75,7 @@ object domainArchitecture extends Build {
 
   lazy val passwordReset = (project in file("passwordReset")).
     settings(commonSettings: _*).
+    settings(coreDependencies: _*).
     settings(dependencies: _*).
     dependsOn(eventSourcing).
     dependsOn(eventSourcingTest % "test").
@@ -83,6 +84,7 @@ object domainArchitecture extends Build {
 
   lazy val userRegistry = (project in file("userRegistry")).
     settings(commonSettings: _*).
+    settings(coreDependencies: _*).
     settings(dependencies: _*).
     dependsOn(eventSourcing).
     dependsOn(eventSourcingTest % "test").
@@ -91,6 +93,7 @@ object domainArchitecture extends Build {
 
   lazy val userSession = (project in file("userSession")).
     settings(commonSettings: _*).
+    settings(coreDependencies: _*).
     settings(dependencies: _*).
     dependsOn(eventSourcing).
     dependsOn(eventSourcingTest % "test").
@@ -99,6 +102,7 @@ object domainArchitecture extends Build {
 
   lazy val deploymentApp = (project in file("deploymentApp")).
     settings(commonSettings: _*).
+    settings(coreDependencies: _*).
     settings(dependencies: _*).
     dependsOn(eventSourcingTest % "test").
     settings(deploymentDependencies: _*).
@@ -113,40 +117,62 @@ object domainArchitecture extends Build {
       userSession, userRegistry, passwordReset, securityRoles,
       deploymentApp)
 
-  val monocleVersion = "1.1.1"
 
-  lazy val dependencies = Seq(
-    libraryDependencies ++= Seq(
-      "org.scalikejdbc" %% "scalikejdbc" % "2.3.1",
-      "org.scalikejdbc" %% "scalikejdbc-config" % "2.3.1",
-      "org.scalikejdbc" %% "scalikejdbc-test" % "2.3.1" % "test",
+  val monocleVersion = "1.1.1"
+  lazy val monocle = Seq(
+    "com.github.julien-truffaut" %% "monocle-core" % monocleVersion,
+    "com.github.julien-truffaut" %% "monocle-generic" % monocleVersion,
+    "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion
+  )
+  lazy val monocleForTest = Seq(
+    "com.github.julien-truffaut" %% "monocle-core" % monocleVersion % "test",
+    "com.github.julien-truffaut" %% "monocle-generic" % monocleVersion % "test",
+    "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion % "test"
+  )
+
+  lazy val apiDependencies = Seq(
+    libraryDependencies ++= monocleForTest ++ Seq(
+      "io.reactivex" % "rxjava" % "1.1.0",
+      "org.scalaz" %% "scalaz-core" % "7.1.6",
+      "org.scalikejdbc" %% "scalikejdbc" % "2.3.4"
+    )
+  )
+  lazy val coreDependencies = Seq(
+    libraryDependencies ++= monocleForTest ++ Seq(
+      "org.scalikejdbc" %% "scalikejdbc-config" % "2.3.4",
+      "org.scalikejdbc" %% "scalikejdbc-test" % "2.3.4" % "test",
       "com.h2database" % "h2" % "1.4.190" % "test",
       "mysql" % "mysql-connector-java" % "5.1.38" % "test",
       "org.postgresql" % "postgresql" % "9.4-1206-jdbc42" % "test",
-      "org.jasypt" % "jasypt" % "1.9.2",
       "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
-      "ch.qos.logback" % "logback-classic" % "1.1.3",
-      "com.softwaremill.macwire" %% "runtime" % "1.0.5",
-      "com.softwaremill.macwire" %% "macros" % "1.0.5",
-      "commons-validator" % "commons-validator" % "1.4.1",
-      "com.github.julien-truffaut" %% "monocle-core" % monocleVersion,
-      "com.github.julien-truffaut" %% "monocle-generic" % monocleVersion,
-      "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion,
-      "org.scalaz" %% "scalaz-core" % "7.1.2",
-      "org.scalaz" %% "scalaz-concurrent" % "7.1.2",
-      "io.reactivex" % "rxjava" % "1.0.14",
-      "com.google.guava" % "guava" % "19.0",
-      "org.mapdb" % "mapdb" % "2.0-beta12",
+      "com.google.guava" % "guava" % "18.0",
+      "org.scala-lang.modules" %% "scala-pickling" % "0.11.0" % "test"
+    )
+  )
+  lazy val dependencies = Seq(
+    libraryDependencies ++= monocle ++ Seq(
+      "org.jasypt" % "jasypt" % "1.9.2",
+      "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
+      "commons-validator" % "commons-validator" % "1.5.0",
+      "org.scalaz" %% "scalaz-concurrent" % "7.1.6",
       "org.scala-lang.modules" %% "scala-pickling" % "0.11.0"
     )
   )
 
-  lazy val testDependencies = Seq(
+  lazy val testDependenciesOnMain = Seq(
     libraryDependencies ++= Seq(
-      "org.typelevel" %% "scalaz-scalatest" % "0.2.2",
-      "org.scalatest" %% "scalatest" % "2.2.0",
-      "org.scalacheck" %% "scalacheck" % "1.12.4",
+      "org.typelevel" %% "scalaz-scalatest" % "0.3.0",
+      "org.scalatest" %% "scalatest" % "2.2.6",
+      "org.scalacheck" %% "scalacheck" % "1.12.5",
       "org.scalamock" %% "scalamock-scalatest-support" % "3.2.2"
+    )
+  )
+  lazy val testDependenciesOnTest = Seq(
+    libraryDependencies ++= Seq(
+      "org.typelevel" %% "scalaz-scalatest" % "0.3.0" % "test",
+      "org.scalatest" %% "scalatest" % "2.2.6" % "test",
+      "org.scalacheck" %% "scalacheck" % "1.12.5" % "test",
+      "org.scalamock" %% "scalamock-scalatest-support" % "3.2.2" % "test"
     )
   )
 
@@ -171,7 +197,8 @@ object domainArchitecture extends Build {
     organization := Organization,
     version := Version,
     concurrentRestrictions in Global += Tags.limit(Tags.Test, 1),
-    scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature", "-Yinline-warnings", "-Xlog-implicits"),
+//    scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature", "-Yinline-warnings", "-Xlog-implicits"),
+    scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature"),
     resolvers += Classpaths.typesafeReleases,
     resolvers += Resolver.file("Local repo", file(System.getProperty("user.home") + "/.ivy2/local"))(Resolver.ivyStylePatterns),
     publishArtifact in(Test, packageBin) := true,
