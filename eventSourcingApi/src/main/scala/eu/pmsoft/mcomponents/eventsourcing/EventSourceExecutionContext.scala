@@ -26,7 +26,6 @@
 package eu.pmsoft.mcomponents.eventsourcing
 
 import eu.pmsoft.mcomponents.eventsourcing.eventstore.EventStoreReference
-import scalikejdbc.ConnectionPool
 
 import scala.concurrent.ExecutionContext
 
@@ -53,11 +52,11 @@ sealed trait EventStoreBackendStrategy[D <: DomainSpecification] {
 case class EventStoreInMemory[D <: DomainSpecification](eventStoreReference: EventStoreReference[D]) extends EventStoreBackendStrategy[D]
 
 case class EventStoreSqlBackend[D <: DomainSpecification](
-  eventStoreReference: EventStoreReference[D],
-  connectionPool:      ConnectionPool,
-  dialect:             EventStoreSqlDialect,
-  tablesNamespace:     String,
-  rebuildDDL:          Boolean                = false
+  eventStoreReference:  EventStoreReference[D],
+  connectionPoolSymbol: Symbol,
+  dialect:              EventStoreSqlDialect,
+  tablesNamespace:      String,
+  rebuildDDL:           Boolean                = false
 ) extends EventStoreBackendStrategy[D]
 
 sealed trait EventStoreSqlDialect

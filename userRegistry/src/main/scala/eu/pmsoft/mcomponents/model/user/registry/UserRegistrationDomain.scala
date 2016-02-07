@@ -26,6 +26,8 @@
 
 package eu.pmsoft.mcomponents.model.user.registry
 
+import java.io.StringReader
+
 import eu.pmsoft.domain.model.{ UserID, UserLogin }
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
 import eu.pmsoft.mcomponents.eventsourcing._
@@ -61,11 +63,22 @@ trait UserRegistrationLocalSideEffects {
 }
 
 final class UserRegistrationEventSerializationSchema extends EventSerializationSchema[UserRegistrationDomain] {
-  import scala.pickling.static._
-  import scala.pickling.Defaults._
-  import scala.pickling.binary._
+
+  import org.json4s._
+  import org.json4s.native.Serialization.{ read, write }
+
+  val hints = ShortTypeHints(List(
+    classOf[UserCreated],
+    classOf[UserPasswordUpdated],
+    classOf[UserActiveStatusUpdated],
+    classOf[UserObtainedAccessRoles]
+  ))
+
+  implicit val formats = native.Serialization.formats(hints)
+
   override def mapToEvent(data: EventDataWithNr): UserRegistrationEvent = {
-    data.eventBytes.unpickle[UserRegistrationEvent]
+    val reader = new StringReader(new String(data.eventBytes))
+    read[UserRegistrationEvent](reader)
   }
 
   override def buildReference(aggregate: UserRegistrationAggregate): AggregateReference = aggregate match {
@@ -74,7 +87,7 @@ final class UserRegistrationEventSerializationSchema extends EventSerializationS
   }
 
   override def eventToData(event: UserRegistrationEvent): EventData = {
-    EventData(event.pickle.value)
+    EventData(write(event).getBytes)
   }
 
 }

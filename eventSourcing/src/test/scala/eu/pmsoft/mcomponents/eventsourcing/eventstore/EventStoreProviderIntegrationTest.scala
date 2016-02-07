@@ -56,8 +56,8 @@ class EventStoreProviderIntegrationTest extends FlatSpec with Matchers with Prop
     ExecutionContext.global,
     LocalBindingInfrastructure.create(),
     Set(
-      EventStoreSqlBackend(eventStoreReferenceMySql, ConnectionPool('MySQLIntegration), MySqlEventStoreSqlDialect, "testEventStore", rebuildDDL = true),
-      EventStoreSqlBackend(eventStoreReferencePostgresSql, ConnectionPool('PostgresIntegration), PostgresEventStoreSqlDialect, "testEventStore", rebuildDDL = true)
+      EventStoreSqlBackend(eventStoreReferenceMySql, 'MySQLIntegration, MySqlEventStoreSqlDialect, "testEventStore", rebuildDDL = true),
+      EventStoreSqlBackend(eventStoreReferencePostgresSql, 'PostgresIntegration, PostgresEventStoreSqlDialect, "testEventStore", rebuildDDL = true)
     )
   )
 

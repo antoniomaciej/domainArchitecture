@@ -132,7 +132,7 @@ trait GeneratedCommandSpecification[D <: DomainSpecification] {
     val events = domainImplementation.eventStore.loadEvents(EventStoreRange(EventStoreVersion.zero, None))
     events.foreach { event =>
       val eventData: EventData = domainImplementation.schema.eventToData(event)
-      val recreatedEvent = domainImplementation.schema.mapToEvent(EventDataWithNr(0L, eventData.eventBytes, new DateTime()))
+      val recreatedEvent = domainImplementation.schema.mapToEvent(EventDataWithNr(0L, eventData.eventBytes, DateTime.now()))
       recreatedEvent should be(event)
     }
   }

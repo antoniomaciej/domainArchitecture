@@ -54,7 +54,7 @@ class EventStoreProviderTest extends FlatSpec with Matchers with PropertyChecks 
     LocalBindingInfrastructure.create(),
     Set(
       EventStoreInMemory(eventStoreReferenceInMemory),
-      EventStoreSqlBackend(eventStoreReferenceSql, ConnectionPool('eventStoreTestDB2), H2EventStoreSqlDialect, "testEventStore", rebuildDDL = true)
+      EventStoreSqlBackend(eventStoreReferenceSql, 'eventStoreTestDB2, H2EventStoreSqlDialect, "testEventStore", rebuildDDL = true)
     )
   )
 

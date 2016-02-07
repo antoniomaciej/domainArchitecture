@@ -40,7 +40,7 @@ object domainArchitecture extends Build {
 
   lazy val eventSourcingTest = (project in file("eventSourcingTest")).
     settings(commonSettings: _*).
-    settings(dependencies: _*).
+    settings(coreDependencies: _*).
     settings(testDependenciesOnMain: _*).
     dependsOn(eventSourcingApi)
 
@@ -63,12 +63,12 @@ object domainArchitecture extends Build {
     dependsOn(eventSourcingApi)
 
   lazy val domainModel = (project in file("domainModel")).
-    settings(commonSettings: _*)
+    settings(commonSettings: _*).
+    settings(modulesDependencies: _*)
 
   lazy val securityRoles = (project in file("securityRoles")).
     settings(commonSettings: _*).
-    settings(coreDependencies: _*).
-    settings(dependencies: _*).
+    settings(modulesDependencies: _*).
     dependsOn(eventSourcing).
     dependsOn(eventSourcingTest % "test").
     dependsOn(domainModel)
@@ -76,7 +76,7 @@ object domainArchitecture extends Build {
   lazy val passwordReset = (project in file("passwordReset")).
     settings(commonSettings: _*).
     settings(coreDependencies: _*).
-    settings(dependencies: _*).
+    settings(modulesDependencies: _*).
     dependsOn(eventSourcing).
     dependsOn(eventSourcingTest % "test").
     dependsOn(domainModel).
@@ -85,7 +85,7 @@ object domainArchitecture extends Build {
   lazy val userRegistry = (project in file("userRegistry")).
     settings(commonSettings: _*).
     settings(coreDependencies: _*).
-    settings(dependencies: _*).
+    settings(modulesDependencies: _*).
     dependsOn(eventSourcing).
     dependsOn(eventSourcingTest % "test").
     dependsOn(domainModel).
@@ -94,7 +94,7 @@ object domainArchitecture extends Build {
   lazy val userSession = (project in file("userSession")).
     settings(commonSettings: _*).
     settings(coreDependencies: _*).
-    settings(dependencies: _*).
+    settings(modulesDependencies: _*).
     dependsOn(eventSourcing).
     dependsOn(eventSourcingTest % "test").
     dependsOn(domainModel).
@@ -102,8 +102,7 @@ object domainArchitecture extends Build {
 
   lazy val deploymentApp = (project in file("deploymentApp")).
     settings(commonSettings: _*).
-    settings(coreDependencies: _*).
-    settings(dependencies: _*).
+    settings(modulesDependencies: _*).
     dependsOn(eventSourcingTest % "test").
     settings(deploymentDependencies: _*).
     dependsOn(domainModel).
@@ -130,34 +129,47 @@ object domainArchitecture extends Build {
     "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion % "test"
   )
 
+
   lazy val apiDependencies = Seq(
-    libraryDependencies ++= monocleForTest ++ Seq(
-      "io.reactivex" % "rxjava" % "1.1.0",
-      "org.scalaz" %% "scalaz-core" % "7.1.6",
-      "org.scalikejdbc" %% "scalikejdbc" % "2.3.4"
+    libraryDependencies ++= Seq(
+      "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+      "org.scalaz" %% "scalaz-core" % "7.1.2",
+      "io.reactivex" % "rxjava" % "1.0.14",
+      "joda-time" % "joda-time" % "2.9.2",
+      "org.scalatest" %% "scalatest" % "2.2.0" % "test"
     )
   )
+
   lazy val coreDependencies = Seq(
-    libraryDependencies ++= monocleForTest ++ Seq(
-      "org.scalikejdbc" %% "scalikejdbc-config" % "2.3.4",
-      "org.scalikejdbc" %% "scalikejdbc-test" % "2.3.4" % "test",
+    libraryDependencies ++= Seq(
+      "org.scalikejdbc" %% "scalikejdbc" % "2.3.1",
+      "org.scalikejdbc" %% "scalikejdbc-config" % "2.3.1",
+      "org.scalaz" %% "scalaz-concurrent" % "7.1.2",
+      "com.github.cb372" %% "scalacache-core" % "0.7.5",
+      "com.github.cb372" %% "scalacache-caffeine" % "0.7.5",
+      "org.scalikejdbc" %% "scalikejdbc-test" % "2.3.1" % "test",
+      "org.scala-lang.modules" %% "scala-pickling" % "0.10.1" % "test",
       "com.h2database" % "h2" % "1.4.190" % "test",
       "mysql" % "mysql-connector-java" % "5.1.38" % "test",
       "org.postgresql" % "postgresql" % "9.4-1206-jdbc42" % "test",
-      "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
-      "com.github.cb372" %% "scalacache-core" % "0.7.5",
-      "com.github.cb372" %% "scalacache-caffeine" % "0.7.5",
-      "org.scala-lang.modules" %% "scala-pickling" % "0.11.0" % "test"
-    )
+      "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
+    ) ++ monocleForTest
   )
-  lazy val dependencies = Seq(
-    libraryDependencies ++= monocle ++ Seq(
-      "org.jasypt" % "jasypt" % "1.9.2",
+
+  lazy val modulesDependencies = Seq(
+    libraryDependencies ++= Seq(
+      "org.scala-lang.modules" %% "scala-pickling" % "0.10.1",
+      "commons-validator" % "commons-validator" % "1.4.1",
+      "org.jasypt" % "jasypt" % "1.9.2" % "test",
+      "org.scalikejdbc" %% "scalikejdbc-test" % "2.3.1" % "test",
+      "com.h2database" % "h2" % "1.4.190" % "test",
+      "mysql" % "mysql-connector-java" % "5.1.38" % "test",
+      "org.postgresql" % "postgresql" % "9.4-1206-jdbc42" % "test",
       "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
-      "commons-validator" % "commons-validator" % "1.5.0",
-      "org.scalaz" %% "scalaz-concurrent" % "7.1.6",
-      "org.scala-lang.modules" %% "scala-pickling" % "0.11.0"
-    )
+      "org.jasypt" % "jasypt" % "1.9.2",
+      "org.json4s" %% "json4s-native" % "3.3.0",
+      "commons-validator" % "commons-validator" % "1.4.1"
+    ) ++ monocle
   )
 
   lazy val testDependenciesOnMain = Seq(
@@ -182,7 +194,7 @@ object domainArchitecture extends Build {
 
   lazy val deploymentDependencies = Seq(
     libraryDependencies ++= Seq(
-      "org.json4s" %% "json4s-native" % "3.2.10",
+      "org.json4s" %% "json4s-native" % "3.3.0",
       "com.mchange" % "c3p0" % "0.9.5.1",
       "com.typesafe.akka" %% "akka-actor" % akkaVersion,
       "io.spray" %% "spray-can" % sprayVersion,

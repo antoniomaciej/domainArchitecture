@@ -40,6 +40,7 @@ class EventStoreSqlAtomicProjection[D <: DomainSpecification, P <: D#State](
 
   private[this] val stateCache = new EventStoreAtomicProjectionCache(stateCreationLogic)
   private val ddl = EventStoreSqlDDL.fromDialect(backendConfig.dialect, backendConfig.tablesNamespace)
+  private val connectionPool = ConnectionPool(backendConfig.connectionPoolSymbol)
 
   override def initializeBackend(): Unit = {
     withDb { db =>
@@ -71,7 +72,7 @@ class EventStoreSqlAtomicProjection[D <: DomainSpecification, P <: D#State](
   }
 
   private def withDbTransaction[A](f: DB => A): A = {
-    using(backendConfig.connectionPool.borrow()) { conn: java.sql.Connection =>
+    using(connectionPool.borrow()) { conn: java.sql.Connection =>
       val db: DB = DB(conn)
       db.begin()
       db.autoClose(false)
@@ -84,7 +85,7 @@ class EventStoreSqlAtomicProjection[D <: DomainSpecification, P <: D#State](
     }
   }
   private def withDb[A](f: DB => A): A = {
-    using(backendConfig.connectionPool.borrow()) { conn: java.sql.Connection =>
+    using(connectionPool.borrow()) { conn: java.sql.Connection =>
       val db: DB = DB(conn)
       db.autoClose(false)
       f(db)

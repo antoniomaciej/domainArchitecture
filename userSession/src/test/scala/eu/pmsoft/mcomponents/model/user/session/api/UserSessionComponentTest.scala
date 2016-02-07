@@ -68,7 +68,7 @@ class UserSessionComponentTest extends BaseEventSourceComponentTestSpec {
       global,
       LocalBindingInfrastructure.create(),
       Set(
-        EventStoreSqlBackend(UserRegistrationDomainModule.eventStoreReference, ConnectionPool('userRegistrationDB), H2EventStoreSqlDialect, "users", rebuildDDL = true),
+        EventStoreSqlBackend(UserRegistrationDomainModule.eventStoreReference, 'userRegistrationDB, H2EventStoreSqlDialect, "users", rebuildDDL = true),
         EventStoreInMemory(UserSessionDomainModule.eventStoreReference)
       )
     )
