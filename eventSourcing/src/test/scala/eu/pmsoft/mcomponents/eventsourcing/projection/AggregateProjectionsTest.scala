@@ -26,11 +26,11 @@
 
 package eu.pmsoft.mcomponents.eventsourcing.projection
 
-import eu.pmsoft.mcomponents.eventsourcing.eventstore.{EventStoreRangeUtils, EventStoreRead}
+import eu.pmsoft.mcomponents.eventsourcing.eventstore.{ EventStoreRangeUtils, EventStoreRead }
 import eu.pmsoft.mcomponents.eventsourcing.test.model._
-import eu.pmsoft.mcomponents.eventsourcing.{EventStoreRange, EventStoreVersion}
+import eu.pmsoft.mcomponents.eventsourcing.{ EventStoreRange, EventStoreVersion }
 import eu.pmsoft.mcomponents.test.Mocked
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{ FlatSpec, Matchers }
 import rx.Observable
 
 class AggregateProjectionsTest extends FlatSpec with Matchers {
@@ -44,9 +44,9 @@ class AggregateProjectionsTest extends FlatSpec with Matchers {
     override def eventStoreVersionUpdates(): Observable[EventStoreVersion] = Mocked.shouldNotBeCalled
 
     override def loadEventsForAggregate(aggregate: TheTestAggregate): Seq[TheTestEvent] = aggregate match {
-      case TestAggregateOne() => events.filter( _.isInstanceOf[TestEventOne])
-      case TestAggregateTwo() => events.filter( _.isInstanceOf[TestEventTwo])
-      case TestAggregateThread(nr) => events.filter( _.isInstanceOf[TestEventThread])
+      case TestAggregateOne()      => events.filter(_.isInstanceOf[TestEventOne])
+      case TestAggregateTwo()      => events.filter(_.isInstanceOf[TestEventTwo])
+      case TestAggregateThread(nr) => events.filter(_.isInstanceOf[TestEventThread])
     }
   }
 
@@ -62,7 +62,7 @@ class AggregateProjectionsTest extends FlatSpec with Matchers {
     //when a projection is build
     val projectionState = AggregateProjections.buildProjection(eventStore, new TestGlobalProjection())
     // then all events are projected
-    projectionState should be(TestGlobalProjectionState(2,1,1,0))
+    projectionState should be(TestGlobalProjectionState(2, 1, 1, 0))
   }
 
 }
@@ -71,12 +71,12 @@ class TestGlobalProjection extends AggregateProjection[TheTestDomainSpecificatio
   override def zero(): TestGlobalProjectionState = TestGlobalProjectionState()
 
   override def projectEvent(state: TestGlobalProjectionState, event: TheTestEvent): TestGlobalProjectionState =
-  event match {
-    case TestEventOne() => state.copy(one = state.one + 1)
-    case TestEventTwo() => state.copy(two = state.two + 1)
-    case TestEventThree() => state.copy(three = state.three + 1)
-    case TestEventThread(threadNr, data) => state.copy(nrOfThreads = state.nrOfThreads + 1)
-  }
+    event match {
+      case TestEventOne()                  => state.copy(one = state.one + 1)
+      case TestEventTwo()                  => state.copy(two = state.two + 1)
+      case TestEventThree()                => state.copy(three = state.three + 1)
+      case TestEventThread(threadNr, data) => state.copy(nrOfThreads = state.nrOfThreads + 1)
+    }
 }
 
 case class TestGlobalProjectionState(one: Int = 0, two: Int = 0, three: Int = 0, nrOfThreads: Int = 0)
@@ -87,9 +87,9 @@ class AggregateProjectionForAggregateNrOne extends AggregateProjection[TheTestDo
 
   override def projectEvent(state: AggregateProjectionTestState, event: TheTestEvent): AggregateProjectionTestState =
     event match {
-      case TestEventOne() => state.copy(numberOfEvents = state.numberOfEvents + 1)
-      case TestEventTwo() => state.copy(error = true)
-      case TestEventThree() => state.copy(error = true)
+      case TestEventOne()                  => state.copy(numberOfEvents = state.numberOfEvents + 1)
+      case TestEventTwo()                  => state.copy(error = true)
+      case TestEventThree()                => state.copy(error = true)
       case TestEventThread(threadNr, data) => state.copy(error = true)
     }
 }

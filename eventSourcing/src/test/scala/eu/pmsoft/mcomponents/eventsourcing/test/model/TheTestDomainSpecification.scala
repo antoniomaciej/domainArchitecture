@@ -70,8 +70,8 @@ final class TheTestEventSerializationSchema extends EventSerializationSchema[The
 
   override def buildConstraintReference(constraintScope: TheTestConstraintScope): ConstraintReference =
     constraintScope match {
-      case TestConstraintOne() => ConstraintReference(0,"one")
-      case TestConstraintTwo(constraintNr) => ConstraintReference(0,constraintNr)
+      case TestConstraintOne()             => ConstraintReference(0, "one")
+      case TestConstraintTwo(constraintNr) => ConstraintReference(0, constraintNr)
     }
 
   override def buildAggregateReference(aggregate: TheTestAggregate): AggregateReference = aggregate match {

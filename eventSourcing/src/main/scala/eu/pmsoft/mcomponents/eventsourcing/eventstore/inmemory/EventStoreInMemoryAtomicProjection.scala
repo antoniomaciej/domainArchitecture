@@ -46,13 +46,18 @@ class EventStoreInMemoryAtomicProjection[D <: DomainSpecification, P <: D#State]
 
   override def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, atomicTransactionScope: AtomicTransactionScope[D]): CommandResult[D] = {
     val rootAggregateRef = schema.buildAggregateReference(rootAggregate)
-    //TODO where should be checked that root aggregate is in the transaction scope
-
     val constraintsReferenceVersion = atomicTransactionScope.constraintScopeVersion.map {
       case (constraint, version) => (schema.buildConstraintReference(constraint), version)
     }
+
     val aggregatesReferenceVersion = atomicTransactionScope.aggregateVersion.map {
       case (aggregate, version) => (schema.buildAggregateReference(aggregate), version)
+    }
+    //In the case that the root aggregate was not versioned at the start of the transaction
+    // then assume the aggregate is created on this transaction and the version must be zero
+    val mergedTransactionAggregatesReferences = aggregatesReferenceVersion.get(rootAggregateRef) match {
+      case Some(rootVersion) => aggregatesReferenceVersion
+      case None              => aggregatesReferenceVersion ++ Map(rootAggregateRef -> 0L)
     }
       def checkIfStateMatchTransactionScopeVersion(state: AtomicEventStoreReadStateInMemory[D, P]): EventSourceCommandFailure \/ AtomicEventStoreReadStateInMemory[D, P] = {
         val constraintsOk = constraintsReferenceVersion.find({
@@ -61,7 +66,7 @@ class EventStoreInMemoryAtomicProjection[D <: DomainSpecification, P <: D#State]
           case Some(notMatchingConstraintVersion) => false
           case None                               => true
         }
-        val aggregatesOk = aggregatesReferenceVersion.find({
+        val aggregatesOk = mergedTransactionAggregatesReferences.find({
           case (aggregateRef, aggregateVersion) => state.aggregatesVersion.getOrElse(aggregateRef, 0L).compareTo(aggregateVersion) != 0
         }) match {
           case Some(notMatchingAggregateVersion) => false
