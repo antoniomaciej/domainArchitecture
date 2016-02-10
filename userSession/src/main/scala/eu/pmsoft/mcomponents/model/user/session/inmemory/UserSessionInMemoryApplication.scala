@@ -49,7 +49,7 @@ class UserSessionDomainModule(implicit val eventSourcingConfiguration: EventSour
 
   override lazy val schema: EventSerializationSchema[UserSessionSSODomain] = new UserSessionEventSerializationSchema
 
-  override lazy val eventStore: EventStore[UserSessionSSODomain] with VersionedEventStoreView[UserSessionAggregate, UserSessionSSOState] =
+  override lazy val eventStore: EventStore[UserSessionSSODomain] with VersionedEventStoreView[UserSessionSSOState] =
     EventStoreProvider.createEventStore[UserSessionSSODomain, UserSessionStateInMemory](
       new UserSessionEventStoreAtomicAtomicProjection(),
       schema,

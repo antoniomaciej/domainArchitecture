@@ -49,7 +49,7 @@ class UserRegistrationDomainModule(implicit val eventSourcingConfiguration: Even
 
   override lazy val schema: EventSerializationSchema[UserRegistrationDomain] = new UserRegistrationEventSerializationSchema
 
-  override lazy val eventStore: EventStore[UserRegistrationDomain] with VersionedEventStoreView[UserRegistrationAggregate, UserRegistrationState] =
+  override lazy val eventStore: EventStore[UserRegistrationDomain] with VersionedEventStoreView[UserRegistrationState] =
     EventStoreProvider.createEventStore[UserRegistrationDomain, UserRegistrationStateInMemory](
       new UserRegistryEventStoreAtomicAtomicProjection(),
       schema,

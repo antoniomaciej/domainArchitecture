@@ -36,18 +36,22 @@ class TestLogicDomainSpecification extends DomainSpecification {
   type Command = TheCommand
   type Event = TheEvent
   type Aggregate = TheAggregate
+  type ConstraintScope = TheConstraintScope
   type State = TheState
   type SideEffects = TheSideEffect
 }
 
 class TestDomainLogic extends DomainLogic[TestLogicDomainSpecification] {
-  override def executeCommand(command: TheCommand, transactionScope: Map[TheAggregate, Long])(implicit state: TheState, sideEffect: TheSideEffect): CommandToEventsResult[TestLogicDomainSpecification] = command match {
-    case CommandOne() => \/-(CommandModelResult(List(EventOne()), AggregateOne()))
-    case CommandTwo() => \/-(CommandModelResult(List(EventTwo()), AggregateTwo()))
-  }
 
-  override def calculateTransactionScope(command: TheCommand, state: TheState): CommandToAggregates[TestLogicDomainSpecification] =
-    \/-(Set[TheAggregate]())
+  override def executeCommand(command: TheCommand, atomicTransactionScope: AtomicTransactionScope[TestLogicDomainSpecification])(implicit projectionView: TheState, sideEffects: TheSideEffect): CommandToEventsResult[TestLogicDomainSpecification] =
+    command match {
+      case CommandOne() => \/-(CommandModelResult(List(EventOne()), AggregateOne()))
+      case CommandTwo() => \/-(CommandModelResult(List(EventTwo()), AggregateTwo()))
+    }
+
+  override def calculateRootAggregate(command: TheCommand, state: TheState): CommandToAggregateScope[TestLogicDomainSpecification] =
+    \/-(Set())
+
 }
 
 sealed trait TheCommand
@@ -69,6 +73,8 @@ sealed trait TheAggregate
 case class AggregateOne() extends TheAggregate
 
 case class AggregateTwo() extends TheAggregate
+
+sealed trait TheConstraintScope
 
 trait TheState {
   def ok: Boolean

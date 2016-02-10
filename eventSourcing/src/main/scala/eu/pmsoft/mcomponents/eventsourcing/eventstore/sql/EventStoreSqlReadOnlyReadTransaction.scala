@@ -61,14 +61,19 @@ class EventStoreSqlWriteTransaction[D <: DomainSpecification](
     val ddlDialect: EventStoreSqlDDL
 ) extends VersionedSqlTransaction {
 
-  def persistEvents(events: List[D#Event], rootAggregate: D#Aggregate, transactionScopeVersion: Map[D#Aggregate, Long]): Throwable \/ EventStoreVersion = {
+  def persistEvents(events: List[D#Event], rootAggregate: D#Aggregate, atomicTransactionScope: AtomicTransactionScope[D]): Throwable \/ EventStoreVersion = {
     val initialVersion: Long = eventStoreVersion.storeVersion
-    val rootAggregateReference = schema.buildReference(rootAggregate)
+    val rootAggregateReference = schema.buildAggregateReference(rootAggregate)
     db.withinTx { implicit session =>
       try {
-        transactionScopeVersion.foreach {
+        atomicTransactionScope.constraintScopeVersion.foreach {
+          case (constraint, version) =>
+            val constraintRef = schema.buildConstraintReference(constraint)
+            sql"""insert into ${ddlDialect.constraintsTableSql} (constraint_type,unique_id,version) values (${constraintRef.constraintType},${constraintRef.constraintUniqueId},${version + 1})""".update().apply()
+        }
+        atomicTransactionScope.aggregateVersion.foreach {
           case (aggregate, version) =>
-            val aggregateRef = schema.buildReference(aggregate)
+            val aggregateRef = schema.buildAggregateReference(aggregate)
             sql"""insert into ${ddlDialect.aggregatesTableSql} (aggregate_type,unique_id,version) values (${aggregateRef.aggregateType},${aggregateRef.aggregateUniqueId},${version + 1})""".update().apply()
         }
         val lastVersion = (initialVersion /: events) {
@@ -171,7 +176,6 @@ class EventStoreSqlReadOnlyReadTransaction[D <: DomainSpecification, P <: D#Stat
       val from = range.from.storeVersion
       val listEvent: List[EventDataWithNr] = range.to match {
         case Some(toVersion) =>
-
           val to = toVersion.storeVersion
           sql"select * from ${ddlDialect.eventDataTableSql} where event_nr >= ${from} and event_nr <= ${to} order by event_nr".map(rs => SqlEventDataMapping.eventDataWithNr(rs)).list.apply()
         case _ =>
@@ -186,23 +190,36 @@ class EventStoreSqlReadOnlyReadTransaction[D <: DomainSpecification, P <: D#Stat
     }
   }
 
-  override def calculateAggregatesVersions(aggregates: Set[D#Aggregate]): Map[D#Aggregate, Long] = db.withinTx { implicit session =>
-      def extractAggregateVersion(aggRef: AggregateReference): Long = {
-        val aggregateType = aggRef.aggregateType
-        val uniqueId = aggRef.aggregateUniqueId
-        val version: Option[Long] = sql"select max(version) from ${ddlDialect.aggregatesTableSql} where aggregate_type = ${aggregateType} and unique_id=${uniqueId}".map(rs => rs.longOpt(1)).toOption().apply().flatten
+  override def calculateAggregateVersions(aggregates: Set[D#Aggregate]): Map[D#Aggregate, Long] = db.withinTx { implicit session =>
+      def extractAggregateVersion(aggregateRef: AggregateReference): Long = {
+        val version: Option[Long] = sql"select max(version) from ${ddlDialect.aggregatesTableSql} where aggregate_type = ${aggregateRef.aggregateType} and unique_id=${aggregateRef.aggregateUniqueId}"
+          .map(rs => rs.longOpt(1)).toOption().apply().flatten
         version.getOrElse(0L)
       }
 
     val aggregateToVersion: Map[D#Aggregate, Long] = aggregates.map { aggregate =>
-      aggregate -> extractAggregateVersion(schema.buildReference(aggregate))
+      aggregate -> extractAggregateVersion(schema.buildAggregateReference(aggregate))
+    }(collection.breakOut)
+
+    aggregateToVersion
+  }
+
+  override def calculateConstraintVersions(constraints: Set[D#ConstraintScope]): Map[D#ConstraintScope, Long] = db.withinTx { implicit session =>
+      def extractConstraintVersion(constraintRef: ConstraintReference): Long = {
+        val version: Option[Long] = sql"select max(version) from ${ddlDialect.constraintsTableSql} where constraint_type = ${constraintRef.constraintType} and unique_id=${constraintRef.constraintUniqueId}"
+          .map(rs => rs.longOpt(1)).toOption().apply().flatten
+        version.getOrElse(0L)
+      }
+
+    val aggregateToVersion: Map[D#ConstraintScope, Long] = constraints.map { constraint =>
+      constraint -> extractConstraintVersion(schema.buildConstraintReference(constraint))
     }(collection.breakOut)
 
     aggregateToVersion
   }
 
   override def loadEventsForAggregate(aggregate: D#Aggregate): Seq[D#Event] = {
-    val aggregateRef = schema.buildReference(aggregate)
+    val aggregateRef = schema.buildAggregateReference(aggregate)
     db.withinTx { implicit session =>
       val listEvent: List[EventDataWithNr] =
         sql"""select * from ${ddlDialect.eventDataTableSql}

@@ -76,8 +76,8 @@ class OnTestLogicGeneratedCommandSpecification extends BaseEventSourceSpec with 
     override lazy val logic: DomainLogic[TestLogicDomainSpecification] = new TestDomainLogic()
 
     //TODO use mockito and create a generic nested mock/stub creator
-    override lazy val eventStore: EventStore[TestLogicDomainSpecification] with VersionedEventStoreView[TheAggregate, TheState] =
-      new EventStore[TestLogicDomainSpecification] with VersionedEventStoreView[TheAggregate, TheState] {
+    override lazy val eventStore: EventStore[TestLogicDomainSpecification] with VersionedEventStoreView[TheState] =
+      new EventStore[TestLogicDomainSpecification] with VersionedEventStoreView[TheState] {
 
         override def loadEvents(range: EventStoreRange): Seq[TheEvent] = Seq(EventOne(), EventTwo())
 
@@ -109,7 +109,9 @@ class OnTestLogicGeneratedCommandSpecification extends BaseEventSourceSpec with 
         }
       }
 
-      override def buildReference(aggregate: TheAggregate): AggregateReference = aggregate match {
+      override def buildConstraintReference(constraintScope: TheConstraintScope): ConstraintReference = ConstraintReference.noConstraintsOnDomain
+
+      override def buildAggregateReference(aggregate: TheAggregate): AggregateReference = aggregate match {
         case AggregateOne() => AggregateReference(1, "one")
         case AggregateTwo() => AggregateReference(1, "two")
       }
@@ -134,7 +136,7 @@ class FakeDomainApi[D <: DomainSpecification] extends DomainCommandApi[D] {
       Future.successful(\/-(EventSourceCommandConfirmation(EventStoreVersion.zero, fakeAggregate)))
   }
 
-  override def atomicProjection: VersionedEventStoreView[D#Aggregate, D#State] = new VersionedEventStoreView[D#Aggregate, D#State] {
+  override def atomicProjection: VersionedEventStoreView[D#State] = new VersionedEventStoreView[D#State] {
 
     override def lastSnapshot(): D#State = fakeState
 

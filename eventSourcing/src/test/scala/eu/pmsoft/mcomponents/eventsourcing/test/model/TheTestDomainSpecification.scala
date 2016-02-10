@@ -35,6 +35,7 @@ final class TheTestDomainSpecification extends DomainSpecification {
   type Command = TheTestCommand
   type Event = TheTestEvent
   type Aggregate = TheTestAggregate
+  type ConstraintScope = TheTestConstraintScope
   type State = TheTestState
   type SideEffects = TestSideEffects
 }
@@ -67,7 +68,13 @@ final class TheTestEventSerializationSchema extends EventSerializationSchema[The
     data.eventBytes.unpickle[TheTestEvent]
   }
 
-  override def buildReference(aggregate: TheTestAggregate): AggregateReference = aggregate match {
+  override def buildConstraintReference(constraintScope: TheTestConstraintScope): ConstraintReference =
+    constraintScope match {
+      case TestConstraintOne() => ConstraintReference(0,"one")
+      case TestConstraintTwo(constraintNr) => ConstraintReference(0,constraintNr)
+    }
+
+  override def buildAggregateReference(aggregate: TheTestAggregate): AggregateReference = aggregate match {
     case TestAggregateOne()      => AggregateReference(0, 0)
     case TestAggregateTwo()      => AggregateReference(1, 0)
     case TestAggregateThread(nr) => AggregateReference(2, nr)
@@ -83,7 +90,7 @@ final class TheTestEventSerializationSchema extends EventSerializationSchema[The
 
 final class TheTestDomainLogic extends DomainLogic[TheTestDomainSpecification] {
 
-  override def calculateTransactionScope(command: TheTestCommand, state: TheTestState): CommandToAggregates[TheTestDomainSpecification] =
+  override def calculateRootAggregate(command: TheTestCommand, state: TheTestState): CommandToAggregateScope[TheTestDomainSpecification] =
     command match {
       case TestCommandOne()                                 => \/-(Set(TestAggregateOne()))
       case TestCommandTwo(createTwo)                        => \/-(Set(TestAggregateTwo()))
@@ -91,8 +98,8 @@ final class TheTestDomainLogic extends DomainLogic[TheTestDomainSpecification] {
     }
 
   override def executeCommand(
-    command:          TheTestCommand,
-    transactionScope: Map[TheTestAggregate, Long]
+    command:                TheTestCommand,
+    atomicTransactionScope: AtomicTransactionScope[TheTestDomainSpecification]
   )(implicit state: TheTestState, sideEffects: TestSideEffects): CommandToEventsResult[TheTestDomainSpecification] =
     command match {
       case TestCommandForThreads(threadNr, targetAggregate) =>

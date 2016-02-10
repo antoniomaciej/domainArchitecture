@@ -63,9 +63,12 @@ final class UserSessionEventSerializationSchema extends EventSerializationSchema
     data.eventBytes.unpickle[UserSessionEvent]
   }
 
-  override def buildReference(aggregate: UserSessionAggregate): AggregateReference = aggregate match {
-    case UserSessionUserIDAggregate(userId) => AggregateReference(0, userId.id)
-  }
+  override def buildConstraintReference(constraintScope: UserSessionSSODomain#ConstraintScope): ConstraintReference = ConstraintReference.noConstraintsOnDomain
+
+  override def buildAggregateReference(aggregate: UserSessionAggregate): AggregateReference =
+    aggregate match {
+      case UserSessionUserIDAggregate(userId) => AggregateReference(0, userId.id)
+    }
 
   override def eventToData(event: UserSessionEvent): EventData = {
     import scala.pickling.Defaults._
@@ -77,7 +80,7 @@ final class UserSessionEventSerializationSchema extends EventSerializationSchema
 
 final class UserSessionHandlerLogic extends DomainLogic[UserSessionSSODomain] with UserSessionValidations with UserSessionExtractors {
 
-  override def calculateTransactionScope(command: UserSessionCommand, state: UserSessionSSOState): CommandToAggregates[UserSessionSSODomain] =
+  override def calculateRootAggregate(command: UserSessionCommand, state: UserSessionSSOState): CommandToAggregateScope[UserSessionSSODomain] =
     command match {
       case CreateUserSession(userId) => \/-(Set(UserSessionUserIDAggregate(userId)))
       case InvalidateSession(sessionToken) => state.findUserSession(sessionToken) match {
@@ -88,32 +91,33 @@ final class UserSessionHandlerLogic extends DomainLogic[UserSessionSSODomain] wi
     }
 
   override def executeCommand(
-    command:          UserSessionCommand,
-    transactionScope: Map[UserSessionAggregate, Long]
-  )(implicit state: UserSessionSSOState, sideEffects: UserSessionSideEffect): CommandToEventsResult[UserSessionSSODomain] = command match {
-    case CreateUserSession(userId) =>
-      val sessionToken = sideEffects.generateSessionToken(userId)
-      val events = state.findUserSession(userId) match {
-        case Some(session) =>
-          List(
-            UserSessionInvalidated(session.sessionToken, session.userId),
-            UserSessionCreated(sessionToken, userId)
-          )
-        case None =>
-          List(
-            UserSessionCreated(sessionToken, userId)
-          )
-      }
-      \/-(CommandModelResult(events, UserSessionUserIDAggregate(userId)))
-    case InvalidateSession(sessionToken) => for {
-      userId <- extractUserId(transactionScope)
-    } yield CommandModelResult(List(UserSessionInvalidated(sessionToken, userId)), UserSessionUserIDAggregate(userId))
+    command:                UserSessionCommand,
+    atomicTransactionScope: AtomicTransactionScope[UserSessionSSODomain]
+  )(implicit state: UserSessionSSOState, sideEffects: UserSessionSideEffect): CommandToEventsResult[UserSessionSSODomain] =
+    command match {
+      case CreateUserSession(userId) =>
+        val sessionToken = sideEffects.generateSessionToken(userId)
+        val events = state.findUserSession(userId) match {
+          case Some(session) =>
+            List(
+              UserSessionInvalidated(session.sessionToken, session.userId),
+              UserSessionCreated(sessionToken, userId)
+            )
+          case None =>
+            List(
+              UserSessionCreated(sessionToken, userId)
+            )
+        }
+        \/-(CommandModelResult(events, UserSessionUserIDAggregate(userId)))
+      case InvalidateSession(sessionToken) => for {
+        userId <- extractUserId(atomicTransactionScope.aggregateVersion)
+      } yield CommandModelResult(List(UserSessionInvalidated(sessionToken, userId)), UserSessionUserIDAggregate(userId))
 
-    case InvalidateUserSession(userId) => for {
-      session <- sessionExist(userId)
-    } yield CommandModelResult(List(UserSessionInvalidated(session.sessionToken, session.userId)), UserSessionUserIDAggregate(userId))
+      case InvalidateUserSession(userId) => for {
+        session <- sessionExist(userId)
+      } yield CommandModelResult(List(UserSessionInvalidated(session.sessionToken, session.userId)), UserSessionUserIDAggregate(userId))
 
-  }
+    }
 
 }
 

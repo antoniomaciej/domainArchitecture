@@ -61,11 +61,11 @@ class EventStoreProviderIntegrationTest extends FlatSpec with Matchers with Prop
     )
   )
 
-  def mySqlEventStoreWithProjection(): EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState] = {
+  def mySqlEventStoreWithProjection(): EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestState] = {
     EventStoreProvider.createEventStore[TheTestDomainSpecification, TestStateInMemory](new TheAtomicProjectionLogic(), schema, eventStoreReferenceMySql)
   }
 
-  def postgresqlBasedEventStoreWithProjection(): EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState] = {
+  def postgresqlBasedEventStoreWithProjection(): EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestState] = {
     EventStoreProvider.createEventStore[TheTestDomainSpecification, TestStateInMemory](new TheAtomicProjectionLogic(), schema, eventStoreReferencePostgresSql)
   }
 

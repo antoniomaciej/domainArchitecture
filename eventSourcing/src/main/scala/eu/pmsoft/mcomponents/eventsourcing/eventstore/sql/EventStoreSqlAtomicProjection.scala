@@ -62,14 +62,13 @@ class EventStoreSqlAtomicProjection[D <: DomainSpecification, P <: D#State](
     }
   }
 
-  override def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, transactionScopeVersion: Map[D#Aggregate, Long]): CommandResult[D] = {
+  override def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, atomicTransactionScope: AtomicTransactionScope[D]): CommandResult[D] =
     withDbTransaction { db =>
-      new EventStoreSqlWriteTransaction(db, schema, ddl).persistEvents(events, rootAggregate, transactionScopeVersion) match {
+      new EventStoreSqlWriteTransaction(db, schema, ddl).persistEvents(events, rootAggregate, atomicTransactionScope) match {
         case -\/(a)       => -\/(EventSourceCommandRollback())
         case \/-(version) => \/-(EventSourceCommandConfirmation(version, rootAggregate))
       }
     }
-  }
 
   private def withDbTransaction[A](f: DB => A): A = {
     using(connectionPool.borrow()) { conn: java.sql.Connection =>
@@ -84,6 +83,7 @@ class EventStoreSqlAtomicProjection[D <: DomainSpecification, P <: D#State](
       }
     }
   }
+
   private def withDb[A](f: DB => A): A = {
     using(connectionPool.borrow()) { conn: java.sql.Connection =>
       val db: DB = DB(conn)

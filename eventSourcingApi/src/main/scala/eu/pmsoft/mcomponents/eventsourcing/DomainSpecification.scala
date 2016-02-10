@@ -32,11 +32,13 @@ import eu.pmsoft.mcomponents.eventsourcing.projection.VersionedProjection
 import org.joda.time.DateTime
 
 import scala.concurrent.Future
+import scalaz.{ \/-, \/ }
 
 trait DomainSpecification {
   type Command
   type Event
   type Aggregate
+  type ConstraintScope
   type State
   type SideEffects
 }
@@ -49,14 +51,15 @@ trait DomainModule[D <: DomainSpecification] {
 
   def schema: EventSerializationSchema[D]
 
-  def eventStore: EventStore[D] with VersionedEventStoreView[D#Aggregate, D#State]
+  def eventStore: EventStore[D] with VersionedEventStoreView[D#State]
 
 }
 
 trait DomainLogic[D <: DomainSpecification] {
-  def calculateTransactionScope(command: D#Command, state: D#State): CommandToAggregates[D]
+  def calculateRootAggregate(command: D#Command, state: D#State): CommandToAggregateScope[D]
+  def calculateConstraints(command: D#Command, state: D#State): CommandToConstraints[D] = \/-(Set())
 
-  def executeCommand(command: D#Command, transactionScope: Map[D#Aggregate, Long])(implicit state: D#State, sideEffects: D#SideEffects): CommandToEventsResult[D]
+  def executeCommand(command: D#Command, atomicTransactionScope: AtomicTransactionScope[D])(implicit state: D#State, sideEffects: D#SideEffects): CommandToEventsResult[D]
 }
 
 trait AsyncEventCommandHandler[D <: DomainSpecification] {
@@ -69,7 +72,7 @@ trait DomainCommandApi[D <: DomainSpecification] extends EventSourcingConfigurat
 
   def commandHandler: AsyncEventCommandHandler[D]
 
-  def atomicProjection: VersionedEventStoreView[D#Aggregate, D#State]
+  def atomicProjection: VersionedEventStoreView[D#State]
 
 }
 
@@ -79,20 +82,22 @@ trait AtomicEventStoreView[+P] {
 
 }
 
-trait VersionedEventStoreView[A, +P] extends AtomicEventStoreView[P] {
+trait VersionedEventStoreView[+P] extends AtomicEventStoreView[P] {
 
   def atLeastOn(storeVersion: EventStoreVersion): Future[VersionedProjection[P]]
 
 }
 
-case class AtomicTransactionScope[D <: DomainSpecification](transactionScopeVersion: Map[D#Aggregate, Long], projectionView: D#State)
+case class AtomicTransactionScope[D <: DomainSpecification](aggregateVersion: Map[D#Aggregate, Long], constraintScopeVersion: Map[D#ConstraintScope, Long], projectionView: D#State)
 
 trait EventSerializationSchema[D <: DomainSpecification] {
   def mapToEvent(data: EventDataWithNr): D#Event
 
   def eventToData(event: D#Event): EventData
 
-  def buildReference(aggregate: D#Aggregate): AggregateReference
+  def buildConstraintReference(constraintScope: D#ConstraintScope): ConstraintReference
+
+  def buildAggregateReference(aggregate: D#Aggregate): AggregateReference
 }
 
 case class EventData(eventBytes: Array[Byte])
@@ -100,10 +105,19 @@ case class EventData(eventBytes: Array[Byte])
 case class EventDataWithNr(eventNr: Long, eventBytes: Array[Byte], createdAt: DateTime)
 
 case class AggregateReference(aggregateType: Int, aggregateUniqueId: String)
+case class ConstraintReference(constraintType: Int, constraintUniqueId: String)
 
 object AggregateReference {
   def apply(aggregateType: Int, aggregateUniqueId: Long): AggregateReference = {
     AggregateReference(aggregateType, "%d".format(aggregateUniqueId))
+  }
+}
+
+object ConstraintReference {
+  val noConstraintsOnDomain = ConstraintReference(-1, "noConstraintsOnDomain")
+
+  def apply(constraintType: Int, aggregateUniqueId: Long): ConstraintReference = {
+    ConstraintReference(constraintType, "%d".format(aggregateUniqueId))
   }
 }
 

@@ -59,8 +59,8 @@ class UserRegistrationRequestDispatcherTest extends BaseEventSourceComponentTest
         )
     }
 
-    override def atomicProjection: VersionedEventStoreView[UserRegistrationAggregate, UserRegistrationState] =
-      new VersionedEventStoreView[UserRegistrationAggregate, UserRegistrationState] {
+    override def atomicProjection: VersionedEventStoreView[UserRegistrationState] =
+      new VersionedEventStoreView[UserRegistrationState] {
 
         override def atLeastOn(storeVersion: EventStoreVersion): Future[VersionedProjection[UserRegistrationState]] =
           Future.successful(VersionedProjection(storeVersion, new UserRegistrationState {

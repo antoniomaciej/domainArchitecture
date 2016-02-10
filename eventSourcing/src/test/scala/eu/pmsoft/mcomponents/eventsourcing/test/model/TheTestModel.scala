@@ -48,7 +48,15 @@ sealed trait TheTestAggregate
 case class TestAggregateOne() extends TheTestAggregate
 
 case class TestAggregateTwo() extends TheTestAggregate
+
 case class TestAggregateThread(nr: Long) extends TheTestAggregate
+
+//Constraints
+sealed trait TheTestConstraintScope
+
+case class TestConstraintOne() extends TheTestConstraintScope
+
+case class TestConstraintTwo(constraintNr: Long) extends TheTestConstraintScope
 
 //UserRegistrationModel commands
 

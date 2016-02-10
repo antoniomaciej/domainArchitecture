@@ -79,11 +79,14 @@ sealed trait RoleBasedAuthorizationAggregate
 
 case class RoleIdAggregate(roleID: RoleID) extends RoleBasedAuthorizationAggregate
 
-case class RoleNameAggregate(roleName: String) extends RoleBasedAuthorizationAggregate
-
-case class PermissionCodeAggregate(code: String) extends RoleBasedAuthorizationAggregate
-
 case class PermissionIdAggregate(permissionId: PermissionID) extends RoleBasedAuthorizationAggregate
+
+// constraints
+sealed trait RoleBasedAuthorizationConstraintScope
+
+case class RoleNameAggregate(roleName: String) extends RoleBasedAuthorizationConstraintScope
+
+case class PermissionCodeAggregate(code: String) extends RoleBasedAuthorizationConstraintScope
 
 //Model entities
 

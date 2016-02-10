@@ -35,6 +35,7 @@ final class RoleBasedAuthorizationDomain extends DomainSpecification {
   type Command = RoleBasedAuthorizationModelCommand
   type Event = RoleBasedAuthorizationEvent
   type Aggregate = RoleBasedAuthorizationAggregate
+  type ConstraintScope = RoleBasedAuthorizationConstraintScope
   type State = RoleBasedAuthorizationState
   type SideEffects = RoleBasedAuthorizationLocalSideEffects
 }
@@ -46,10 +47,13 @@ final class RoleBasedAuthorizationEventSerializationSchema extends EventSerializ
     data.eventBytes.unpickle[RoleBasedAuthorizationEvent]
   }
 
-  override def buildReference(aggregate: RoleBasedAuthorizationAggregate): AggregateReference = aggregate match {
+  override def buildConstraintReference(constraintScope: RoleBasedAuthorizationDomain#ConstraintScope): ConstraintReference = constraintScope match {
+    case RoleNameAggregate(roleName)   => ConstraintReference(0, roleName)
+    case PermissionCodeAggregate(code) => ConstraintReference(0, code)
+  }
+
+  override def buildAggregateReference(aggregate: RoleBasedAuthorizationAggregate): AggregateReference = aggregate match {
     case RoleIdAggregate(roleID)             => AggregateReference(0, roleID.id)
-    case RoleNameAggregate(roleName)         => AggregateReference(1, roleName)
-    case PermissionCodeAggregate(code)       => AggregateReference(2, code)
     case PermissionIdAggregate(permissionId) => AggregateReference(3, permissionId.id)
   }
 
@@ -64,95 +68,118 @@ final class RoleBasedAuthorizationEventSerializationSchema extends EventSerializ
 final class RoleBasedAuthorizationHandlerLogic extends DomainLogic[RoleBasedAuthorizationDomain]
     with RoleBasedAuthorizationValidations {
 
-  override def calculateTransactionScope(command: RoleBasedAuthorizationModelCommand, state: RoleBasedAuthorizationState): CommandToAggregates[RoleBasedAuthorizationDomain] = command match {
+  override def calculateConstraints(command: RoleBasedAuthorizationModelCommand, state: RoleBasedAuthorizationState): CommandToConstraints[RoleBasedAuthorizationDomain] = command match {
     case CreateRole(roleName)                                   => \/-(Set(RoleNameAggregate(roleName)))
-    case DeleteRole(roleID)                                     => \/-(Set(RoleIdAggregate(roleID)))
-    case UpdateRoleName(roleID, roleName)                       => \/-(Set(RoleIdAggregate(roleID), RoleNameAggregate(roleName)))
+    case DeleteRole(roleID)                                     => \/-(Set())
+    case UpdateRoleName(roleID, roleName)                       => \/-(Set(RoleNameAggregate(roleName)))
     case CreatePermission(code, description)                    => \/-(Set(PermissionCodeAggregate(code)))
+    case UpdatePermissionDescription(permissionId, description) => \/-(Set())
+    case DeletePermission(permissionId)                         => \/-(Set())
+    case AddPermissionsToRole(permissionIdSet, roleID)          => \/-(Set())
+    case DeletePermissionsFromRole(permissionIdSet, roleID)     => \/-(Set())
+  }
+
+  override def calculateRootAggregate(command: RoleBasedAuthorizationModelCommand, state: RoleBasedAuthorizationState): CommandToAggregateScope[RoleBasedAuthorizationDomain] = command match {
+    case CreateRole(roleName)                                   => \/-(Set())
+    case DeleteRole(roleID)                                     => \/-(Set(RoleIdAggregate(roleID)))
+    case UpdateRoleName(roleID, roleName)                       => \/-(Set(RoleIdAggregate(roleID)))
+    case CreatePermission(code, description)                    => \/-(Set())
     case UpdatePermissionDescription(permissionId, description) => \/-(Set(PermissionIdAggregate(permissionId)))
     case DeletePermission(permissionId)                         => \/-(Set(PermissionIdAggregate(permissionId)))
     case AddPermissionsToRole(permissionIdSet, roleID)          => \/-(permissionIdSet.map(PermissionIdAggregate) ++ Set(RoleIdAggregate(roleID)))
     case DeletePermissionsFromRole(permissionIdSet, roleID)     => \/-(permissionIdSet.map(PermissionIdAggregate) ++ Set(RoleIdAggregate(roleID)))
   }
 
+  //  override def calculateTransactionScope(command: RoleBasedAuthorizationModelCommand, state: RoleBasedAuthorizationState): CommandToAggregates[RoleBasedAuthorizationDomain] = command match {
+  //    case CreateRole(roleName)                                   => \/-(Set(RoleNameAggregate(roleName)))
+  //    case DeleteRole(roleID)                                     => \/-(Set(RoleIdAggregate(roleID)))
+  //    case UpdateRoleName(roleID, roleName)                       => \/-(Set(RoleIdAggregate(roleID), RoleNameAggregate(roleName)))
+  //    case CreatePermission(code, description)                    => \/-(Set(PermissionCodeAggregate(code)))
+  //    case UpdatePermissionDescription(permissionId, description) => \/-(Set(PermissionIdAggregate(permissionId)))
+  //    case DeletePermission(permissionId)                         => \/-(Set(PermissionIdAggregate(permissionId)))
+  //    case AddPermissionsToRole(permissionIdSet, roleID)          => \/-(permissionIdSet.map(PermissionIdAggregate) ++ Set(RoleIdAggregate(roleID)))
+  //    case DeletePermissionsFromRole(permissionIdSet, roleID)     => \/-(permissionIdSet.map(PermissionIdAggregate) ++ Set(RoleIdAggregate(roleID)))
+  //  }
+
   override def executeCommand(
-    command:          RoleBasedAuthorizationModelCommand,
-    transactionScope: Map[RoleBasedAuthorizationAggregate, Long]
-  )(implicit state: RoleBasedAuthorizationState, sideEffects: RoleBasedAuthorizationLocalSideEffects): CommandToEventsResult[RoleBasedAuthorizationDomain] = command match {
+    command:                RoleBasedAuthorizationModelCommand,
+    atomicTransactionScope: AtomicTransactionScope[RoleBasedAuthorizationDomain]
+  )(implicit state: RoleBasedAuthorizationState, sideEffects: RoleBasedAuthorizationLocalSideEffects): CommandToEventsResult[RoleBasedAuthorizationDomain] =
+    command match {
 
-    case CreateRole(roleName) => for {
-      roleNameValid <- validName(roleName)
-      roleName <- ensureRoleNamesAreUnique(roleName)
-    } yield {
-      val roleID = sideEffects.generateUniqueRoleId()
-      CommandModelResult(List(AccessRoleCreated(roleID, roleNameValid)), RoleIdAggregate(roleID))
-    }
-    case UpdateRoleName(roleID, roleName) => for {
-      roleNameValid <- validName(roleName)
-      currRole <- existingRoleById(roleID)
-      roleName <- ensureRoleNamesAreUnique(roleName, currRole)
-    } yield if (currRole.roleName == roleNameValid) {
-      CommandModelResult(List(), RoleIdAggregate(roleID))
-    }
-    else {
-      CommandModelResult(List(AccessRoleNameUpdated(currRole.roleId, roleNameValid)), RoleIdAggregate(roleID))
-    }
+      case CreateRole(roleName) => for {
+        roleNameValid <- validName(roleName)
+        roleName <- ensureRoleNamesAreUnique(roleName)
+      } yield {
+        val roleID = sideEffects.generateUniqueRoleId()
+        CommandModelResult(List(AccessRoleCreated(roleID, roleNameValid)), RoleIdAggregate(roleID))
+      }
+      case UpdateRoleName(roleID, roleName) => for {
+        roleNameValid <- validName(roleName)
+        currRole <- existingRoleById(roleID)
+        roleName <- ensureRoleNamesAreUnique(roleName, currRole)
+      } yield if (currRole.roleName == roleNameValid) {
+        CommandModelResult(List(), RoleIdAggregate(roleID))
+      }
+      else {
+        CommandModelResult(List(AccessRoleNameUpdated(currRole.roleId, roleNameValid)), RoleIdAggregate(roleID))
+      }
 
-    case DeleteRole(roleID) => for {
-      roleID <- existingRoleId(roleID)
-    } yield {
-      CommandModelResult(List(AccessRoleDeleted(roleID)), RoleIdAggregate(roleID))
-    }
+      case DeleteRole(roleID) => for {
+        roleID <- existingRoleId(roleID)
+      } yield {
+        CommandModelResult(List(AccessRoleDeleted(roleID)), RoleIdAggregate(roleID))
+      }
 
-    case CreatePermission(code, description) => for {
-      codeValid <- validCode(code)
-      descriptionValid <- validDescription(description)
-    } yield {
-      val permissionId = sideEffects.generateUniquePermissionId()
-      CommandModelResult(
-        List(AccessPermissionCreated(permissionId, codeValid, descriptionValid)),
+      case CreatePermission(code, description) => for {
+        codeValid <- validCode(code)
+        descriptionValid <- validDescription(description)
+      } yield {
+        val permissionId = sideEffects.generateUniquePermissionId()
+        CommandModelResult(
+          List(AccessPermissionCreated(permissionId, codeValid, descriptionValid)),
+          PermissionIdAggregate(permissionId)
+        )
+      }
+
+      case UpdatePermissionDescription(permissionId, description) => for {
+        descriptionValid <- validDescription(description)
+        permission <- existingPermissionByID(permissionId)
+      } yield if (permission.description == descriptionValid) {
+        CommandModelResult(List(), PermissionIdAggregate(permissionId))
+      }
+      else {
+        CommandModelResult(
+          List(AccessPermissionDescriptionUpdated(permission.permissionId, descriptionValid)),
+          PermissionIdAggregate(permissionId)
+        )
+      }
+
+      case DeletePermission(permissionId) => for {
+        permission <- existingPermissionByID(permissionId)
+      } yield CommandModelResult(
+        List(AccessPermissionDeleted(permission.permissionId)),
         PermissionIdAggregate(permissionId)
       )
-    }
 
-    case UpdatePermissionDescription(permissionId, description) => for {
-      descriptionValid <- validDescription(description)
-      permission <- existingPermissionByID(permissionId)
-    } yield if (permission.description == descriptionValid) {
-      CommandModelResult(List(), PermissionIdAggregate(permissionId))
-    }
-    else {
-      CommandModelResult(
-        List(AccessPermissionDescriptionUpdated(permission.permissionId, descriptionValid)),
-        PermissionIdAggregate(permissionId)
+      case AddPermissionsToRole(permissionId, roleID) => for {
+        permissionSetId <- existingPermissionSetID(permissionId)
+        roleID <- existingRoleId(roleID)
+      } yield CommandModelResult(
+        permissionSetId.map(PermissionInRoleAdded(_, roleID)).toList,
+        RoleIdAggregate(roleID)
+      )
+
+      case DeletePermissionsFromRole(permissionId, roleID) => for {
+        permissionSetId <- existingPermissionSetID(permissionId)
+        roleID <- existingRoleId(roleID)
+      } yield CommandModelResult(
+        permissionSetId.filter(state.isPermissionInRole(roleID, _))
+        .map(PermissionInRoleDeleted(_, roleID))
+        .toList,
+        RoleIdAggregate(roleID)
       )
     }
-
-    case DeletePermission(permissionId) => for {
-      permission <- existingPermissionByID(permissionId)
-    } yield CommandModelResult(
-      List(AccessPermissionDeleted(permission.permissionId)),
-      PermissionIdAggregate(permissionId)
-    )
-
-    case AddPermissionsToRole(permissionId, roleID) => for {
-      permissionSetId <- existingPermissionSetID(permissionId)
-      roleID <- existingRoleId(roleID)
-    } yield CommandModelResult(
-      permissionSetId.map(PermissionInRoleAdded(_, roleID)).toList,
-      RoleIdAggregate(roleID)
-    )
-
-    case DeletePermissionsFromRole(permissionId, roleID) => for {
-      permissionSetId <- existingPermissionSetID(permissionId)
-      roleID <- existingRoleId(roleID)
-    } yield CommandModelResult(
-      permissionSetId.filter(state.isPermissionInRole(roleID, _))
-      .map(PermissionInRoleDeleted(_, roleID))
-      .toList,
-      RoleIdAggregate(roleID)
-    )
-  }
 }
 
 import eu.pmsoft.mcomponents.model.security.roles.RoleBasedAuthorizationModel._

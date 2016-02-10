@@ -90,26 +90,22 @@ class UserRegistrationModuleTest extends BaseEventSourceSpec with GeneratedComma
     case UpdateActiveUserStatus(uid, active) =>
       val user = result.rootAggregate match {
         case userAggId @ UserAggregateId(_) => UserRegistrationAggregates.buildUser(userAggId)
-        case EmailAggregateId(_)            => fail("bad aggregate")
       }
       user.profile.value.active shouldBe active
     case AddUser(loginEmail, passwordHash) =>
       val user = result.rootAggregate match {
         case userAggId @ UserAggregateId(_) => UserRegistrationAggregates.buildUser(userAggId)
-        case EmailAggregateId(_)            => fail("bad aggregate")
       }
       user.profile.value.login shouldBe loginEmail
       user.profile.value.passwordHash shouldBe passwordHash
     case UpdateUserPassword(uid, passwordHash) =>
       val user = result.rootAggregate match {
         case userAggId @ UserAggregateId(_) => UserRegistrationAggregates.buildUser(userAggId)
-        case EmailAggregateId(_)            => fail("bad aggregate")
       }
       user.profile.value.passwordHash shouldBe passwordHash
     case UpdateUserRoles(uid, roles) =>
       val user = result.rootAggregate match {
         case userAggId @ UserAggregateId(_) => UserRegistrationAggregates.buildUser(userAggId)
-        case EmailAggregateId(_)            => fail("bad aggregate")
       }
       user.profile.value.roles should equal(roles)
   }

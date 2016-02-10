@@ -45,7 +45,7 @@ class TheTestDomainModule(implicit val eventSourcingConfiguration: EventSourcing
 
   override lazy val schema: EventSerializationSchema[TheTestDomainSpecification] = new TheTestEventSerializationSchema
 
-  override lazy val eventStore: EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState] =
+  override lazy val eventStore: EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestState] =
     EventStoreProvider.createEventStore[TheTestDomainSpecification, TestStateInMemory](new TheAtomicProjectionLogic(), schema, TheTestDomainModule.eventStoreReference)
 
   override lazy val sideEffects: TestSideEffects = new TestLocalThreadSideEffects()

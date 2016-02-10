@@ -38,6 +38,7 @@ final class PasswordResetDomain extends DomainSpecification {
   type Command = PasswordResetModelCommand
   type Event = PasswordResetModelEvent
   type Aggregate = PasswordResetAggregate
+  type ConstraintScope = PasswordResetConstraintScope
   type State = PasswordResetModelState
   type SideEffects = PasswordResetModelSideEffects
 }
@@ -70,9 +71,12 @@ class PasswordResetDomainEventSerializationSchema extends EventSerializationSche
     data.eventBytes.unpickle[PasswordResetModelEvent]
   }
 
-  override def buildReference(aggregate: PasswordResetAggregate): AggregateReference = aggregate match {
-    case UserIdFlowAggregate(userID) => AggregateReference(0, userID.id)
-  }
+  override def buildConstraintReference(constraintScope: PasswordResetDomain#ConstraintScope): ConstraintReference = ConstraintReference.noConstraintsOnDomain
+
+  override def buildAggregateReference(aggregate: PasswordResetAggregate): AggregateReference =
+    aggregate match {
+      case UserIdFlowAggregate(userID) => AggregateReference(0, userID.id)
+    }
 
   override def eventToData(event: PasswordResetModelEvent): EventData = {
     import scala.pickling.Defaults._
@@ -87,64 +91,66 @@ final class PasswordResetModelLogicHandler extends DomainLogic[PasswordResetDoma
     with PasswordResetModelValidations
     with PasswordResetModelTransactionExtractor {
 
-  override def calculateTransactionScope(command: PasswordResetModelCommand, state: PasswordResetModelState): CommandToAggregates[PasswordResetDomain] = command match {
-    case InitializePasswordResetFlow(userId, sessionToken) => \/-(Set(UserIdFlowAggregate(userId)))
-    case CancelPasswordResetFlowByUser(userId)             => \/-(Set(UserIdFlowAggregate(userId)))
-    case CancelPasswordResetFlowByToken(passwordResetToken) => state.findFlowByPasswordToken(passwordResetToken) match {
-      case Some(flow) => \/-(Set(UserIdFlowAggregate(flow.userId)))
-      case None       => -\/(EventSourceCommandFailed(invalidPasswordResetToken.code))
+  override def calculateRootAggregate(command: PasswordResetModelCommand, state: PasswordResetModelState): CommandToAggregateScope[PasswordResetDomain] =
+    command match {
+      case InitializePasswordResetFlow(userId, sessionToken) => \/-(Set(UserIdFlowAggregate(userId)))
+      case CancelPasswordResetFlowByUser(userId)             => \/-(Set(UserIdFlowAggregate(userId)))
+      case CancelPasswordResetFlowByToken(passwordResetToken) => state.findFlowByPasswordToken(passwordResetToken) match {
+        case Some(flow) => \/-(Set(UserIdFlowAggregate(flow.userId)))
+        case None       => -\/(EventSourceCommandFailed(invalidPasswordResetToken.code))
+      }
+      case ConfirmPasswordResetFlow(sessionToken, passwordResetToken, newPassword) => state.findFlowByPasswordToken(passwordResetToken) match {
+        case Some(flow) => \/-(Set(UserIdFlowAggregate(flow.userId)))
+        case None       => -\/(EventSourceCommandFailed(invalidPasswordResetToken.code))
+      }
     }
-    case ConfirmPasswordResetFlow(sessionToken, passwordResetToken, newPassword) => state.findFlowByPasswordToken(passwordResetToken) match {
-      case Some(flow) => \/-(Set(UserIdFlowAggregate(flow.userId)))
-      case None       => -\/(EventSourceCommandFailed(invalidPasswordResetToken.code))
-    }
-  }
 
   override def executeCommand(
-    command:          PasswordResetModelCommand,
-    transactionScope: Map[PasswordResetAggregate, Long]
-  )(implicit state: PasswordResetModelState, sideEffects: PasswordResetModelSideEffects): CommandToEventsResult[PasswordResetDomain] = command match {
-    case InitializePasswordResetFlow(userId, sessionToken) => for {
-      sessionTokenValid <- validateSessionToken(sessionToken)
-    } yield {
-      val events = state.findFlowByUserID(userId) match {
-        case None => List(PasswordResetFlowCreated(userId, sessionToken, sideEffects.generatePasswordResetToken(sessionToken)))
-        case Some(previousProcess) => List(
-          PasswordResetFlowCancelled(userId, previousProcess.passwordResetToken),
-          PasswordResetFlowCreated(userId, sessionToken, sideEffects.generatePasswordResetToken(sessionToken))
+    command:                PasswordResetModelCommand,
+    atomicTransactionScope: AtomicTransactionScope[PasswordResetDomain]
+  )(implicit state: PasswordResetModelState, sideEffects: PasswordResetModelSideEffects): CommandToEventsResult[PasswordResetDomain] =
+    command match {
+      case InitializePasswordResetFlow(userId, sessionToken) => for {
+        sessionTokenValid <- validateSessionToken(sessionToken)
+      } yield {
+        val events = state.findFlowByUserID(userId) match {
+          case None => List(PasswordResetFlowCreated(userId, sessionToken, sideEffects.generatePasswordResetToken(sessionToken)))
+          case Some(previousProcess) => List(
+            PasswordResetFlowCancelled(userId, previousProcess.passwordResetToken),
+            PasswordResetFlowCreated(userId, sessionToken, sideEffects.generatePasswordResetToken(sessionToken))
+          )
+        }
+        CommandModelResult(
+          events,
+          UserIdFlowAggregate(userId)
         )
       }
-      CommandModelResult(
-        events,
+      case CancelPasswordResetFlowByUser(userId) => for {
+        passwordResetToken <- extractPasswordResetTokenForUser(userId)
+        userId <- extractUserFromAggregated(atomicTransactionScope.aggregateVersion)
+      } yield CommandModelResult(
+        List(PasswordResetFlowCancelled(userId, passwordResetToken)),
         UserIdFlowAggregate(userId)
       )
+
+      case CancelPasswordResetFlowByToken(passwordResetToken) => for {
+        userId <- extractUserFromAggregated(atomicTransactionScope.aggregateVersion)
+      } yield CommandModelResult(
+        List(PasswordResetFlowCancelled(userId, passwordResetToken)),
+        UserIdFlowAggregate(userId)
+      )
+
+      case ConfirmPasswordResetFlow(sessionToken, passwordResetToken, newPassword) => for {
+        newPasswordValid <- validatePassword(newPassword)
+        sessionTokenValid <- validateSessionToken(sessionToken)
+        passwordResetTokenValid <- validateTokenPair(sessionToken, passwordResetToken)
+        userId <- extractUserFromAggregated(atomicTransactionScope.aggregateVersion)
+      } yield CommandModelResult(
+        List(PasswordResetFlowConfirmed(userId, newPassword)),
+        UserIdFlowAggregate(userId)
+      )
+
     }
-    case CancelPasswordResetFlowByUser(userId) => for {
-      passwordResetToken <- extractPasswordResetTokenForUser(userId)
-      userId <- extractUserFromAggregated(transactionScope)
-    } yield CommandModelResult(
-      List(PasswordResetFlowCancelled(userId, passwordResetToken)),
-      UserIdFlowAggregate(userId)
-    )
-
-    case CancelPasswordResetFlowByToken(passwordResetToken) => for {
-      userId <- extractUserFromAggregated(transactionScope)
-    } yield CommandModelResult(
-      List(PasswordResetFlowCancelled(userId, passwordResetToken)),
-      UserIdFlowAggregate(userId)
-    )
-
-    case ConfirmPasswordResetFlow(sessionToken, passwordResetToken, newPassword) => for {
-      newPasswordValid <- validatePassword(newPassword)
-      sessionTokenValid <- validateSessionToken(sessionToken)
-      passwordResetTokenValid <- validateTokenPair(sessionToken, passwordResetToken)
-      userId <- extractUserFromAggregated(transactionScope)
-    } yield CommandModelResult(
-      List(PasswordResetFlowConfirmed(userId, newPassword)),
-      UserIdFlowAggregate(userId)
-    )
-
-  }
 
 }
 

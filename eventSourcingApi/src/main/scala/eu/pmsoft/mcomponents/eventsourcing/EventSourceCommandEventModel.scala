@@ -33,7 +33,8 @@ object EventSourceCommandEventModel {
 
   //Commands/Events types
 
-  type CommandToAggregates[D <: DomainSpecification] = EventSourceCommandFailure \/ Set[D#Aggregate]
+  type CommandToAggregateScope[D <: DomainSpecification] = EventSourceCommandFailure \/ Set[D#Aggregate]
+  type CommandToConstraints[D <: DomainSpecification] = EventSourceCommandFailure \/ Set[D#ConstraintScope]
   type CommandToAtomicState[D <: DomainSpecification] = EventSourceCommandFailure \/ AtomicTransactionScope[D]
 
   type CommandResult[D <: DomainSpecification] = EventSourceCommandFailure \/ EventSourceCommandConfirmation[D#Aggregate]

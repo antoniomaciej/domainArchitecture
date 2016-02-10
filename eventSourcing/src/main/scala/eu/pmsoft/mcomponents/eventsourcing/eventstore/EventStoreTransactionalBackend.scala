@@ -36,7 +36,7 @@ trait EventStoreTransactionalBackend[D <: DomainSpecification, P <: D#State] {
 
   def readOnly[A](execution: EventStoreReadTransaction[D, P] => A): A
 
-  def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, transactionScopeVersion: Map[D#Aggregate, Long]): CommandResult[D]
+  def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, atomicTransactionScope: AtomicTransactionScope[D]): CommandResult[D]
 }
 
 trait EventStoreReadTransaction[D <: DomainSpecification, P <: D#State] {
@@ -45,7 +45,9 @@ trait EventStoreReadTransaction[D <: DomainSpecification, P <: D#State] {
 
   def extractEventRange(range: EventStoreRange): Seq[D#Event]
 
-  def calculateAggregatesVersions(aggregates: Set[D#Aggregate]): Map[D#Aggregate, Long]
+  def calculateConstraintVersions(constraints: Set[D#ConstraintScope]): Map[D#ConstraintScope, Long]
+
+  def calculateAggregateVersions(aggregate: Set[D#Aggregate]): Map[D#Aggregate, Long]
 
   def projectionState: P
 

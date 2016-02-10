@@ -68,7 +68,7 @@ private class DomainApplication[D <: DomainSpecification](
     eventSourcingConfiguration
   )
 
-  lazy val atomicProjection: VersionedEventStoreView[D#Aggregate, D#State] = eventStore
+  lazy val atomicProjection: VersionedEventStoreView[D#State] = eventStore
 }
 
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel._
@@ -80,12 +80,12 @@ import scalaz.std.scalaFuture._
 private final class DomainLogicAsyncEventCommandHandler[D <: DomainSpecification](
     val logic:                      DomainLogic[D],
     val sideEffects:                D#SideEffects,
-    val eventStore:                 EventStore[D] with VersionedEventStoreView[D#Aggregate, D#State],
+    val eventStore:                 EventStore[D] with VersionedEventStoreView[D#State],
     val eventSourcingConfiguration: EventSourcingConfiguration
 ) extends AsyncEventCommandHandler[D] with EventSourcingConfigurationContext with ExecutionContextFromConfiguration {
 
   private def applyCommand(command: D#Command, atomicTransactionScope: AtomicTransactionScope[D]): Future[CommandToEventsResult[D]] =
-    Future.successful(logic.executeCommand(command, atomicTransactionScope.transactionScopeVersion)(atomicTransactionScope.projectionView, sideEffects))
+    Future.successful(logic.executeCommand(command, atomicTransactionScope)(atomicTransactionScope.projectionView, sideEffects))
 
   private def calculateAtomicTransactionScope(logic: DomainLogic[D], command: D#Command): Future[CommandToAtomicState[D]] =
     eventStore.calculateAtomicTransactionScopeVersion(logic, command)

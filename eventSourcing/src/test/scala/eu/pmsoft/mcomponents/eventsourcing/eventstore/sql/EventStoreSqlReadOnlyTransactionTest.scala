@@ -76,7 +76,8 @@ class EventStoreSqlReadOnlyTransactionTest extends fixture.FlatSpec with DBAutoR
   it should "provide correct event store version after persist" in { implicit db =>
     val ddl = createDDL()
     val atomicTransaction = eventStoreWriteTransaction(db, ddl)
-    val version = atomicTransaction.persistEvents(List(1, 2, 3), SqlTestAggregate(0), Map())
+    val transactionScope = AtomicTransactionScope[SqlTestDomain](Map(SqlTestAggregate(0) -> 0L), Map(), SqlTestProjectionState(EventStoreVersion.zero))
+    val version = atomicTransaction.persistEvents(List(1, 2, 3), SqlTestAggregate(0), transactionScope)
     version shouldBe \/-(EventStoreVersion(3L))
   }
 
@@ -86,7 +87,8 @@ class EventStoreSqlReadOnlyTransactionTest extends fixture.FlatSpec with DBAutoR
     readTransaction.eventStoreVersion shouldBe EventStoreVersion.zero
 
     val atomicTransaction = eventStoreWriteTransaction(db, ddl)
-    atomicTransaction.persistEvents(List(1, 2, 3), SqlTestAggregate(0), Map())
+    val transactionScope = AtomicTransactionScope[SqlTestDomain](Map(SqlTestAggregate(0) -> 0L), Map(), SqlTestProjectionState(EventStoreVersion.zero))
+    atomicTransaction.persistEvents(List(1, 2, 3), SqlTestAggregate(0), transactionScope)
     atomicTransaction.eventStoreVersion shouldBe EventStoreVersion.zero
     //then
     readTransaction.projectionState.eventStoreVersion shouldBe EventStoreVersion.zero
@@ -95,7 +97,8 @@ class EventStoreSqlReadOnlyTransactionTest extends fixture.FlatSpec with DBAutoR
   it should "store events" in { implicit db =>
     val ddl = createDDL()
     val atomicTransaction = eventStoreWriteTransaction(db, ddl)
-    atomicTransaction.persistEvents(List(1, 2, 3), SqlTestAggregate(0), Map())
+    val transactionScope = AtomicTransactionScope[SqlTestDomain](Map(SqlTestAggregate(0) -> 0L), Map(), SqlTestProjectionState(EventStoreVersion.zero))
+    atomicTransaction.persistEvents(List(1, 2, 3), SqlTestAggregate(0), transactionScope)
 
     val readTransaction = eventStoreReadOnlyTransaction(db, ddl)
     readTransaction.extractEventRange(EventStoreRange(EventStoreVersion.zero, None)) should be(Seq(1, 2, 3))
@@ -106,7 +109,8 @@ class EventStoreSqlReadOnlyTransactionTest extends fixture.FlatSpec with DBAutoR
     //given a transaction instance created events
     val readTransaction = eventStoreReadOnlyTransaction(db, ddl)
     val atomicTransaction = eventStoreWriteTransaction(db, ddl)
-    val versionAfterUpdate = atomicTransaction.persistEvents(List(1, 2, 3), SqlTestAggregate(0), Map()).toOption.get
+    val transactionScope = AtomicTransactionScope[SqlTestDomain](Map(SqlTestAggregate(0) -> 0L), Map(), SqlTestProjectionState(EventStoreVersion.zero))
+    val versionAfterUpdate = atomicTransaction.persistEvents(List(1, 2, 3), SqlTestAggregate(0), transactionScope).toOption.get
     readTransaction.extractEventRange(EventStoreRange(EventStoreVersion.zero, None)) should be(Seq(1, 2, 3))
     //when next transaction is created
     val atomicTransaction2 = eventStoreReadOnlyTransaction(db, ddl)
@@ -120,7 +124,7 @@ class EventStoreSqlReadOnlyTransactionTest extends fixture.FlatSpec with DBAutoR
     //given a transaction instance created events
     val atomicTransaction = eventStoreReadOnlyTransaction(db, ddl)
     //when
-    val aggregatesVersion = atomicTransaction.calculateAggregatesVersions(Set(SqlTestAggregate(0)))
+    val aggregatesVersion = atomicTransaction.calculateAggregateVersions(Set(SqlTestAggregate(0)))
     //then
     aggregatesVersion should be(Map(SqlTestAggregate(0) -> 0L))
   }
@@ -131,12 +135,13 @@ class EventStoreSqlReadOnlyTransactionTest extends fixture.FlatSpec with DBAutoR
     val atomicTransaction = eventStoreWriteTransaction(db, ddl)
     val readTransaction = eventStoreReadOnlyTransaction(db, ddl)
     //and the current aggregate version is extracted
-    val aggregatesVersion = readTransaction.calculateAggregatesVersions(Set(SqlTestAggregate(0)))
+    val aggregatesVersion = readTransaction.calculateAggregateVersions(Set(SqlTestAggregate(0)))
+    val transactionScope = AtomicTransactionScope[SqlTestDomain](aggregatesVersion, Map(), SqlTestProjectionState(EventStoreVersion.zero))
     //when events are stored
-    atomicTransaction.persistEvents(List(1, 2, 3), SqlTestAggregate(0), aggregatesVersion)
+    atomicTransaction.persistEvents(List(1, 2, 3), SqlTestAggregate(0), transactionScope)
     //then the aggregate version change on the next transaction
     val atomicTransaction2 = eventStoreReadOnlyTransaction(db, ddl)
-    val aggregatesVersionAfter = atomicTransaction2.calculateAggregatesVersions(Set(SqlTestAggregate(0)))
+    val aggregatesVersionAfter = atomicTransaction2.calculateAggregateVersions(Set(SqlTestAggregate(0)))
     aggregatesVersionAfter should be(Map(SqlTestAggregate(0) -> 1L))
   }
 
@@ -146,12 +151,13 @@ class EventStoreSqlReadOnlyTransactionTest extends fixture.FlatSpec with DBAutoR
     val atomicTransaction = eventStoreWriteTransaction(db, ddl)
     val readTransaction = eventStoreReadOnlyTransaction(db, ddl)
     //and an aggregate version is used to store values
-    val aggregatesVersion = readTransaction.calculateAggregatesVersions(Set(SqlTestAggregate(0)))
-    atomicTransaction.persistEvents(List(1, 2, 3), SqlTestAggregate(0), aggregatesVersion)
+    val aggregatesVersion = readTransaction.calculateAggregateVersions(Set(SqlTestAggregate(0)))
+    val transactionScope = AtomicTransactionScope[SqlTestDomain](aggregatesVersion, Map(), SqlTestProjectionState(EventStoreVersion.zero))
+    atomicTransaction.persistEvents(List(1, 2, 3), SqlTestAggregate(0), transactionScope)
     //when the same version is used in other transaction
 
     val atomicTransaction2 = eventStoreWriteTransaction(db, ddl)
-    val secondTransactionResult = atomicTransaction2.persistEvents(List(4), SqlTestAggregate(0), aggregatesVersion)
+    val secondTransactionResult = atomicTransaction2.persistEvents(List(4), SqlTestAggregate(0), transactionScope)
     //then a exception is returned
     secondTransactionResult.isLeft should be(true)
   }
@@ -177,7 +183,9 @@ case class SqlTestProjectionState(eventStoreVersion: EventStoreVersion) extends 
 
 class SqlTestEventSerializationSchema extends EventSerializationSchema[SqlTestDomain] {
 
-  override def buildReference(agg: SqlTestAggregate): AggregateReference = AggregateReference(0, agg.scope)
+  override def buildConstraintReference(constraintScope: SqlTestDomain#ConstraintScope): ConstraintReference = ConstraintReference.noConstraintsOnDomain
+
+  override def buildAggregateReference(aggregate: SqlTestAggregate): AggregateReference = AggregateReference(0, aggregate.scope)
 
   override def eventToData(event: Int): EventData = EventData(Array(event.toByte))
 

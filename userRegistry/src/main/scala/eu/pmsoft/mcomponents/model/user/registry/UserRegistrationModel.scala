@@ -74,7 +74,10 @@ sealed trait UserRegistrationAggregate
 
 case class UserAggregateId(uid: UserID) extends UserRegistrationAggregate
 
-case class EmailAggregateId(loginEmail: UserLogin) extends UserRegistrationAggregate
+//Constraints
+sealed trait UserRegistrationConstraint
+
+case class EmailAggregateId(loginEmail: UserLogin) extends UserRegistrationConstraint
 
 //UserRegistrationModel commands
 

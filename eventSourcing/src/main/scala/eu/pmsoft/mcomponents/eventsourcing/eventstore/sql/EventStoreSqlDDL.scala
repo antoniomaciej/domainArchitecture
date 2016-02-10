@@ -51,8 +51,10 @@ sealed trait EventStoreSqlDDL {
 
   lazy val eventDataTableName = s"${tablesNamespace}_event_data"
   lazy val aggregatesTableName = s"${tablesNamespace}_aggregates"
+  lazy val constraintsTableName = s"${tablesNamespace}_constraints"
   lazy val eventDataTableSql = SQLSyntax.createUnsafely(eventDataTableName)
   lazy val aggregatesTableSql = SQLSyntax.createUnsafely(aggregatesTableName)
+  lazy val constraintsTableSql = SQLSyntax.createUnsafely(constraintsTableName)
 
   def tablesExists(db: DB): Boolean = {
     (for {
@@ -65,6 +67,7 @@ sealed trait EventStoreSqlDDL {
     db localTx { implicit session =>
       sql"""DROP TABLE IF EXISTS ${eventDataTableSql}""".execute.apply()
       sql"""DROP TABLE IF EXISTS ${aggregatesTableSql}""".execute.apply()
+      sql"""DROP TABLE IF EXISTS ${constraintsTableSql}""".execute.apply()
     }
   }
 
@@ -90,6 +93,15 @@ private class H2EventStoreSqlDDL(val tablesNamespace: String) extends EventStore
             PRIMARY KEY (aggregate_type,unique_id,version)
          )
         """.execute.apply()
+
+      sql"""
+            create table ${constraintsTableSql} (
+            constraint_type INT,
+            version BIGINT,
+            unique_id VARCHAR(255),
+            PRIMARY KEY (constraint_type,unique_id,version)
+         )
+        """.execute.apply()
     }
   }
 }
@@ -112,6 +124,14 @@ private class MySqlEventStoreSqlDDL(val tablesNamespace: String) extends EventSt
             PRIMARY KEY (aggregate_type,unique_id,version)
          )
         """.execute.apply()
+      sql"""
+            create table ${constraintsTableSql} (
+            constraint_type INT,
+            version BIGINT,
+            unique_id VARCHAR(255),
+            PRIMARY KEY (constraint_type,unique_id,version)
+         )
+        """.execute.apply()
     }
   }
 }
@@ -132,6 +152,14 @@ private class PostgresEventStoreSqlDDL(val tablesNamespace: String) extends Even
             version BIGINT,
             unique_id VARCHAR(255),
             PRIMARY KEY (aggregate_type,unique_id,version)
+         )
+        """.execute.apply()
+      sql"""
+            create table ${constraintsTableSql} (
+            constraint_type INT,
+            version BIGINT,
+            unique_id VARCHAR(255),
+            PRIMARY KEY (constraint_type,unique_id,version)
          )
         """.execute.apply()
     }

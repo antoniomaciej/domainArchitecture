@@ -45,7 +45,7 @@ class PasswordResetDomainModule(implicit val eventSourcingConfiguration: EventSo
 
   override lazy val schema: EventSerializationSchema[PasswordResetDomain] = new PasswordResetDomainEventSerializationSchema()
 
-  override lazy val eventStore: EventStore[PasswordResetDomain] with VersionedEventStoreView[PasswordResetAggregate, PasswordResetModelState] =
+  override lazy val eventStore: EventStore[PasswordResetDomain] with VersionedEventStoreView[PasswordResetModelState] =
     EventStoreProvider.createEventStore[PasswordResetDomain, PasswordResetModelStateInMemory](
       new PasswordResetEventStoreAtomicAtomicProjection(),
       schema,

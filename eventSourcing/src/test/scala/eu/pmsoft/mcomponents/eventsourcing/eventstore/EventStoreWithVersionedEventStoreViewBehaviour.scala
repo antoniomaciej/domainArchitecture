@@ -40,16 +40,16 @@ import scalaz._
 trait EventStoreWithVersionedEventStoreViewBehaviour {
   self: FlatSpec with Matchers with PropertyChecks with ScalaFutures with DisjunctionMatchers =>
 
-  def addOneEvent(eventStore: EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState])(eventNr: Int): Unit = {
+  def addOneEvent(eventStore: EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestState])(eventNr: Int): Unit = {
     addOneEventOnThreadRoot(eventStore)(0, eventNr)
   }
 
-  def addOneEventOnThreadRoot(eventStore: EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState])(threadNr: Int, eventNr: Int): Unit = {
+  def addOneEventOnThreadRoot(eventStore: EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestState])(threadNr: Int, eventNr: Int): Unit = {
     val atomicTransactionScope = eventStore.calculateAtomicTransactionScopeVersion(new TheTestDomainLogic(), TestCommandForThreads(0, 0)).futureValue.toOption.get
     eventStore.persistEvents(List(TestEventThread(threadNr, eventNr)), TestAggregateThread(threadNr), atomicTransactionScope).futureValue
   }
 
-  def eventStoreWithAtomicProjection(testsTag: Tag, eventStoreCreator: () => EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState]): Unit = {
+  def eventStoreWithAtomicProjection(testsTag: Tag, eventStoreCreator: () => EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestState]): Unit = {
 
     it should "provide projections on the future" taggedAs testsTag in {
       //given
@@ -140,7 +140,7 @@ trait EventStoreWithVersionedEventStoreViewBehaviour {
   }
 
   def runConcurrentEventPersistence(aggregateIdForThreadF: Int => Int, expectedResult: Boolean,
-                                    eventStoreCreator: () => EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState]): Unit = {
+                                    eventStoreCreator: () => EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestState]): Unit = {
     //given
     val eventStore = eventStoreCreator()
     //and

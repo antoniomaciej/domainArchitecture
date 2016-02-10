@@ -46,7 +46,7 @@ class RoleBasedAuthorizationDomainModule(implicit val eventSourcingConfiguration
 
   override lazy val schema: EventSerializationSchema[RoleBasedAuthorizationDomain] = new RoleBasedAuthorizationEventSerializationSchema
 
-  override lazy val eventStore: EventStore[RoleBasedAuthorizationDomain] with VersionedEventStoreView[RoleBasedAuthorizationAggregate, RoleBasedAuthorizationState] =
+  override lazy val eventStore: EventStore[RoleBasedAuthorizationDomain] with VersionedEventStoreView[RoleBasedAuthorizationState] =
     EventStoreProvider.createEventStore[RoleBasedAuthorizationDomain, RoleBasedAuthorizationStateInMemory](new RoleBasedEventStoreAtomicProjection(), schema, RoleBasedAuthorizationDomainModule.eventStoreReference)
 
   override lazy val sideEffects: RoleBasedAuthorizationLocalSideEffects = new LocalThreadRoleBasedAuthorizationLocalSideEffects()

@@ -86,8 +86,8 @@ class MockedRoleBasedAuthorizationExtractorFromProjection extends RoleBasedAutho
       override def execute(command: RoleBasedAuthorizationModelCommand): Future[CommandResultConfirmed[RoleBasedAuthorizationDomain#Aggregate]] = Mocked.shouldNotBeCalled
     }
 
-    override def atomicProjection: VersionedEventStoreView[RoleBasedAuthorizationAggregate, RoleBasedAuthorizationState] =
-      new VersionedEventStoreView[RoleBasedAuthorizationAggregate, RoleBasedAuthorizationState] {
+    override def atomicProjection: VersionedEventStoreView[RoleBasedAuthorizationState] =
+      new VersionedEventStoreView[RoleBasedAuthorizationState] {
 
         override def lastSnapshot(): RoleBasedAuthorizationState = Mocked.shouldNotBeCalled
 

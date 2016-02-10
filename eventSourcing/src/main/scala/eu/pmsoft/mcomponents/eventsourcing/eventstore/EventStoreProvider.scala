@@ -44,7 +44,7 @@ object EventStoreProvider {
     stateCreationLogic:  EventStoreAtomicProjectionCreationLogic[D, P],
     schema:              EventSerializationSchema[D],
     eventStoreReference: EventStoreReference[D]
-  )(implicit eventSourcingConfiguration: EventSourcingConfiguration): EventStore[D] with VersionedEventStoreView[D#Aggregate, P] = {
+  )(implicit eventSourcingConfiguration: EventSourcingConfiguration): EventStore[D] with VersionedEventStoreView[P] = {
     val backendStrategy = eventSourcingConfiguration.backendStrategies.find(_.eventStoreReference == eventStoreReference)
     val backend = backendStrategy match {
       case None => throw new IllegalStateException(s"backend for event store ${eventStoreReference} not configured")
@@ -67,7 +67,7 @@ private final class AtomicEventStoreWithProjection[D <: DomainSpecification, P <
   val eventStoreReference: EventStoreReference[D],
   val eventStoreBackend:   EventStoreTransactionalBackend[D, P]
 )(implicit val eventSourcingConfiguration: EventSourcingConfiguration) extends EventStore[D]
-    with VersionedEventStoreView[D#Aggregate, P]
+    with VersionedEventStoreView[P]
     with LazyLoadByVersion[P] {
 
   private[this] val eventCreationSubject: BehaviorSubject[EventStoreVersion] = BehaviorSubject.create(EventStoreVersion.zero)
@@ -84,9 +84,13 @@ private final class AtomicEventStoreWithProjection[D <: DomainSpecification, P <
 
   override def calculateAtomicTransactionScopeVersion(logic: DomainLogic[D], command: D#Command): Future[CommandToAtomicState[D]] = eventStoreBackend readOnly { transaction =>
     val projectionState: P = transaction.projectionState
-    val result = logic.calculateTransactionScope(command, projectionState).map { setAggregated =>
-      val aggregatesVersions: Map[D#Aggregate, Long] = transaction.calculateAggregatesVersions(setAggregated)
-      AtomicTransactionScope[D](aggregatesVersions, projectionState)
+    val result = for {
+      rootAggregate <- logic.calculateRootAggregate(command, projectionState)
+      constraintsScope <- logic.calculateConstraints(command, projectionState)
+    } yield {
+      val aggregateVersion: Map[D#Aggregate, Long] = transaction.calculateAggregateVersions(rootAggregate)
+      val constraintsVersions: Map[D#ConstraintScope, Long] = transaction.calculateConstraintVersions(constraintsScope)
+      AtomicTransactionScope[D](aggregateVersion, constraintsVersions, projectionState)
     }
     Future.successful(result)
   }
@@ -96,7 +100,7 @@ private final class AtomicEventStoreWithProjection[D <: DomainSpecification, P <
   }
 
   override def persistEvents(events: List[D#Event], aggregateRoot: D#Aggregate, atomicTransactionScope: AtomicTransactionScope[D]): Future[CommandResult[D]] = {
-    val result = eventStoreBackend.persistEventsOnAtomicTransaction(events, aggregateRoot, atomicTransactionScope.transactionScopeVersion)
+    val result = eventStoreBackend.persistEventsOnAtomicTransaction(events, aggregateRoot, atomicTransactionScope)
     result match {
       case -\/(a) =>
       case \/-(success) =>

@@ -35,6 +35,7 @@ import eu.pmsoft.mcomponents.test.{ BaseEventSourceComponentTestSpec, Mocked }
 import rx.Observable
 
 import scala.concurrent.{ ExecutionContext, Future }
+import scalaz.\/-
 
 class DomainLogicAsyncEventCommandHandlerTest extends BaseEventSourceComponentTestSpec {
 
@@ -95,10 +96,10 @@ class DomainLogicAsyncEventCommandHandlerTest extends BaseEventSourceComponentTe
     implicit val eventSourceExecutionContext: EventSourceExecutionContext =
       EventSourceExecutionContextProvider.create()(EventSourcingConfiguration(ExecutionContext.global, LocalBindingInfrastructure.create(), Set()))
 
-    val fullLogic = new EventStore[RollBackDomain] with VersionedEventStoreView[RollBackDomain#Aggregate, RollBackDomain#State] {
+    val fullLogic = new EventStore[RollBackDomain] with VersionedEventStoreView[RollBackDomain#State] {
 
       override def calculateAtomicTransactionScopeVersion(logic: DomainLogic[RollBackDomain], command: RollbackTestCommand): Future[CommandToAtomicState[RollBackDomain]] = {
-        Future.successful(scalaz.\/-(AtomicTransactionScope[RollBackDomain](Map(), RollbackTestState())))
+        Future.successful(scalaz.\/-(AtomicTransactionScope[RollBackDomain](Map(), Map(), RollbackTestState())))
       }
 
       override def persistEvents(
@@ -133,6 +134,7 @@ final class RollBackDomain extends DomainSpecification {
   type Command = RollbackTestCommand
   type Event = RollbackTestEvent
   type Aggregate = RollbackTestAggregateId
+  type ConstraintScope = RollbackConstraintScope
   type State = RollbackTestState
   type SideEffects = RollbackTestSideEffect
 }
@@ -145,12 +147,16 @@ case class RollbackTestAggregateId()
 
 case class RollbackTestState()
 
+case class RollbackConstraintScope()
+
 trait RollbackTestSideEffect {}
 
 class RollBackDomainLogic extends DomainLogic[RollBackDomain] {
-  override def executeCommand(command: RollbackTestCommand, transactionScope: Map[RollbackTestAggregateId, Long])(implicit state: RollbackTestState, sideEffect: RollbackTestSideEffect): CommandToEventsResult[RollBackDomain] =
+
+  override def executeCommand(command: RollbackTestCommand, atomicTransactionScope: AtomicTransactionScope[RollBackDomain])(implicit state: RollbackTestState, sideEffects: RollbackTestSideEffect): CommandToEventsResult[RollBackDomain] =
     scalaz.\/-(CommandModelResult(List(RollbackTestEvent()), RollbackTestAggregateId()))
 
-  override def calculateTransactionScope(command: RollbackTestCommand, state: RollbackTestState): CommandToAggregates[RollBackDomain] =
+  override def calculateRootAggregate(command: RollbackTestCommand, state: RollbackTestState): CommandToAggregateScope[RollBackDomain] =
     scalaz.\/-(Set(RollbackTestAggregateId()))
+
 }

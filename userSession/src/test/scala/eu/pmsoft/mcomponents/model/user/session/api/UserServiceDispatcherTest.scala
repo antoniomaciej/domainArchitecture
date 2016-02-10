@@ -69,8 +69,8 @@ class UserServiceDispatcherTest extends BaseEventSourceComponentTestSpec {
         )
     }
 
-    override def atomicProjection: VersionedEventStoreView[UserSessionAggregate, UserSessionSSOState] =
-      new VersionedEventStoreView[UserSessionAggregate, UserSessionSSOState] {
+    override def atomicProjection: VersionedEventStoreView[UserSessionSSOState] =
+      new VersionedEventStoreView[UserSessionSSOState] {
 
         override def atLeastOn(storeVersion: EventStoreVersion): Future[VersionedProjection[UserSessionSSOState]] =
           Future.successful(VersionedProjection(storeVersion, new UserSessionSSOState {

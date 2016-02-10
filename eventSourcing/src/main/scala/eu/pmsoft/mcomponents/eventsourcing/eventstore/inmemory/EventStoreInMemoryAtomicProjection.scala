@@ -44,26 +44,46 @@ class EventStoreInMemoryAtomicProjection[D <: DomainSpecification, P <: D#State]
 
   override def readOnly[A](execution: (EventStoreReadTransaction[D, P]) => A): A = execution(new InMemoryAtomicEventStoreReadTransaction(inMemoryStore(), schema))
 
-  override def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, transactionScopeVersion: Map[D#Aggregate, Long]): CommandResult[D] = {
-    val eventsOfAggregate = events.map(EventOfAggregate(_, rootAggregate))
-    val aggregatesReferenceVersion = transactionScopeVersion.map {
-      case (aggregate, version) => (schema.buildReference(aggregate), version)
+  override def persistEventsOnAtomicTransaction(events: List[D#Event], rootAggregate: D#Aggregate, atomicTransactionScope: AtomicTransactionScope[D]): CommandResult[D] = {
+    val rootAggregateRef = schema.buildAggregateReference(rootAggregate)
+    //TODO where should be checked that root aggregate is in the transaction scope
+
+    val constraintsReferenceVersion = atomicTransactionScope.constraintScopeVersion.map {
+      case (constraint, version) => (schema.buildConstraintReference(constraint), version)
+    }
+    val aggregatesReferenceVersion = atomicTransactionScope.aggregateVersion.map {
+      case (aggregate, version) => (schema.buildAggregateReference(aggregate), version)
     }
       def checkIfStateMatchTransactionScopeVersion(state: AtomicEventStoreReadStateInMemory[D, P]): EventSourceCommandFailure \/ AtomicEventStoreReadStateInMemory[D, P] = {
-        aggregatesReferenceVersion.find({
+        val constraintsOk = constraintsReferenceVersion.find({
+          case (constraintRef, constraintVersion) => state.constraintsVersion.getOrElse(constraintRef, 0L).compareTo(constraintVersion) != 0
+        }) match {
+          case Some(notMatchingConstraintVersion) => false
+          case None                               => true
+        }
+        val aggregatesOk = aggregatesReferenceVersion.find({
           case (aggregateRef, aggregateVersion) => state.aggregatesVersion.getOrElse(aggregateRef, 0L).compareTo(aggregateVersion) != 0
         }) match {
-          case Some(notMatchingAggregateVersion) => -\/(EventSourceCommandRollback())
-          case None                              => \/-(state)
+          case Some(notMatchingAggregateVersion) => false
+          case None                              => true
+        }
+        if (constraintsOk && aggregatesOk) {
+          \/-(state)
+        }
+        else {
+          -\/(EventSourceCommandRollback())
         }
       }
+
+    val eventsOfAggregate = events.map(EventOfAggregate(_, rootAggregate))
 
       def updateState(state: AtomicEventStoreReadStateInMemory[D, P]): AtomicEventStoreReadStateInMemory[D, P] = {
         val updatedEventHistory = state.eventHistoryList ++ eventsOfAggregate
         val updatedStateProjection = (state.state /: events)(stateCreationLogic.projectSingleEvent)
         val updatedAggregatesVersion = state.aggregatesVersion ++ (aggregatesReferenceVersion mapValues (_ + 1))
+        val updatedConstraintsVersion = state.constraintsVersion ++ (constraintsReferenceVersion mapValues (_ + 1))
         val updatedVersion = state.version.add(events.size)
-        AtomicEventStoreReadStateInMemory(updatedStateProjection, updatedEventHistory, updatedVersion, updatedAggregatesVersion)
+        AtomicEventStoreReadStateInMemory(updatedStateProjection, updatedEventHistory, updatedVersion, updatedAggregatesVersion, updatedConstraintsVersion)
       }
     inMemoryStore.updateAndGetWithCondition(updateState, checkIfStateMatchTransactionScopeVersion).map { state =>
       EventSourceCommandConfirmation(EventStoreVersion(state.eventHistoryList.length), rootAggregate)
@@ -75,9 +95,15 @@ private class InMemoryAtomicEventStoreReadTransaction[D <: DomainSpecification, 
     val inMemoryState: AtomicEventStoreReadStateInMemory[D, P],
     val schema:        EventSerializationSchema[D]
 ) extends EventStoreReadTransaction[D, P] {
-  override def calculateAggregatesVersions(aggregates: Set[D#Aggregate]): Map[D#Aggregate, Long] =
-    aggregates.map { aggregate =>
-      aggregate -> inMemoryState.aggregatesVersion.getOrElse(schema.buildReference(aggregate), 0L)
+
+  override def calculateConstraintVersions(constraints: Set[D#ConstraintScope]): Map[D#ConstraintScope, Long] =
+    constraints.map { constraint =>
+      constraint -> inMemoryState.constraintsVersion.getOrElse(schema.buildConstraintReference(constraint), 0L)
+    }(collection.breakOut)
+
+  override def calculateAggregateVersions(aggregate: Set[D#Aggregate]): Map[D#Aggregate, Long] =
+    aggregate.map { agg =>
+      agg -> inMemoryState.aggregatesVersion.getOrElse(schema.buildAggregateReference(agg), 0L)
     }(collection.breakOut)
 
   override def eventStoreVersion: EventStoreVersion = inMemoryState.version
@@ -93,10 +119,11 @@ private class InMemoryAtomicEventStoreReadTransaction[D <: DomainSpecification, 
 }
 
 private case class AtomicEventStoreReadStateInMemory[D <: DomainSpecification, P <: D#State](
-  state:             P,
-  eventHistoryList:  List[EventOfAggregate[D]]     = List[EventOfAggregate[D]](),
-  version:           EventStoreVersion             = EventStoreVersion.zero,
-  aggregatesVersion: Map[AggregateReference, Long] = Map[AggregateReference, Long]()
+  state:              P,
+  eventHistoryList:   List[EventOfAggregate[D]]      = List[EventOfAggregate[D]](),
+  version:            EventStoreVersion              = EventStoreVersion.zero,
+  aggregatesVersion:  Map[AggregateReference, Long]  = Map[AggregateReference, Long](),
+  constraintsVersion: Map[ConstraintReference, Long] = Map[ConstraintReference, Long]()
 )
 
 private case class EventOfAggregate[D <: DomainSpecification](event: D#Event, aggregate: D#Aggregate)

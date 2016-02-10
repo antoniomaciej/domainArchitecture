@@ -91,6 +91,7 @@ sealed trait PasswordResetAggregate
 
 case class UserIdFlowAggregate(userID: UserID) extends PasswordResetAggregate
 
+sealed trait PasswordResetConstraintScope
 //commands
 sealed trait PasswordResetModelCommand
 

@@ -58,11 +58,11 @@ class EventStoreProviderTest extends FlatSpec with Matchers with PropertyChecks 
     )
   )
 
-  def inMemoryEventStoreWithProjection(): EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState] = {
+  def inMemoryEventStoreWithProjection(): EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestState] = {
     EventStoreProvider.createEventStore[TheTestDomainSpecification, TestStateInMemory](new TheAtomicProjectionLogic(), schema, eventStoreReferenceInMemory)
   }
 
-  def sqlBasedEventStoreWithProjection(): EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestAggregate, TheTestState] = {
+  def sqlBasedEventStoreWithProjection(): EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestState] = {
     EventStoreProvider.createEventStore[TheTestDomainSpecification, TestStateInMemory](new TheAtomicProjectionLogic(), schema, eventStoreReferenceSql)
   }
 
