@@ -35,6 +35,7 @@ object AggregateProjections {
     buildLogic:     AggregateProjection[D, A]
   )(aggregateId: D#Aggregate): A = build[D, A](buildLogic, eventStoreRead.loadEventsForAggregate(aggregateId))
 
+  //TODO coverage
   def buildProjection[D <: DomainSpecification, A](
     eventStoreRead: EventStoreRead[D],
     buildLogic:     AggregateProjection[D, A]

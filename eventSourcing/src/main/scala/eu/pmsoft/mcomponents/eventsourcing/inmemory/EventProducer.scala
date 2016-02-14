@@ -105,7 +105,7 @@ class EventProducer[D <: DomainSpecification](
               case Completed                  => \/-(state)
               case Shutdown                   => -\/("stream closed")
             }
-          case SendingActive => -\/("already sending")
+          case SendingActive => -\/("already sending") //TODO coverage
         }
       }
       def markAsSendingEvents(state: ProducerState[D]): ProducerState[D] = {

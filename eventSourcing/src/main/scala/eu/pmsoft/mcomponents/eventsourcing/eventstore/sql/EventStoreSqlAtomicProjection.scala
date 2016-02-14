@@ -49,7 +49,7 @@ class EventStoreSqlAtomicProjection[D <: DomainSpecification, P <: D#State](
       if (drop) {
         ddl.dropTables(db)
       }
-      if (create) {
+      if (create) { //TODO coverage create = false
         ddl.createTables(db)
       }
     }
