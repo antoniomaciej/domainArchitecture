@@ -145,7 +145,8 @@ object domainArchitecture extends Build {
       "mysql" % "mysql-connector-java" % "5.1.38" % "test",
       "org.postgresql" % "postgresql" % "9.4-1206-jdbc42" % "test",
       "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
-      "com.google.guava" % "guava" % "18.0",
+      "com.github.cb372" %% "scalacache-core" % "0.7.5",
+      "com.github.cb372" %% "scalacache-caffeine" % "0.7.5",
       "org.scala-lang.modules" %% "scala-pickling" % "0.11.0" % "test"
     )
   )

@@ -26,7 +26,7 @@
 package eu.pmsoft.mcomponents.eventsourcing.eventstore
 
 import java.util.concurrent._
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{ AtomicReference, AtomicBoolean }
 
 import eu.pmsoft.mcomponents.eventsourcing._
 import eu.pmsoft.mcomponents.eventsourcing.test.model._
@@ -149,6 +149,7 @@ trait EventStoreWithVersionedEventStoreViewBehaviour {
     val rollbackError = new AtomicBoolean(false)
     val endThreadsFlag = new AtomicBoolean(false)
     val domainLogic = new TheTestDomainLogic()
+    val errorOnExecution = new AtomicReference[Option[Throwable]](None)
 
     //when 4 thread are executed in parallel to store on a transaction context Map(TestAggregate(1) -> aggregateIdForThreadF(threadNr))
     val service: ExecutorService = Executors.newFixedThreadPool(nrOfThreads)
@@ -171,20 +172,30 @@ trait EventStoreWithVersionedEventStoreViewBehaviour {
             }
           }
           catch {
-            case e: Throwable => e.printStackTrace()
+            case e: InterruptedException =>
+              if (endThreadsFlag.get()) {
+                // it is ok, because the execution service shutdown
+              }
+              else {
+                errorOnExecution.set(Some(e))
+              }
+            case e: Throwable => errorOnExecution.set(Some(e))
           }
-          barriers.countDown()
+          finally {
+            barriers.countDown()
+          }
         }
       })
     }
     val calculationTime = 500
     barriers.await(calculationTime, TimeUnit.MILLISECONDS)
-    endThreadsFlag.set(false)
+    endThreadsFlag.set(true)
     val timeToCloseThread = 100
     service.shutdownNow()
     barriers.await(timeToCloseThread, TimeUnit.MILLISECONDS)
 
     //then a error related to concurrency transaction scopes must be found
     rollbackError.get() shouldBe expectedResult
+    errorOnExecution.get() shouldBe empty
   }
 }

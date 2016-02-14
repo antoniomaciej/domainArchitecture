@@ -27,10 +27,13 @@ package eu.pmsoft.mcomponents.eventsourcing.eventstore.sql
 
 import java.sql.SQLException
 import java.util.concurrent.{ Callable, TimeUnit }
+import com.github.benmanes.caffeine.cache.Caffeine
 
-import com.google.common.cache.{ Cache, CacheBuilder }
+import scalacache._
+import caffeine._
 import com.typesafe.scalalogging.LazyLogging
 import eu.pmsoft.mcomponents.eventsourcing._
+import scala.concurrent.duration._
 import eu.pmsoft.mcomponents.eventsourcing.atomic.Atomic
 import eu.pmsoft.mcomponents.eventsourcing.eventstore.{ EventStoreAtomicProjectionCreationLogic, EventStoreReadTransaction }
 import scalikejdbc._
@@ -103,41 +106,23 @@ case class OrderedProjectionVersionCache[D <: DomainSpecification, P <: D#State]
 class EventStoreAtomicProjectionCache[D <: DomainSpecification, P <: D#State](val stateCreationLogic: EventStoreAtomicProjectionCreationLogic[D, P]) extends LazyLogging {
 
   private def stateZero = AtomicEventStoreStateSql[D, P](EventStoreVersion.zero, stateCreationLogic.buildInitialState())
+  //TODO add metrics to analise cache use
+  private implicit val versionOrdering: EventStoreProjectionOrdering[D, P] = new EventStoreProjectionOrdering[D, P]()
+  private val projectionCacheSize = 20L
+  private val stateHistoryCacheSize = 20
+  private[this] val underlyingCaffeineCache = Caffeine.newBuilder().maximumSize(projectionCacheSize).build[String, Object]
+  private[this] implicit val scalaCache = ScalaCache(new CaffeineCache(underlyingCaffeineCache))
 
-  private implicit val versionOrdering = new EventStoreProjectionOrdering[D, P]()
-  //TODO magic number
-  private val projectionCacheSize = 20
-  private[this] val versionCache = Atomic(OrderedProjectionVersionCache[D, P](projectionCacheSize, SortedSet()))
-  private[this] val timedCache: Cache[Long, AtomicEventStoreStateSql[D, P]] =
-    CacheBuilder
-      .newBuilder()
-      .expireAfterAccess(5, TimeUnit.SECONDS)
-      .asInstanceOf[CacheBuilder[Long, AtomicEventStoreStateSql[D, P]]]
-      .build()
+  private[this] val versionCache = Atomic(OrderedProjectionVersionCache[D, P](stateHistoryCacheSize, SortedSet()))
 
   private def updateStoredCache(newState: AtomicEventStoreStateSql[D, P]) = {
       def updateStoreLocal(inStore: OrderedProjectionVersionCache[D, P]): OrderedProjectionVersionCache[D, P] = {
-        val updatedVersions = (inStore.versions + newState).take(inStore.maxSize)
-        inStore.copy(versions = updatedVersions)
+        inStore.pushState(newState)
       }
     versionCache.updateAndGet(updateStoreLocal)
   }
 
   def buildState(eventStoreVersion: EventStoreVersion, rangeExtractor: EventStoreRange => Seq[D#Event]): P = {
-    val cachedState = timedCache.get(eventStoreVersion.storeVersion, new Callable[AtomicEventStoreStateSql[D, P]] {
-      override def call(): AtomicEventStoreStateSql[D, P] = {
-        val storedVersions = versionCache()
-        val nearestStored = storedVersions.versions.find(_.version.storeVersion <= eventStoreVersion.storeVersion)
-        val buildFromState = nearestStored.getOrElse(stateZero)
-        if (buildFromState.version.storeVersion == eventStoreVersion.storeVersion) {
-          buildFromState
-        }
-        else {
-          val newState = rebuildState(buildFromState)
-          updateStoredCache(newState)
-          newState
-        }
-      }
 
       def rebuildState(buildFromState: AtomicEventStoreStateSql[D, P]): AtomicEventStoreStateSql[D, P] = {
         val range = EventStoreRange(buildFromState.version.add(1), Some(eventStoreVersion))
@@ -151,7 +136,20 @@ class EventStoreAtomicProjectionCache[D <: DomainSpecification, P <: D#State](va
         }
         updatedState
       }
-    })
+
+    val cachedState = sync.cachingWithTTL(eventStoreVersion.storeVersion)(10.seconds) {
+      val storedVersions = versionCache()
+      val nearestStored = storedVersions.versions.find(_.version.storeVersion <= eventStoreVersion.storeVersion)
+      val buildFromState = nearestStored.getOrElse(stateZero)
+      if (buildFromState.version.storeVersion == eventStoreVersion.storeVersion) {
+        buildFromState
+      }
+      else {
+        val newState = rebuildState(buildFromState)
+        updateStoredCache(newState)
+        newState
+      }
+    }
     cachedState.projection
   }
 

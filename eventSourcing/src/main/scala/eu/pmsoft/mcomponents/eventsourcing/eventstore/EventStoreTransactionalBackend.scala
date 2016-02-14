@@ -28,6 +28,8 @@ package eu.pmsoft.mcomponents.eventsourcing.eventstore
 import eu.pmsoft.mcomponents.eventsourcing.EventSourceCommandEventModel.CommandResult
 import eu.pmsoft.mcomponents.eventsourcing._
 
+import scala.concurrent.Future
+
 trait EventStoreTransactionalBackend[D <: DomainSpecification, P <: D#State] {
 
   def initializeBackend(): Unit
