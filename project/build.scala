@@ -135,8 +135,7 @@ object domainArchitecture extends Build {
       "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
       "org.scalaz" %% "scalaz-core" % "7.1.2",
       "io.reactivex" % "rxjava" % "1.0.14",
-      "joda-time" % "joda-time" % "2.9.2",
-      "org.scalatest" %% "scalatest" % "2.2.0" % "test"
+      "joda-time" % "joda-time" % "2.9.2"
     )
   )
 
@@ -201,7 +200,7 @@ object domainArchitecture extends Build {
       "io.spray" %% "spray-routing-shapeless2" % sprayVersion,
       "io.spray" %% "spray-testkit" % sprayVersion % "test",
       "io.spray" %% "spray-client" % sprayVersion % "test",
-      "ch.qos.logback" % "logback-classic" % "1.1.2",
+      "ch.qos.logback" % "logback-classic" % "1.1.3",
       "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0"
     )
   )
