@@ -75,7 +75,6 @@ class OnTestLogicGeneratedCommandSpecification extends BaseEventSourceSpec with 
   override def implementationModule(): DomainModule[TestLogicDomainSpecification] = new DomainModule[TestLogicDomainSpecification] {
     override lazy val logic: DomainLogic[TestLogicDomainSpecification] = new TestDomainLogic()
 
-    //TODO use mockito and create a generic nested mock/stub creator
     override lazy val eventStore: EventStore[TestLogicDomainSpecification] with VersionedEventStoreView[TheState] =
       new EventStore[TestLogicDomainSpecification] with VersionedEventStoreView[TheState] {
 

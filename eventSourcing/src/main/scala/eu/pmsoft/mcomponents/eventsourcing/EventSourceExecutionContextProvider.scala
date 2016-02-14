@@ -46,14 +46,6 @@ class EventSourceExecutionContextImpl()(implicit val eventSourcingConfiguration:
     new DomainApplication(domainImplementation, eventSourcingConfiguration)
 }
 
-//TODO XXX1 change this to implicit conversion
-trait ExecutionContextFromConfiguration {
-  self: EventSourcingConfigurationContext =>
-
-  final implicit lazy val executionContext: ExecutionContext = eventSourcingConfiguration.executionContext
-
-}
-
 private class DomainApplication[D <: DomainSpecification](
     val logic:                      DomainModule[D],
     val eventSourcingConfiguration: EventSourcingConfiguration
@@ -82,7 +74,9 @@ private final class DomainLogicAsyncEventCommandHandler[D <: DomainSpecification
     val sideEffects:                D#SideEffects,
     val eventStore:                 EventStore[D] with VersionedEventStoreView[D#State],
     val eventSourcingConfiguration: EventSourcingConfiguration
-) extends AsyncEventCommandHandler[D] with EventSourcingConfigurationContext with ExecutionContextFromConfiguration {
+) extends AsyncEventCommandHandler[D] with EventSourcingConfigurationContext {
+
+  final implicit lazy val executionContext: ExecutionContext = eventSourcingConfiguration.executionContext
 
   private def applyCommand(command: D#Command, atomicTransactionScope: AtomicTransactionScope[D]): Future[CommandToEventsResult[D]] =
     Future.successful(logic.executeCommand(command, atomicTransactionScope)(atomicTransactionScope.projectionView, sideEffects))

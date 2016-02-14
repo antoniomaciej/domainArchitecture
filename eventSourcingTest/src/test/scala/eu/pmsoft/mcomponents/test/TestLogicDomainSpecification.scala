@@ -43,9 +43,10 @@ class TestLogicDomainSpecification extends DomainSpecification {
 
 class TestDomainLogic extends DomainLogic[TestLogicDomainSpecification] {
 
-  override def executeCommand(command: TheCommand,
-                              atomicTransactionScope: AtomicTransactionScope[TestLogicDomainSpecification])
-                             (implicit projectionView: TheState, sideEffects: TheSideEffect): CommandToEventsResult[TestLogicDomainSpecification] =
+  override def executeCommand(
+    command:                TheCommand,
+    atomicTransactionScope: AtomicTransactionScope[TestLogicDomainSpecification]
+  )(implicit projectionView: TheState, sideEffects: TheSideEffect): CommandToEventsResult[TestLogicDomainSpecification] =
     command match {
       case CommandOne() => \/-(CommandModelResult(List(EventOne()), AggregateOne()))
       case CommandTwo() => \/-(CommandModelResult(List(EventTwo()), AggregateTwo()))

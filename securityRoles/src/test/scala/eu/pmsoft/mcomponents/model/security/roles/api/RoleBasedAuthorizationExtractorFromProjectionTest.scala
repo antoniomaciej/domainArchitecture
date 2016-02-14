@@ -74,7 +74,9 @@ class RoleBasedAuthorizationExtractorFromProjectionTest extends BaseEventSourceC
   private def createMocked: RoleBasedAuthorizationExtractorFromProjection = new MockedRoleBasedAuthorizationExtractorFromProjection()
 }
 
-class MockedRoleBasedAuthorizationExtractorFromProjection extends RoleBasedAuthorizationExtractorFromProjection with EventSourcingConfigurationContext with ExecutionContextFromConfiguration {
+class MockedRoleBasedAuthorizationExtractorFromProjection extends RoleBasedAuthorizationExtractorFromProjection with EventSourcingConfigurationContext {
+
+  final implicit lazy val executionContext: ExecutionContext = eventSourcingConfiguration.executionContext
 
   override implicit def eventSourcingConfiguration: EventSourcingConfiguration = EventSourcingConfiguration(ExecutionContext.Implicits.global, LocalBindingInfrastructure.create(), Set())
 

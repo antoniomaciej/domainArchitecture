@@ -57,6 +57,7 @@ trait DomainModule[D <: DomainSpecification] {
 
 trait DomainLogic[D <: DomainSpecification] {
   def calculateRootAggregate(command: D#Command, state: D#State): CommandToAggregateScope[D]
+  //TODO coverage
   def calculateConstraints(command: D#Command, state: D#State): CommandToConstraints[D] = \/-(Set())
 
   def executeCommand(command: D#Command, atomicTransactionScope: AtomicTransactionScope[D])(implicit state: D#State, sideEffects: D#SideEffects): CommandToEventsResult[D]
@@ -95,6 +96,7 @@ trait EventSerializationSchema[D <: DomainSpecification] {
 
   def eventToData(event: D#Event): EventData
 
+  //TODO coverage for implementations
   def buildConstraintReference(constraintScope: D#ConstraintScope): ConstraintReference
 
   def buildAggregateReference(aggregate: D#Aggregate): AggregateReference

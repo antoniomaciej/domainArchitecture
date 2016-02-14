@@ -46,7 +46,6 @@ object UserRegistrationApi {
   implicit val requestErrorDomain = RequestErrorDomain("UserRegistration")
 }
 
-//TODO create a full api to update user information
 trait UserRegistrationApi {
 
   def findRegisteredUser(searchForUser: SearchForUserIdRequest): Future[RequestResult[SearchForUserIdResponse]]
@@ -100,7 +99,6 @@ object UserRegistrationRequestModel {
   )
 }
 
-//TODO how to avoid pass of password on this api??
 case class SearchForUserIdRequest(login: UserLogin, passwordHash: UserPassword)
 
 case class SearchForUserIdResponse(userId: UserID)
