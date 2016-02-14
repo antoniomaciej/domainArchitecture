@@ -23,4 +23,4 @@ before_script:
   - mysql -e "create database IF NOT EXISTS eventStoreTestMySql;" -uroot
 
 
-script: sbt 'scoverage:test' 'coveralls'
+script: sbt ++$TRAVIS_SCALA_VERSION clean coverage test
