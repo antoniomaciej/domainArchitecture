@@ -19,7 +19,9 @@ jdk:
   - oraclejdk8
 
 before_script:
-  - psql -c 'create database eventStoreTestPostgres;' -U postgres
+  - psql -c "CREATE USER eventStoreTestUser WITH PASSWORD 'eventStoreTestPassword';" -U postgres
+  - psql -c 'DROP DATABASE IF EXISTS eventStoreTestPostgres;' -U postgres
+  - psql -c 'CREATE DATABASE eventStoreTestPostgres WITH OWNER eventStoreTestUser;' -U postgres
   - mysql -e "create database IF NOT EXISTS eventStoreTestMySql;" -uroot
 
 
