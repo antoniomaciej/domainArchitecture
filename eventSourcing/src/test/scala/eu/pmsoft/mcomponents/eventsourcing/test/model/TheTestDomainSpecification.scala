@@ -99,8 +99,8 @@ final class TheTestDomainLogic extends DomainLogic[TheTestDomainSpecification] {
 
   override def calculateConstraints(command: TheTestCommand, state: TheTestState): CommandToConstraints[TheTestDomainSpecification] =
     command match {
-      case TestCommandOne() =>  \/-(Set(TestConstraintOne()))
-      case TestCommandTwo(createTwo) => \/-(Set(TestConstraintOne()))
+      case TestCommandOne()                                 => \/-(Set(TestConstraintOne()))
+      case TestCommandTwo(createTwo)                        => \/-(Set(TestConstraintOne()))
       case TestCommandForThreads(threadNr, targetAggregate) => \/-(Set(TestConstraintTwo(threadNr)))
     }
 

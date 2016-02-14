@@ -2,7 +2,7 @@
 
 ./eventSourcing/src/docker/startTestDatabases.sh
 
-sbt clean coverage test fun:test
+sbt clean coverage test
 
 sbt coverageAggregate
 

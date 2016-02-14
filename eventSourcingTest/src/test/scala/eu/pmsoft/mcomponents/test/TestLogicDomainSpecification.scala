@@ -60,7 +60,7 @@ class TestDomainLogic extends DomainLogic[TestLogicDomainSpecification] {
 
   override def calculateConstraints(command: TheCommand, state: TheState): CommandToConstraints[TestLogicDomainSpecification] =
     command match {
-      case CommandOne()  => \/-(Set(ConstraintScopeOne()))
+      case CommandOne() => \/-(Set(ConstraintScopeOne()))
       case CommandTwo() => \/-(Set(ConstraintScopeTwo()))
     }
 }
@@ -90,7 +90,6 @@ sealed trait TheConstraintScope
 case class ConstraintScopeOne() extends TheConstraintScope
 
 case class ConstraintScopeTwo() extends TheConstraintScope
-
 
 trait TheState {
   def ok: Boolean

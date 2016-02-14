@@ -105,7 +105,6 @@ final class PasswordResetModelLogicHandler extends DomainLogic[PasswordResetDoma
       }
     }
 
-
   override def calculateConstraints(command: PasswordResetModelCommand, state: PasswordResetModelState): CommandToConstraints[PasswordResetDomain] = \/-(Set())
 
   override def executeCommand(

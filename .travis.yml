@@ -1,7 +1,9 @@
-sudo: required
+addons:
+  postgresql: "9.4"
 
 services:
-  - docker
+  - postgresql
+  - mysql
 
 language: scala
 scala:
@@ -16,9 +18,9 @@ notifications:
 jdk:
   - oraclejdk8
 
-before_install:
-  - docker run --name eventStoreTestPostgres -p 5432:5432 -e POSTGRES_DB=eventStoreTestPostgres -e POSTGRES_USER=eventStorePostgres -e POSTGRES_PASSWORD=mysecretpasswordPostgres -d postgres
-  - docker run --name eventStoreTestMysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=mysecretpasswordMySql -e MYSQL_USER=eventStoreMySql -e MYSQL_PASSWORD=mysecretpasswordMySql -e MYSQL_DATABASE=eventStoreTestMySql -d mysql
+before_script:
+  - psql -c 'create database eventStoreTestPostgres;' -U postgres
+  - mysql -e "create database IF NOT EXISTS eventStoreTestMySql;" -uroot
 
 
 script: sbt 'scoverage:test' 'coveralls'

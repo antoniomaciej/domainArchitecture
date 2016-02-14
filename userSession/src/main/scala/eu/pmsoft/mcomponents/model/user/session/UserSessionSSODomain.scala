@@ -91,7 +91,6 @@ final class UserSessionHandlerLogic extends DomainLogic[UserSessionSSODomain] wi
       case InvalidateUserSession(userId) => \/-(Set(UserSessionUserIDAggregate(userId)))
     }
 
-
   override def calculateConstraints(command: UserSessionCommand, state: UserSessionSSOState): CommandToConstraints[UserSessionSSODomain] = \/-(Set())
 
   override def executeCommand(
