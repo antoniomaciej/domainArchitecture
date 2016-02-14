@@ -85,7 +85,7 @@ private final class AtomicEventStoreWithProjection[D <: DomainSpecification, P <
   override def calculateAtomicTransactionScopeVersion(logic: DomainLogic[D], command: D#Command): Future[CommandToAtomicState[D]] = eventStoreBackend readOnly { transaction =>
     val projectionState: P = transaction.projectionState
     val result = for {
-      rootAggregate <- logic.calculateRootAggregate(command, projectionState)
+      rootAggregate <- logic.calculateAggregates(command, projectionState)
       constraintsScope <- logic.calculateConstraints(command, projectionState)
     } yield {
       val aggregateVersion: Map[D#Aggregate, Long] = transaction.calculateAggregateVersions(rootAggregate)

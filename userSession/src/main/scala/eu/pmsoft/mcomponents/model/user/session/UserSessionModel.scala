@@ -67,6 +67,8 @@ sealed trait UserSessionAggregate
 
 case class UserSessionUserIDAggregate(userId: UserID) extends UserSessionAggregate
 
+sealed trait UserSessionConstraint
+
 //commands
 sealed trait UserSessionCommand
 

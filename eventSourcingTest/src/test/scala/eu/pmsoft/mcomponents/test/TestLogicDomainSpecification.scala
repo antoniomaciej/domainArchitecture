@@ -52,9 +52,17 @@ class TestDomainLogic extends DomainLogic[TestLogicDomainSpecification] {
       case CommandTwo() => \/-(CommandModelResult(List(EventTwo()), AggregateTwo()))
     }
 
-  override def calculateRootAggregate(command: TheCommand, state: TheState): CommandToAggregateScope[TestLogicDomainSpecification] =
-    \/-(Set())
+  override def calculateAggregates(command: TheCommand, state: TheState): CommandToAggregateScope[TestLogicDomainSpecification] =
+    command match {
+      case CommandOne() => \/-(Set(AggregateOne()))
+      case CommandTwo() => \/-(Set(AggregateTwo()))
+    }
 
+  override def calculateConstraints(command: TheCommand, state: TheState): CommandToConstraints[TestLogicDomainSpecification] =
+    command match {
+      case CommandOne()  => \/-(Set(ConstraintScopeOne()))
+      case CommandTwo() => \/-(Set(ConstraintScopeTwo()))
+    }
 }
 
 sealed trait TheCommand
@@ -78,6 +86,11 @@ case class AggregateOne() extends TheAggregate
 case class AggregateTwo() extends TheAggregate
 
 sealed trait TheConstraintScope
+
+case class ConstraintScopeOne() extends TheConstraintScope
+
+case class ConstraintScopeTwo() extends TheConstraintScope
+
 
 trait TheState {
   def ok: Boolean

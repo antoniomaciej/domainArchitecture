@@ -79,7 +79,7 @@ final class RoleBasedAuthorizationHandlerLogic extends DomainLogic[RoleBasedAuth
     case DeletePermissionsFromRole(permissionIdSet, roleID)     => \/-(Set())
   }
 
-  override def calculateRootAggregate(command: RoleBasedAuthorizationModelCommand, state: RoleBasedAuthorizationState): CommandToAggregateScope[RoleBasedAuthorizationDomain] = command match {
+  override def calculateAggregates(command: RoleBasedAuthorizationModelCommand, state: RoleBasedAuthorizationState): CommandToAggregateScope[RoleBasedAuthorizationDomain] = command match {
     case CreateRole(roleName)                                   => \/-(Set())
     case DeleteRole(roleID)                                     => \/-(Set(RoleIdAggregate(roleID)))
     case UpdateRoleName(roleID, roleName)                       => \/-(Set(RoleIdAggregate(roleID)))

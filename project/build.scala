@@ -44,19 +44,8 @@ object domainArchitecture extends Build {
     settings(testDependenciesOnMain: _*).
     dependsOn(eventSourcingApi)
 
-  lazy val FunTest = config("fun") extend (Test)
-
-  def itFilter(name: String): Boolean = name endsWith "IntegrationTest"
-
-  def unitFilter(name: String): Boolean = (name endsWith "Test") && !itFilter(name)
 
   lazy val eventSourcing = (project in file("eventSourcing")).
-    configs(FunTest).
-    settings(inConfig(FunTest)(Defaults.testTasks): _*).
-    settings(
-      testOptions in Test ++= Seq(Tests.Filter(unitFilter)),
-      testOptions in FunTest ++= Seq(Tests.Filter(itFilter))
-    ).
     settings(commonSettings: _*).
     settings(coreDependencies: _*).
     dependsOn(eventSourcingTest % "test").
@@ -109,8 +98,6 @@ object domainArchitecture extends Build {
     dependsOn(userSession, userRegistry, passwordReset, securityRoles)
 
   lazy val root = (project in file(".")).
-    configs(FunTest).
-    settings(inConfig(FunTest)(Defaults.testSettings): _*).
     aggregate(eventSourcing, eventSourcingApi, eventSourcingTest,
       domainModel,
       userSession, userRegistry, passwordReset, securityRoles,

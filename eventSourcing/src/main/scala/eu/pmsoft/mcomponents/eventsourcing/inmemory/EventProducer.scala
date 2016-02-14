@@ -32,6 +32,7 @@ import rx.{ Producer, Subscriber }
 
 import scalaz.{ -\/, \/-, \/ }
 
+//TODO make this simpler
 class EventProducer[D <: DomainSpecification](
     eventStoreReference: EventStoreReference[D],
     startFromVersion:    EventStoreVersion,
@@ -105,7 +106,7 @@ class EventProducer[D <: DomainSpecification](
               case Completed                  => \/-(state)
               case Shutdown                   => -\/("stream closed")
             }
-          case SendingActive => -\/("already sending") //TODO coverage
+          case SendingActive => -\/("already sending")
         }
       }
       def markAsSendingEvents(state: ProducerState[D]): ProducerState[D] = {

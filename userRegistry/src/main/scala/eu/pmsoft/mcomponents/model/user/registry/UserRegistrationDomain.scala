@@ -108,7 +108,7 @@ final class UserRegistrationHandlerLogic extends DomainLogic[UserRegistrationDom
       case UpdateUserRoles(uid, roles)           => \/-(Set())
     }
 
-  override def calculateRootAggregate(command: UserRegistrationCommand, state: UserRegistrationState): CommandToAggregateScope[UserRegistrationDomain] =
+  override def calculateAggregates(command: UserRegistrationCommand, state: UserRegistrationState): CommandToAggregateScope[UserRegistrationDomain] =
     command match {
       case AddUser(loginEmail, passwordHash)     => \/-(Set())
       case UpdateUserPassword(uid, passwordHash) => \/-(Set(UserAggregateId(uid)))

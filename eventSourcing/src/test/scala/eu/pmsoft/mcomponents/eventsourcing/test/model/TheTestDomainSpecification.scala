@@ -90,11 +90,18 @@ final class TheTestEventSerializationSchema extends EventSerializationSchema[The
 
 final class TheTestDomainLogic extends DomainLogic[TheTestDomainSpecification] {
 
-  override def calculateRootAggregate(command: TheTestCommand, state: TheTestState): CommandToAggregateScope[TheTestDomainSpecification] =
+  override def calculateAggregates(command: TheTestCommand, state: TheTestState): CommandToAggregateScope[TheTestDomainSpecification] =
     command match {
       case TestCommandOne()                                 => \/-(Set(TestAggregateOne()))
       case TestCommandTwo(createTwo)                        => \/-(Set(TestAggregateTwo()))
       case TestCommandForThreads(threadNr, targetAggregate) => \/-(Set(TestAggregateThread(targetAggregate)))
+    }
+
+  override def calculateConstraints(command: TheTestCommand, state: TheTestState): CommandToConstraints[TheTestDomainSpecification] =
+    command match {
+      case TestCommandOne() =>  \/-(Set(TestConstraintOne()))
+      case TestCommandTwo(createTwo) => \/-(Set(TestConstraintOne()))
+      case TestCommandForThreads(threadNr, targetAggregate) => \/-(Set(TestConstraintTwo(threadNr)))
     }
 
   override def executeCommand(

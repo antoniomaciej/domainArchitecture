@@ -156,7 +156,9 @@ class RollBackDomainLogic extends DomainLogic[RollBackDomain] {
   override def executeCommand(command: RollbackTestCommand, atomicTransactionScope: AtomicTransactionScope[RollBackDomain])(implicit state: RollbackTestState, sideEffects: RollbackTestSideEffect): CommandToEventsResult[RollBackDomain] =
     scalaz.\/-(CommandModelResult(List(RollbackTestEvent()), RollbackTestAggregateId()))
 
-  override def calculateRootAggregate(command: RollbackTestCommand, state: RollbackTestState): CommandToAggregateScope[RollBackDomain] =
+  override def calculateAggregates(command: RollbackTestCommand, state: RollbackTestState): CommandToAggregateScope[RollBackDomain] =
     scalaz.\/-(Set(RollbackTestAggregateId()))
 
+  override def calculateConstraints(command: RollbackTestCommand, state: RollbackTestState): CommandToConstraints[RollBackDomain] =
+    scalaz.\/-(Set(RollbackConstraintScope()))
 }

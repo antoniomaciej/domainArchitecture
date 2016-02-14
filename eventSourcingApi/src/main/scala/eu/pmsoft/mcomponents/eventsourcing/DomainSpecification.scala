@@ -32,7 +32,6 @@ import eu.pmsoft.mcomponents.eventsourcing.projection.VersionedProjection
 import org.joda.time.DateTime
 
 import scala.concurrent.Future
-import scalaz.{ \/-, \/ }
 
 trait DomainSpecification {
   type Command
@@ -56,9 +55,9 @@ trait DomainModule[D <: DomainSpecification] {
 }
 
 trait DomainLogic[D <: DomainSpecification] {
-  def calculateRootAggregate(command: D#Command, state: D#State): CommandToAggregateScope[D]
-  //TODO coverage
-  def calculateConstraints(command: D#Command, state: D#State): CommandToConstraints[D] = \/-(Set())
+  def calculateAggregates(command: D#Command, state: D#State): CommandToAggregateScope[D]
+
+  def calculateConstraints(command: D#Command, state: D#State): CommandToConstraints[D]
 
   def executeCommand(command: D#Command, atomicTransactionScope: AtomicTransactionScope[D])(implicit state: D#State, sideEffects: D#SideEffects): CommandToEventsResult[D]
 }
@@ -96,7 +95,6 @@ trait EventSerializationSchema[D <: DomainSpecification] {
 
   def eventToData(event: D#Event): EventData
 
-  //TODO coverage for implementations
   def buildConstraintReference(constraintScope: D#ConstraintScope): ConstraintReference
 
   def buildAggregateReference(aggregate: D#Aggregate): AggregateReference

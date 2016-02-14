@@ -91,7 +91,7 @@ final class PasswordResetModelLogicHandler extends DomainLogic[PasswordResetDoma
     with PasswordResetModelValidations
     with PasswordResetModelTransactionExtractor {
 
-  override def calculateRootAggregate(command: PasswordResetModelCommand, state: PasswordResetModelState): CommandToAggregateScope[PasswordResetDomain] =
+  override def calculateAggregates(command: PasswordResetModelCommand, state: PasswordResetModelState): CommandToAggregateScope[PasswordResetDomain] =
     command match {
       case InitializePasswordResetFlow(userId, sessionToken) => \/-(Set(UserIdFlowAggregate(userId)))
       case CancelPasswordResetFlowByUser(userId)             => \/-(Set(UserIdFlowAggregate(userId)))
@@ -104,6 +104,9 @@ final class PasswordResetModelLogicHandler extends DomainLogic[PasswordResetDoma
         case None       => -\/(EventSourceCommandFailed(invalidPasswordResetToken.code))
       }
     }
+
+
+  override def calculateConstraints(command: PasswordResetModelCommand, state: PasswordResetModelState): CommandToConstraints[PasswordResetDomain] = \/-(Set())
 
   override def executeCommand(
     command:                PasswordResetModelCommand,

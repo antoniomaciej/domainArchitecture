@@ -37,6 +37,7 @@ final class UserSessionSSODomain extends DomainSpecification {
   type Command = UserSessionCommand
   type Event = UserSessionEvent
   type Aggregate = UserSessionAggregate
+  type ConstraintScope = UserSessionConstraint
   type State = UserSessionSSOState
   type SideEffects = UserSessionSideEffect
 }
@@ -80,7 +81,7 @@ final class UserSessionEventSerializationSchema extends EventSerializationSchema
 
 final class UserSessionHandlerLogic extends DomainLogic[UserSessionSSODomain] with UserSessionValidations with UserSessionExtractors {
 
-  override def calculateRootAggregate(command: UserSessionCommand, state: UserSessionSSOState): CommandToAggregateScope[UserSessionSSODomain] =
+  override def calculateAggregates(command: UserSessionCommand, state: UserSessionSSOState): CommandToAggregateScope[UserSessionSSODomain] =
     command match {
       case CreateUserSession(userId) => \/-(Set(UserSessionUserIDAggregate(userId)))
       case InvalidateSession(sessionToken) => state.findUserSession(sessionToken) match {
@@ -89,6 +90,9 @@ final class UserSessionHandlerLogic extends DomainLogic[UserSessionSSODomain] wi
       }
       case InvalidateUserSession(userId) => \/-(Set(UserSessionUserIDAggregate(userId)))
     }
+
+
+  override def calculateConstraints(command: UserSessionCommand, state: UserSessionSSOState): CommandToConstraints[UserSessionSSODomain] = \/-(Set())
 
   override def executeCommand(
     command:                UserSessionCommand,
