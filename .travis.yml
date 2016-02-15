@@ -1,5 +1,5 @@
 addons:
-  postgresql: "9.4"
+  postgresql: "9.3"
 
 services:
   - postgresql
@@ -19,10 +19,8 @@ jdk:
   - oraclejdk8
 
 before_script:
-
-  - psql -c 'DROP DATABASE IF EXISTS eventStoreTestPostgres;' -U postgres
-  - psql -c 'CREATE DATABASE eventStoreTestPostgres;' -U postgres
+  - psql -c 'DROP DATABASE IF EXISTS event_store;' -U postgres
+  - psql -c 'CREATE DATABASE event_store;' -U postgres
   - mysql -e "create database IF NOT EXISTS eventStoreTestMySql;" -uroot
-
 
 script: sbt ++$TRAVIS_SCALA_VERSION clean coverage test
