@@ -35,11 +35,17 @@ object domainArchitecture extends Build {
 
   lazy val eventSourcingApi = (project in file("eventSourcingApi")).
     settings(commonSettings: _*).
+    settings(
+      name := "event-sourcing-api"
+    ).
     settings(apiDependencies: _*).
     settings(testDependenciesOnTest: _*)
 
   lazy val eventSourcingTest = (project in file("eventSourcingTest")).
     settings(commonSettings: _*).
+    settings(
+      name := "event-sourcing-test"
+    ).
     settings(coreDependencies: _*).
     settings(testDependenciesOnMain: _*).
     dependsOn(eventSourcingApi)
@@ -47,75 +53,15 @@ object domainArchitecture extends Build {
 
   lazy val eventSourcing = (project in file("eventSourcing")).
     settings(commonSettings: _*).
+    settings(
+      name := "event-sourcing"
+    ).
     settings(coreDependencies: _*).
     dependsOn(eventSourcingTest % "test").
     dependsOn(eventSourcingApi)
 
-  lazy val domainModel = (project in file("domainModel")).
-    settings(commonSettings: _*).
-    settings(modulesDependencies: _*)
-
-  lazy val securityRoles = (project in file("securityRoles")).
-    settings(commonSettings: _*).
-    settings(modulesDependencies: _*).
-    dependsOn(eventSourcing).
-    dependsOn(eventSourcingTest % "test").
-    dependsOn(domainModel)
-
-  lazy val passwordReset = (project in file("passwordReset")).
-    settings(commonSettings: _*).
-    settings(coreDependencies: _*).
-    settings(modulesDependencies: _*).
-    dependsOn(eventSourcing).
-    dependsOn(eventSourcingTest % "test").
-    dependsOn(domainModel).
-    dependsOn(userSession, userRegistry)
-
-  lazy val userRegistry = (project in file("userRegistry")).
-    settings(commonSettings: _*).
-    settings(coreDependencies: _*).
-    settings(modulesDependencies: _*).
-    dependsOn(eventSourcing).
-    dependsOn(eventSourcingTest % "test").
-    dependsOn(domainModel).
-    dependsOn(securityRoles)
-
-  lazy val userSession = (project in file("userSession")).
-    settings(commonSettings: _*).
-    settings(coreDependencies: _*).
-    settings(modulesDependencies: _*).
-    dependsOn(eventSourcing).
-    dependsOn(eventSourcingTest % "test").
-    dependsOn(domainModel).
-    dependsOn(userRegistry)
-
-  lazy val deploymentApp = (project in file("deploymentApp")).
-    settings(commonSettings: _*).
-    settings(modulesDependencies: _*).
-    dependsOn(eventSourcingTest % "test").
-    settings(deploymentDependencies: _*).
-    dependsOn(domainModel).
-    dependsOn(userSession, userRegistry, passwordReset, securityRoles)
-
   lazy val root = (project in file(".")).
-    aggregate(eventSourcing, eventSourcingApi, eventSourcingTest,
-      domainModel,
-      userSession, userRegistry, passwordReset, securityRoles,
-      deploymentApp)
-
-
-  val monocleVersion = "1.1.1"
-  lazy val monocle = Seq(
-    "com.github.julien-truffaut" %% "monocle-core" % monocleVersion,
-    "com.github.julien-truffaut" %% "monocle-generic" % monocleVersion,
-    "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion
-  )
-  lazy val monocleForTest = Seq(
-    "com.github.julien-truffaut" %% "monocle-core" % monocleVersion % "test",
-    "com.github.julien-truffaut" %% "monocle-generic" % monocleVersion % "test",
-    "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion % "test"
-  )
-
+    aggregate(eventSourcing, eventSourcingApi, eventSourcingTest)
 
   lazy val apiDependencies = Seq(
     libraryDependencies ++= Seq(
@@ -124,6 +70,13 @@ object domainArchitecture extends Build {
       "io.reactivex" % "rxjava" % "1.0.14",
       "joda-time" % "joda-time" % "2.9.2"
     )
+  )
+
+  val monocleVersion = "1.1.1"
+  lazy val monocleForTest = Seq(
+    "com.github.julien-truffaut" %% "monocle-core" % monocleVersion % "test",
+    "com.github.julien-truffaut" %% "monocle-generic" % monocleVersion % "test",
+    "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion % "test"
   )
 
   lazy val coreDependencies = Seq(
@@ -140,22 +93,6 @@ object domainArchitecture extends Build {
       "org.postgresql" % "postgresql" % "9.4-1206-jdbc42" % "test",
       "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
     ) ++ monocleForTest
-  )
-
-  lazy val modulesDependencies = Seq(
-    libraryDependencies ++= Seq(
-      "org.scala-lang.modules" %% "scala-pickling" % "0.10.1",
-      "commons-validator" % "commons-validator" % "1.4.1",
-      "org.jasypt" % "jasypt" % "1.9.2" % "test",
-      "org.scalikejdbc" %% "scalikejdbc-test" % "2.3.1" % "test",
-      "com.h2database" % "h2" % "1.4.190" % "test",
-      "mysql" % "mysql-connector-java" % "5.1.38" % "test",
-      "org.postgresql" % "postgresql" % "9.4-1206-jdbc42" % "test",
-      "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
-      "org.jasypt" % "jasypt" % "1.9.2",
-      "org.json4s" %% "json4s-native" % "3.3.0",
-      "commons-validator" % "commons-validator" % "1.4.1"
-    ) ++ monocle
   )
 
   lazy val testDependenciesOnMain = Seq(
@@ -175,32 +112,13 @@ object domainArchitecture extends Build {
     )
   )
 
-  lazy val akkaVersion = "2.3.12"
-  lazy val sprayVersion = "1.3.3"
-
-  lazy val deploymentDependencies = Seq(
-    libraryDependencies ++= Seq(
-      "org.json4s" %% "json4s-native" % "3.3.0",
-      "com.mchange" % "c3p0" % "0.9.5.1",
-      "com.typesafe.akka" %% "akka-actor" % akkaVersion,
-      "io.spray" %% "spray-can" % sprayVersion,
-      "io.spray" %% "spray-routing-shapeless2" % sprayVersion,
-      "io.spray" %% "spray-testkit" % sprayVersion % "test",
-      "io.spray" %% "spray-client" % sprayVersion % "test",
-      "ch.qos.logback" % "logback-classic" % "1.1.3",
-      "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0"
-    )
-  )
-
   lazy val commonSettings = Defaults.coreDefaultSettings ++ Seq(
     organization := Organization,
     version := Version,
     concurrentRestrictions in Global += Tags.limit(Tags.Test, 1),
 //    scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature", "-Yinline-warnings", "-Xlog-implicits"),
     scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature"),
-    javaOptions in Test += "-Djava.security.egd=file:/dev/urandom",
     resolvers += Classpaths.typesafeReleases,
-    resolvers += Resolver.file("Local repo", file(System.getProperty("user.home") + "/.ivy2/local"))(Resolver.ivyStylePatterns),
     publishArtifact in(Test, packageBin) := true,
     publishArtifact in(Test, packageDoc) := true,
     publishArtifact in(Test, packageSrc) := true
