@@ -61,43 +61,44 @@ class UserManagementServiceTest
 
   override lazy val passwordResetApi: PasswordResetApi = mock[PasswordResetApi]
 
-  import JsonConfiguration._
-
-  it should "Receive call backend api" in {
-    val apiCall = InitializePasswordResetFlowRequest(UserID(0L), SessionToken("xxx"))
-    passwordResetApi.initializeFlow _ expects apiCall returning Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion.zero, UserIdFlowAggregate(UserID(0))))))
-    Post("/password/init", apiCall) ~> routingDefinition ~> check {
-      body.asString should be("{\"confirmation\":{\"storeVersion\":0,\"rootAggregate\":{\"userID\":0}}}")
-    }
-  }
-
-  it should "Receive call backend api - with gzip encoding" in {
-    val apiCall = InitializePasswordResetFlowRequest(UserID(1L), SessionToken("yyy"))
-    passwordResetApi.initializeFlow _ expects apiCall returning Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion(1L), UserIdFlowAggregate(UserID(0))))))
-
-    Post("/password/init", apiCall) ~> `Accept-Encoding`(HttpEncodings.gzip) ~> routingDefinition ~> check {
-      Gzip.decode(response).entity.asString should be("{\"confirmation\":{\"storeVersion\":1,\"rootAggregate\":{\"userID\":0}}}")
-    }
-  }
-
-  it should "Handler errors from api" in {
-    val testErrorCode = 101L
-    val cancelApiCall = CancelPasswordResetFlowRequest(PasswordResetToken("xxx"))
-    passwordResetApi.cancelFlow _ expects cancelApiCall returning Future.successful(-\/(ResponseError(RequestErrorCode(testErrorCode), RequestErrorDomain("domainTest"))))
-    Post("/password/cancel", cancelApiCall) ~> routingDefinition ~> check {
-      status should be(BadRequest)
-      val res = responseAs[ResponseError]
-      res.errorCode.code should be(testErrorCode)
-      res.domain.domain should be("domainTest")
-    }
-  }
-
-  it should "Handler errors from execution infrastructure as timeouts" in {
-    val confirmApiCall = ConfirmPasswordResetFlowRequest(SessionToken("session"), PasswordResetToken("token"), UserPassword("newP"))
-    passwordResetApi.confirmFlow _ expects confirmApiCall returning Future.failed(new TimeoutException("test timeout"))
-    Post("/password/confirm", confirmApiCall) ~> routingDefinition ~> check {
-      status should be(InternalServerError)
-    }
-  }
+  //TODO migrate to separate project
+//  import JsonConfiguration._
+//
+//  it should "Receive call backend api" in {
+//    val apiCall = InitializePasswordResetFlowRequest(UserID(0L), SessionToken("xxx"))
+//    passwordResetApi.initializeFlow _ expects apiCall returning Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion.zero, UserIdFlowAggregate(UserID(0))))))
+//    Post("/password/init", apiCall) ~> routingDefinition ~> check {
+//      body.asString should be("{\"confirmation\":{\"storeVersion\":0,\"rootAggregate\":{\"userID\":0}}}")
+//    }
+//  }
+//
+//  it should "Receive call backend api - with gzip encoding" in {
+//    val apiCall = InitializePasswordResetFlowRequest(UserID(1L), SessionToken("yyy"))
+//    passwordResetApi.initializeFlow _ expects apiCall returning Future.successful(\/-(InitializePasswordResetFlowResponse(EventSourceCommandConfirmation(EventStoreVersion(1L), UserIdFlowAggregate(UserID(0))))))
+//
+//    Post("/password/init", apiCall) ~> `Accept-Encoding`(HttpEncodings.gzip) ~> routingDefinition ~> check {
+//      Gzip.decode(response).entity.asString should be("{\"confirmation\":{\"storeVersion\":1,\"rootAggregate\":{\"userID\":0}}}")
+//    }
+//  }
+//
+//  it should "Handler errors from api" in {
+//    val testErrorCode = 101L
+//    val cancelApiCall = CancelPasswordResetFlowRequest(PasswordResetToken("xxx"))
+//    passwordResetApi.cancelFlow _ expects cancelApiCall returning Future.successful(-\/(ResponseError(RequestErrorCode(testErrorCode), RequestErrorDomain("domainTest"))))
+//    Post("/password/cancel", cancelApiCall) ~> routingDefinition ~> check {
+//      status should be(BadRequest)
+//      val res = responseAs[ResponseError]
+//      res.errorCode.code should be(testErrorCode)
+//      res.domain.domain should be("domainTest")
+//    }
+//  }
+//
+//  it should "Handler errors from execution infrastructure as timeouts" in {
+//    val confirmApiCall = ConfirmPasswordResetFlowRequest(SessionToken("session"), PasswordResetToken("token"), UserPassword("newP"))
+//    passwordResetApi.confirmFlow _ expects confirmApiCall returning Future.failed(new TimeoutException("test timeout"))
+//    Post("/password/confirm", confirmApiCall) ~> routingDefinition ~> check {
+//      status should be(InternalServerError)
+//    }
+//  }
 
 }

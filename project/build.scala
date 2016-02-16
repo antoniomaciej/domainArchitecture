@@ -198,6 +198,7 @@ object domainArchitecture extends Build {
     concurrentRestrictions in Global += Tags.limit(Tags.Test, 1),
 //    scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature", "-Yinline-warnings", "-Xlog-implicits"),
     scalacOptions in Compile ++= Seq("-unchecked", "-optimise", "-deprecation", "-feature"),
+    javaOptions in Test += "-Djava.security.egd=file:/dev/urandom",
     resolvers += Classpaths.typesafeReleases,
     resolvers += Resolver.file("Local repo", file(System.getProperty("user.home") + "/.ivy2/local"))(Resolver.ivyStylePatterns),
     publishArtifact in(Test, packageBin) := true,

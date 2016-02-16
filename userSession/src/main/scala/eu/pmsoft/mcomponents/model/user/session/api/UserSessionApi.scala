@@ -27,12 +27,13 @@
 package eu.pmsoft.mcomponents.model.user.session.api
 
 import eu.pmsoft.domain.model._
+import eu.pmsoft.mcomponents.eventsourcing.projection.VersionedProjection
 import eu.pmsoft.mcomponents.eventsourcing.{ ApiModuleProvided, ApiModule, EventSourceCommandConfirmation, DomainCommandApi }
 import eu.pmsoft.mcomponents.minstance.ReqResDataModel._
 import eu.pmsoft.mcomponents.minstance._
 import eu.pmsoft.mcomponents.model.user.registry.UserRegistrationDomain
 import eu.pmsoft.mcomponents.model.user.registry.api.{ SearchForUserIdRequest, UserRegistrationApi }
-import eu.pmsoft.mcomponents.model.user.session.{ UserSessionModel, CreateUserSession, UserSessionSSODomain }
+import eu.pmsoft.mcomponents.model.user.session.{ UserSessionSSOState, UserSessionModel, CreateUserSession, UserSessionSSODomain }
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scalaz.{ -\/, \/-, EitherT }
@@ -74,10 +75,13 @@ private class UserServiceDispatcher(
     res <- EitherT(createResponseFromSession(userSession))
   } yield res).run
 
-  def findUserSession(cmdResult: EventSourceCommandConfirmation[UserSessionSSODomain#Aggregate], userId: UserID): Future[RequestResult[UserSession]] = sessionCommandApi.atomicProjection.atLeastOn(cmdResult.storeVersion).map { state =>
-    state.projection.findUserSession(userId) match {
-      case Some(session) => \/-(session)
-      case None          => -\/(UserSessionModel.criticalSessionNotFoundAfterSuccessCommand.toResponseError)
+  def findUserSession(cmdResult: EventSourceCommandConfirmation[UserSessionSSODomain#Aggregate], userId: UserID): Future[RequestResult[UserSession]] = {
+    val eventualProjection: Future[VersionedProjection[UserSessionSSOState]] = sessionCommandApi.atomicProjection.atLeastOn(cmdResult.storeVersion)
+    eventualProjection.map { state =>
+      state.projection.findUserSession(userId) match {
+        case Some(session) => \/-(session)
+        case None          => -\/(UserSessionModel.criticalSessionNotFoundAfterSuccessCommand.toResponseError)
+      }
     }
   }
 

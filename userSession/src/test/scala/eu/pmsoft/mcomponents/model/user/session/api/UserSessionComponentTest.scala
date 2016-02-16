@@ -34,6 +34,7 @@ import eu.pmsoft.mcomponents.model.user.registry.{ UserRegistrationDomain, UserR
 import eu.pmsoft.mcomponents.model.user.session.UserSessionSSODomain
 import eu.pmsoft.mcomponents.model.user.session.inmemory.UserSessionDomainModule
 import eu.pmsoft.mcomponents.test.BaseEventSourceComponentTestSpec
+import org.scalatest.time.{ Millis, Seconds, Span }
 import scalikejdbc._
 import scalikejdbc.config.DBs
 

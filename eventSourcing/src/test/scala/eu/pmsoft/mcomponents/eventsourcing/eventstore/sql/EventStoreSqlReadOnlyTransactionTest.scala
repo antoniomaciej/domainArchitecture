@@ -169,6 +169,7 @@ trait SqlTestDomain extends DomainSpecification {
   type Command = Any
   type Event = Int
   type Aggregate = SqlTestAggregate
+  type ConstraintScope = SqlConstraintScope
   type State = SqlTestProjection
   type SideEffects = Any
 }
@@ -178,12 +179,14 @@ trait SqlTestProjection {
 }
 
 case class SqlTestAggregate(scope: Int)
+case class SqlConstraintScope(scope: Int)
 
 case class SqlTestProjectionState(eventStoreVersion: EventStoreVersion) extends SqlTestProjection
 
 class SqlTestEventSerializationSchema extends EventSerializationSchema[SqlTestDomain] {
 
-  override def buildConstraintReference(constraintScope: SqlTestDomain#ConstraintScope): ConstraintReference = ConstraintReference.noConstraintsOnDomain
+  //TODO test constraints on sql
+  override def buildConstraintReference(constraintScope: SqlConstraintScope): ConstraintReference = ConstraintReference.noConstraintsOnDomain
 
   override def buildAggregateReference(aggregate: SqlTestAggregate): AggregateReference = AggregateReference(0, aggregate.scope)
 

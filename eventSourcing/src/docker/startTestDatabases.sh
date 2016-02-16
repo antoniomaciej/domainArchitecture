@@ -2,9 +2,9 @@
 
 docker run --name eventStoreTestPostgres \
     -p 5432:5432 \
-    -e POSTGRES_DB=eventStoreTestPostgres \
-    -e POSTGRES_USER=eventStoreTestUser \
-    -e POSTGRES_PASSWORD=eventStoreTestPassword \
+    -e POSTGRES_DB=event_store \
+    -e POSTGRES_USER=postgres \
+    -e POSTGRES_PASSWORD= \
     -d postgres
 
 

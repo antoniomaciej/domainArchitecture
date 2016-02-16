@@ -1,3 +1,5 @@
+sudo: false
+
 addons:
   postgresql: "9.3"
 
@@ -18,9 +20,17 @@ notifications:
 jdk:
   - oraclejdk8
 
+cache:
+  directories:
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt/boot/
+
 before_script:
   - psql -c 'DROP DATABASE IF EXISTS event_store;' -U postgres
   - psql -c 'CREATE DATABASE event_store;' -U postgres
   - mysql -e "create database IF NOT EXISTS eventStoreTestMySql;" -uroot
 
-script: sbt ++$TRAVIS_SCALA_VERSION clean coverage test
+script:
+  - sbt ++$TRAVIS_SCALA_VERSION -Djava.security.egd=file:/dev/urandom clean coverage test
+  - find $HOME/.sbt -name "*.lock" | xargs rm
+  - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
