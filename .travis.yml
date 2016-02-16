@@ -17,6 +17,7 @@ notifications:
   email:
     recipients:
       - paweld2@gmail.com
+  on_success: always
 jdk:
   - oraclejdk8
 
@@ -34,3 +35,5 @@ script:
   - sbt ++$TRAVIS_SCALA_VERSION -Djava.security.egd=file:/dev/urandom clean coverage test
   - find $HOME/.sbt -name "*.lock" | xargs rm
   - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
+after_success:
+  - sbt coveralls

@@ -78,18 +78,3 @@ class DomainScopeEventSourceModelErrorToResponseResultTranslator(val cmdError: E
     extends EventErrorToResponseErrorTranslator {
   override def toResponseError: ResponseError = ResponseError(RequestErrorCode(cmdError.code.errorCode), serviceDomain)
 }
-//
-//sealed trait MicroComponentRegistrationError
-//
-//case class RegisterIsEmpty() extends MicroComponentRegistrationError
-//
-//case class RegisterAlreadyInitialized() extends MicroComponentRegistrationError
-//
-//case class ComponentAlreadyRegistered() extends MicroComponentRegistrationError
-//
-//case class ComponentNotFound(msg: String) extends MicroComponentRegistrationError
-//
-//sealed trait MicroComponentRegistrationConfirmation
-//
-//case class ComponentRegistered() extends MicroComponentRegistrationConfirmation
-
