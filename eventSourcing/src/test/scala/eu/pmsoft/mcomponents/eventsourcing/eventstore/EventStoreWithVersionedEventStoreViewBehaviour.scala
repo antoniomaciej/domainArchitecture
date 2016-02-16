@@ -131,15 +131,17 @@ trait EventStoreWithVersionedEventStoreViewBehaviour {
     }
 
     it should "detect concurrent execution of updates in the same transaction scope" taggedAs testsTag in {
-      runConcurrentEventPersistence(thread => 0, expectedResult = true, eventStoreCreator)
+      val calculationTime: Int = 3000
+      runConcurrentEventPersistence(thread => 0, expectedResult = true, calculationTime, eventStoreCreator)
     }
 
     it should "run concurrently in different transaction scope" taggedAs testsTag in {
-      runConcurrentEventPersistence(thread => thread, expectedResult = false, eventStoreCreator)
+      val calculationTime: Int = 1000
+      runConcurrentEventPersistence(thread => thread, expectedResult = false, calculationTime, eventStoreCreator)
     }
   }
 
-  def runConcurrentEventPersistence(aggregateIdForThreadF: Int => Int, expectedResult: Boolean,
+  def runConcurrentEventPersistence(aggregateIdForThreadF: Int => Int, expectedResult: Boolean, calculationTime: Int,
                                     eventStoreCreator: () => EventStore[TheTestDomainSpecification] with VersionedEventStoreView[TheTestState]): Unit = {
     //given
     val eventStore = eventStoreCreator()
@@ -187,7 +189,6 @@ trait EventStoreWithVersionedEventStoreViewBehaviour {
         }
       })
     }
-    val calculationTime = 500
     barriers.await(calculationTime, TimeUnit.MILLISECONDS)
     endThreadsFlag.set(true)
     val timeToCloseThread = 100
